@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		const options = new OptionsRepository(emdash.db);
 		const siteName = (await options.get<string>("emdash:site_title")) || "EmDash";
 
-		// Use stored site URL to prevent Host header spoofing in invite emails
+		// Use the configured site URL (stored option as fallback) to prevent Host header spoofing in invite emails
 		const baseUrl = await getSiteBaseUrl(emdash.db, request, emdash.config);
 
 		// Build email sender from the plugin pipeline (if available)

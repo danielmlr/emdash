@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		const siteName = (await options.get<string>("emdash:site_title")) || "EmDash";
 
 		// Use stored site URL to prevent Host header spoofing in signup emails
-		const baseUrl = await getSiteBaseUrl(emdash.db, request);
+		const baseUrl = await getSiteBaseUrl(emdash.db, request, emdash.config);
 
 		// Request signup - this handles all checks internally and fails silently
 		// if domain not allowed or user exists (to prevent enumeration)

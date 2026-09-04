@@ -309,7 +309,6 @@ export function extractText(result: unknown): string {
 	return typeof block?.text === "string" ? block.text : "";
 }
 
-/** Parse the JSON success payload of a tool result. Throws if the call errored. */
 /** The `_rev` a content tool returned, for the next write in a chain. */
 export function revOf(result: unknown): string {
 	return extractJson<{ _rev: string }>(result)._rev;
@@ -332,6 +331,7 @@ export async function currentRev(
 	);
 }
 
+/** Parse the JSON success payload of a tool result. Throws if the call errored. */
 export function extractJson<T = unknown>(result: unknown): T {
 	const r = result as ToolResult;
 	if (r.isError) {

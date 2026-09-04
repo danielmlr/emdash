@@ -37,6 +37,17 @@ import { decodeBase64, encodeBase64 } from "../utils/base64.js";
 const COLLECTION_SLUG_PATTERN = /^[a-z][a-z0-9_]*$/;
 /** http(s) scheme matcher used by `settings_update` URL validation. */
 const HTTP_SCHEME_PATTERN = /^https?:\/\//i;
+/**
+ * Shared wording for the `_rev` parameter on write tools. Agents only see the
+ * tool schema, so the retry protocol has to be stated here rather than left to
+ * the error message.
+ */
+const REV_PARAM_DESCRIPTION =
+	"Revision token proving you have read the current item. Call content_get " +
+	"first and pass back the _rev it returns. If this call fails with CONFLICT " +
+	"the item changed in the meantime: call content_get again and retry with " +
+	"the new token.";
+
 const TAXONOMY_CURSOR_VERSION = 2;
 const MAX_TAXONOMY_CURSOR_LENGTH = 2048;
 
@@ -827,8 +838,9 @@ export function createMcpServer(
 			title: "Get Content",
 			description:
 				"Get a single content item by its ID or slug. Returns the full content data " +
-				"including all field values, metadata, and a _rev token for optimistic " +
-				"concurrency (pass _rev back when updating to detect conflicts).",
+				"including all field values, metadata, and a _rev token. Every tool that " +
+				"changes this item requires that token, so read the item here before " +
+				"writing to it.",
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug (e.g. 'posts', 'pages')"),
 				id: z.string().describe("Content item ID (ULID) or slug"),
@@ -995,9 +1007,9 @@ export function createMcpServer(
 				"in the 'data' object — unspecified fields are left unchanged. Rich text " +
 				"(portableText) fields accept a Markdown string (recommended, converted " +
 				"automatically); use a Portable Text JSON array only for complex content " +
-				"Markdown can't express (custom blocks, embeds). Pass the " +
-				"_rev token from content_get to enable optimistic concurrency checking " +
-				"(the update fails if the item was modified since you read it). " +
+				"Markdown can't express (custom blocks, embeds). Requires the _rev " +
+				"token from content_get, so read the item before updating it: the " +
+				"update fails if the item changed since that read. " +
 				"`seo` and `bylines` are persisted alongside the field updates in a " +
 				"single transaction. `publishedAt` requires the content:publish_any " +
 				"permission and is useful for migrations or correcting historical dates.",
@@ -1049,10 +1061,7 @@ export function createMcpServer(
 					.describe(
 						"Override the publication timestamp (ISO 8601). Requires content:publish_any permission. Pass null to clear. Useful for content migrations.",
 					),
-				_rev: z
-					.string()
-					.optional()
-					.describe("Revision token from content_get for conflict detection"),
+				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
 			}),
 		},
 		async (args, extra) => {
@@ -1260,10 +1269,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z
-					.string()
-					.optional()
-					.describe("Revision token from content_get for conflict detection"),
+				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
 				publishedAt: z.iso
 					.datetime({ offset: true, message: "must be an ISO 8601 datetime" })
 					.optional()
@@ -1317,10 +1323,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z
-					.string()
-					.optional()
-					.describe("Revision token from content_get for conflict detection"),
+				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
 			}),
 		},
 		async (args, extra) => {
@@ -1451,10 +1454,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z
-					.string()
-					.optional()
-					.describe("Revision token from content_get for conflict detection"),
+				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
 			}),
 			annotations: { destructiveHint: true },
 		},

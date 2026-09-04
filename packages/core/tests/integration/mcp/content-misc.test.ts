@@ -425,6 +425,24 @@ describe("_rev optimistic concurrency", () => {
 		expect(result.isError).toBe(true);
 		expect(extractText(result)).toMatch(/_rev is required.*content_get/);
 	});
+
+	it.each(["content_publish", "content_unpublish", "content_discard_draft"])(
+		"%s without _rev is rejected, and the error says how to get one",
+		async (tool) => {
+			const created = await harness.client.callTool({
+				name: "content_create",
+				arguments: { collection: "post", data: { title: "T" }, status: "published" },
+			});
+			const id = extractJson<{ item: { id: string } }>(created).item.id;
+
+			const result = await harness.client.callTool({
+				name: tool,
+				arguments: { collection: "post", id },
+			});
+			expect(result.isError).toBe(true);
+			expect(extractText(result)).toMatch(/_rev is required.*content_get/);
+		},
+	);
 });
 
 // ---------------------------------------------------------------------------

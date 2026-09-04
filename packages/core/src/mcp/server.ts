@@ -1016,7 +1016,10 @@ export function createMcpServer(
 				"automatically); use a Portable Text JSON array only for complex content " +
 				"Markdown can't express (custom blocks, embeds). Requires the _rev " +
 				"token from content_get, so read the item before updating it: the " +
-				"update fails if the item changed since that read. " +
+				"update fails if the item changed since that read. On a published " +
+				"item the change is staged as a draft, so the response shows the new " +
+				"values while the live version keeps the old ones until " +
+				"content_publish. " +
 				"`seo` and `bylines` are persisted alongside the field updates in a " +
 				"single transaction. `publishedAt` requires the content:publish_any " +
 				"permission and is useful for migrations or correcting historical dates.",

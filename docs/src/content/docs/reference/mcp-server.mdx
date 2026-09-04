@@ -138,7 +138,7 @@ Create a new content item. The `data` object should contain field values matchin
 
 #### `content_update`
 
-Update an existing content item. Only include fields you want to change -- unspecified fields are left unchanged. On a published item the change is staged as a draft: the response shows the new values while the live version keeps the old ones until `content_publish`.
+Update an existing content item. Only include fields you want to change -- unspecified fields are left unchanged. When `status` is not set, a change to a published item is staged as a draft: the response shows the new values while the live version keeps the old ones until `content_publish`.
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |

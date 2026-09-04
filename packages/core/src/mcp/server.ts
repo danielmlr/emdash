@@ -39,8 +39,7 @@ const COLLECTION_SLUG_PATTERN = /^[a-z][a-z0-9_]*$/;
 const HTTP_SCHEME_PATTERN = /^https?:\/\//i;
 /**
  * Shared wording for the `_rev` parameter on write tools. Agents only see the
- * tool schema, so the retry protocol has to be stated here rather than left to
- * the error message.
+ * tool schema, so the retry protocol is stated here.
  */
 const REV_PARAM_DESCRIPTION =
 	"Revision token proving you have read the current item. Call content_get " +
@@ -49,8 +48,8 @@ const REV_PARAM_DESCRIPTION =
 	"the new token.";
 
 /**
- * A client written before `_rev` became required sees this instead of a bare
- * type error, so the message has to carry the fix rather than name the field.
+ * Replaces Zod's "expected string, received undefined" for a caller that never
+ * read the schema, so the message says where the token comes from.
  */
 const REV_MISSING_ERROR =
 	"_rev is required: call content_get for this item and pass back the _rev it returns.";

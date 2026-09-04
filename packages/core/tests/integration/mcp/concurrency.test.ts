@@ -107,10 +107,7 @@ describe("MCP concurrency — in-memory transport (bug #8 partial)", () => {
 		});
 		const id = extractJson<{ item: { id: string } }>(created).item.id;
 
-		// 10 concurrent updates with different titles, all built on the token the
-		// create returned. Writes reject a stale token, so at most one of them can
-		// land per revision: a conflict is a correct outcome here, corruption is
-		// not, and corruption is what this test guards.
+		// All ten build on one token, so at most one lands; corruption is the subject.
 		const rev = revOf(created);
 		const work = Array.from({ length: 10 }, (_, i) =>
 			harness.client.callTool({
@@ -157,11 +154,7 @@ describe("MCP concurrency — in-memory transport (bug #8 partial)", () => {
 			expect(created.isError, extractText(created)).toBeFalsy();
 			const id = extractJson<{ item: { id: string } }>(created).item.id;
 
-			// 10 concurrent updates: 5 from admin (allowed), 5 from contributor
-			// who isn't the author (denied). The admin writes may lose a race on
-			// the revision token, but must never be refused for permissions; the
-			// contributor writes must always be. That split is what this test
-			// guards — the identity of one session must not reach the other.
+			// Admin writes may lose the token race; only a permission refusal is wrong.
 			const rev = revOf(created);
 			const adminWork = Array.from({ length: 5 }, (_, i) =>
 				harness.client.callTool({

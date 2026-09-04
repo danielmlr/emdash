@@ -30,10 +30,7 @@ const AUTHOR_USER_ID = "user_author";
 const OTHER_USER_ID = "user_other";
 const ADMIN_USER_ID = "user_admin";
 const CONTENT_ID = "01CONTENT";
-/**
- * Content writes require a revision token. These tests exercise authorization
- * against mocked handlers, so the token is never validated and any string does.
- */
+/** Authorization runs before the token is validated, so any string does here. */
 const STUB_REV = "c3R1Yi1yZXY=";
 const CONTENT_SLUG = "test-post";
 const REVISION_ID = "01REVISION";

@@ -310,20 +310,12 @@ export function extractText(result: unknown): string {
 }
 
 /** Parse the JSON success payload of a tool result. Throws if the call errored. */
-/**
- * The `_rev` token a content tool returned, for the next write in a chain.
- * Content writes reject a call without one, so a test that creates then edits
- * has to carry the token forward from each response.
- */
+/** The `_rev` a content tool returned, for the next write in a chain. */
 export function revOf(result: unknown): string {
 	return extractJson<{ _rev: string }>(result)._rev;
 }
 
-/**
- * Reads an item's current `_rev`. Tests whose subject is not concurrency use
- * this so a write does not have to thread the token through every preceding
- * response; tests that assert conflict behaviour pass their own token instead.
- */
+/** Reads an item's current `_rev`, for tests whose subject is not concurrency. */
 export async function currentRev(
 	client: {
 		callTool: (req: { name: string; arguments: Record<string, unknown> }) => Promise<unknown>;

@@ -443,6 +443,40 @@ describe("_rev optimistic concurrency", () => {
 			expect(extractText(result)).toMatch(/_rev is required.*content_get/);
 		},
 	);
+
+	it.each([
+		{ status: "published", createdAs: "draft" },
+		{ status: "draft", createdAs: "published" },
+	] as const)(
+		"content_update with status $status checks _rev even without field changes",
+		async ({ status, createdAs }) => {
+			const created = await harness.client.callTool({
+				name: "content_create",
+				arguments: { collection: "post", data: { title: "T" }, status: createdAs },
+			});
+			const id = extractJson<{ item: { id: string } }>(created).item.id;
+			const stale = revOf(created);
+			const moved = await harness.client.callTool({
+				name: "content_update",
+				arguments: { collection: "post", id, data: { title: "T2" }, _rev: stale },
+			});
+			expect(moved.isError, extractText(moved)).toBeFalsy();
+
+			const rejected = await harness.client.callTool({
+				name: "content_update",
+				arguments: { collection: "post", id, status, _rev: stale },
+			});
+			expect(rejected.isError).toBe(true);
+			expect(extractText(rejected)).toMatch(/conflict|modified/i);
+
+			const accepted = await harness.client.callTool({
+				name: "content_update",
+				arguments: { collection: "post", id, status, _rev: revOf(moved) },
+			});
+			expect(accepted.isError, extractText(accepted)).toBeFalsy();
+			expect(extractJson<{ item: { status: string } }>(accepted).item.status).toBe(status);
+		},
+	);
 });
 
 // ---------------------------------------------------------------------------

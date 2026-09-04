@@ -634,6 +634,13 @@ function extractContentId(data: unknown): string | undefined {
 	return typeof item?.id === "string" ? item.id : undefined;
 }
 
+/** Extract the `_rev` token from a content handler response. */
+function extractContentRev(data: unknown): string | undefined {
+	if (!data || typeof data !== "object") return undefined;
+	const rev = (data as Record<string, unknown>)._rev;
+	return typeof rev === "string" ? rev : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Server factory
 // ---------------------------------------------------------------------------
@@ -1108,6 +1115,7 @@ export function createMcpServer(
 			// Status transitions route through dedicated handlers for proper revision management
 			if (args.status === "published") {
 				requireOwnership(extra, ownerId, "content:publish_own", "content:publish_any");
+				let rev: string | undefined = args._rev;
 				if (
 					args.data ||
 					args.slug ||
@@ -1128,12 +1136,16 @@ export function createMcpServer(
 						_rev: args._rev,
 					});
 					if (!updateResult.success) return unwrap(updateResult);
+					rev = extractContentRev(updateResult.data);
 				}
-				return unwrap(await emdash.handleContentPublish(args.collection, resolvedId));
+				return unwrap(
+					await emdash.handleContentPublish(args.collection, resolvedId, { _rev: rev }),
+				);
 			}
 
 			if (args.status === "draft") {
 				requireOwnership(extra, ownerId, "content:publish_own", "content:publish_any");
+				let rev: string | undefined = args._rev;
 				if (
 					args.data ||
 					args.slug ||
@@ -1154,8 +1166,11 @@ export function createMcpServer(
 						_rev: args._rev,
 					});
 					if (!updateResult.success) return unwrap(updateResult);
+					rev = extractContentRev(updateResult.data);
 				}
-				return unwrap(await emdash.handleContentUnpublish(args.collection, resolvedId));
+				return unwrap(
+					await emdash.handleContentUnpublish(args.collection, resolvedId, { _rev: rev }),
+				);
 			}
 
 			return unwrap(

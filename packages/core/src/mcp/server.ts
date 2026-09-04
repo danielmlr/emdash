@@ -845,9 +845,9 @@ export function createMcpServer(
 			title: "Get Content",
 			description:
 				"Get a single content item by its ID or slug. Returns the full content data " +
-				"including all field values, metadata, and a _rev token. Every tool that " +
-				"changes this item requires that token, so read the item here before " +
-				"writing to it.",
+				"including all field values, metadata, and a _rev token. content_update, " +
+				"content_publish, content_unpublish and content_discard_draft require that " +
+				"token, so read the item here before calling them.",
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug (e.g. 'posts', 'pages')"),
 				id: z.string().describe("Content item ID (ULID) or slug"),

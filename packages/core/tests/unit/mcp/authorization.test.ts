@@ -30,6 +30,11 @@ const AUTHOR_USER_ID = "user_author";
 const OTHER_USER_ID = "user_other";
 const ADMIN_USER_ID = "user_admin";
 const CONTENT_ID = "01CONTENT";
+/**
+ * Content writes require a revision token. These tests exercise authorization
+ * against mocked handlers, so the token is never validated and any string does.
+ */
+const STUB_REV = "c3R1Yi1yZXY=";
 const CONTENT_SLUG = "test-post";
 const REVISION_ID = "01REVISION";
 const MEDIA_ID = "01MEDIA";
@@ -401,6 +406,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Hacked" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -424,6 +430,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "My update" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -445,6 +452,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Hacked" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -466,6 +474,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Editor update" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -569,7 +578,7 @@ describe("MCP Authorization", () => {
 
 			const result = await client.callTool({
 				name: "content_publish",
-				arguments: { collection: "post", id: CONTENT_ID },
+				arguments: { collection: "post", id: CONTENT_ID, _rev: STUB_REV },
 			});
 
 			expect(result.isError).toBeFalsy();
@@ -586,7 +595,7 @@ describe("MCP Authorization", () => {
 
 			const result = await client.callTool({
 				name: "content_publish",
-				arguments: { collection: "post", id: CONTENT_ID },
+				arguments: { collection: "post", id: CONTENT_ID, _rev: STUB_REV },
 			});
 
 			expect(result.isError).toBe(true);
@@ -827,6 +836,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "No scope" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -850,6 +860,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Valid scope" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -871,6 +882,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Session auth" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -920,7 +932,7 @@ describe("MCP Authorization", () => {
 
 			const result = await client.callTool({
 				name: "content_unpublish",
-				arguments: { collection: "post", id: CONTENT_ID },
+				arguments: { collection: "post", id: CONTENT_ID, _rev: STUB_REV },
 			});
 
 			expect(result.isError).toBe(true);
@@ -962,12 +974,12 @@ describe("MCP Authorization", () => {
 
 			const result = await client.callTool({
 				name: "content_discard_draft",
-				arguments: { collection: "post", id: CONTENT_SLUG },
+				arguments: { collection: "post", id: CONTENT_SLUG, _rev: STUB_REV },
 			});
 
 			expect(result.isError).toBeFalsy();
 			expect(handlers.handleContentDiscardDraft).toHaveBeenCalledWith("post", CONTENT_ID, {
-				_rev: undefined,
+				_rev: STUB_REV,
 			});
 		});
 
@@ -985,6 +997,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_SLUG,
 					data: { title: "Updated" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -1034,6 +1047,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "ok" },
+					_rev: STUB_REV,
 				},
 			});
 
@@ -1059,6 +1073,7 @@ describe("MCP Authorization", () => {
 					collection: "post",
 					id: CONTENT_ID,
 					data: { title: "Should fail" },
+					_rev: STUB_REV,
 				},
 			});
 

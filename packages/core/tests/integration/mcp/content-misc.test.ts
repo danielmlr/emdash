@@ -20,6 +20,8 @@ import type { Database } from "../../../src/database/types.js";
 import {
 	connectMcpHarness,
 	extractJson,
+	currentRev,
+	revOf,
 	extractText,
 	type McpHarness,
 } from "../../utils/mcp-runtime.js";
@@ -405,7 +407,7 @@ describe("_rev optimistic concurrency", () => {
 		expect(extractText(result)).toMatch(/conflict|stale|outdated|modified|rev/i);
 	});
 
-	it("content_update without _rev still succeeds (opt-in concurrency)", async () => {
+	it("content_update without _rev is rejected, and the error says how to get one", async () => {
 		const created = await harness.client.callTool({
 			name: "content_create",
 			arguments: { collection: "post", data: { title: "T" } },
@@ -414,9 +416,14 @@ describe("_rev optimistic concurrency", () => {
 
 		const result = await harness.client.callTool({
 			name: "content_update",
-			arguments: { collection: "post", id, data: { title: "U" } },
+			arguments: {
+				collection: "post",
+				id,
+				data: { title: "U" },
+			},
 		});
-		expect(result.isError, extractText(result)).toBeFalsy();
+		expect(result.isError).toBe(true);
+		expect(extractText(result)).toMatch(/_rev is required.*content_get/);
 	});
 });
 
@@ -530,6 +537,8 @@ describe("edit-while-trashed", () => {
 			arguments: { collection: "post", data: { title: "T" } },
 		});
 		const id = extractJson<{ item: { id: string } }>(created).item.id;
+		// Read the token before the item goes to the trash; afterwards it is invisible.
+		const rev = revOf(created);
 
 		await harness.client.callTool({
 			name: "content_delete",
@@ -538,7 +547,12 @@ describe("edit-while-trashed", () => {
 
 		const updated = await harness.client.callTool({
 			name: "content_update",
-			arguments: { collection: "post", id, data: { title: "Edit while dead" } },
+			arguments: {
+				collection: "post",
+				id,
+				data: { title: "Edit while dead" },
+				_rev: rev,
+			},
 		});
 		expect(updated.isError).toBe(true);
 		expect(extractText(updated)).toMatch(/\bNOT_FOUND\b|\bnot found\b|trash/i);
@@ -550,6 +564,8 @@ describe("edit-while-trashed", () => {
 			arguments: { collection: "post", data: { title: "T" } },
 		});
 		const id = extractJson<{ item: { id: string } }>(created).item.id;
+		// Read the token before the item goes to the trash; afterwards it is invisible.
+		const rev = revOf(created);
 
 		await harness.client.callTool({
 			name: "content_delete",
@@ -558,7 +574,7 @@ describe("edit-while-trashed", () => {
 
 		const result = await harness.client.callTool({
 			name: "content_publish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: rev },
 		});
 		expect(result.isError).toBe(true);
 	});
@@ -591,7 +607,7 @@ describe("idempotency", () => {
 
 		const first = await harness.client.callTool({
 			name: "content_publish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: await currentRev(harness.client, "post", id) },
 		});
 		expect(first.isError, extractText(first)).toBeFalsy();
 		const firstItem = extractJson<{
@@ -609,7 +625,7 @@ describe("idempotency", () => {
 
 		const second = await harness.client.callTool({
 			name: "content_publish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: await currentRev(harness.client, "post", id) },
 		});
 		// Contract: publish is idempotent. Second call succeeds, status
 		// remains published, and publishedAt is preserved (the repository
@@ -637,7 +653,7 @@ describe("idempotency", () => {
 		// and the item stays draft.
 		const result = await harness.client.callTool({
 			name: "content_unpublish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: await currentRev(harness.client, "post", id) },
 		});
 		expect(result.isError, extractText(result)).toBeFalsy();
 		const item = extractJson<{
@@ -667,7 +683,7 @@ describe("idempotency", () => {
 
 		const publish = await harness.client.callTool({
 			name: "content_publish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: await currentRev(harness.client, "post", id) },
 		});
 		expect(publish.isError, extractText(publish)).toBeFalsy();
 
@@ -771,7 +787,7 @@ describe("content_unschedule gap", () => {
 		// Re-publish still works after unschedule.
 		const republish = await harness.client.callTool({
 			name: "content_publish",
-			arguments: { collection: "post", id },
+			arguments: { collection: "post", id, _rev: await currentRev(harness.client, "post", id) },
 		});
 		expect(republish.isError, extractText(republish)).toBeFalsy();
 		const final = extractJson<{ item: { status: string } }>(republish).item;

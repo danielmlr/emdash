@@ -1468,7 +1468,6 @@ function ContentEditPage() {
 			autosaveCompletionToken={autosaveCompletion.entryId === id ? autosaveCompletion.token : 0}
 			autosaveRejectionToken={autosaveRejection.entryId === id ? autosaveRejection.token : 0}
 			hasSaveConflict={conflictedEntryId === id}
-			onDismissSaveConflict={() => setConflictedEntryId("")}
 			onPublish={handlePublish}
 			onUnpublish={handleUnpublish}
 			onDiscardDraft={handleDiscardDraft}

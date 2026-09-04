@@ -166,8 +166,6 @@ export interface ContentEditorProps {
 	autosaveRejectionToken?: number;
 	/** Whether the server refused the last save because it was based on a stale read. */
 	hasSaveConflict?: boolean;
-	/** Clears the conflict notice, without saving. */
-	onDismissSaveConflict?: () => void;
 	onPublish?: (payload: {
 		data: Record<string, unknown>;
 		slug?: string;
@@ -252,7 +250,6 @@ export function ContentEditor({
 	autosaveCompletionToken,
 	autosaveRejectionToken,
 	hasSaveConflict,
-	onDismissSaveConflict,
 	onPublish,
 	onUnpublish,
 	onDiscardDraft,
@@ -920,15 +917,7 @@ export function ContentEditor({
 								title={t`This entry changed somewhere else after you opened it.`}
 								description={t`What you typed is still here. Saving replaces the newer version.`}
 								action={
-									<Button
-										size="sm"
-										variant="secondary"
-										type="button"
-										onClick={() => {
-											onDismissSaveConflict?.();
-											submitSave();
-										}}
-									>
+									<Button size="sm" variant="secondary" type="button" onClick={submitSave}>
 										{t`Save anyway`}
 									</Button>
 								}

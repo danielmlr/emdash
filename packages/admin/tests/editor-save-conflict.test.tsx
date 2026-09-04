@@ -23,7 +23,10 @@ const MANIFEST: AdminManifest = {
 			labelSingular: "Post",
 			supports: ["drafts", "revisions"],
 			hasSeo: false,
-			fields: { title: { kind: "string", label: "Title" } },
+			fields: {
+				title: { kind: "string", label: "Title" },
+				link: { kind: "url", label: "Link" },
+			},
 		},
 	},
 	plugins: {},
@@ -239,6 +242,27 @@ describe("ContentEditPage save conflict", () => {
 
 		await expect.element(screen.getByText("Autosave failed")).toBeVisible();
 		expect(screen.getByRole("button", { name: "Save anyway", exact: true }).query()).toBeNull();
+	});
+
+	it("keeps the notice when the save it offers cannot start", async () => {
+		server = conflictOnFirstPut();
+		const screen = await renderEditPage();
+		const title = screen.getByRole("textbox", { name: "Title" });
+
+		await title.fill("Writer copy");
+		await vi.advanceTimersByTimeAsync(2500);
+
+		const saveAnyway = screen.getByRole("button", { name: "Save anyway", exact: true });
+		await expect.element(saveAnyway).toBeVisible();
+
+		// An invalid URL makes submitSave return before it reaches onSave.
+		await screen.getByRole("textbox", { name: "Link" }).fill("not a url");
+		await saveAnyway.click();
+		await vi.advanceTimersByTimeAsync(10000);
+
+		await expect.element(saveAnyway).toBeVisible();
+		const puts = server.requests.filter((request) => request.method === "PUT");
+		expect(puts).toHaveLength(1);
 	});
 
 	it("takes the notice down when the writer discards instead", async () => {

@@ -48,6 +48,13 @@ const REV_PARAM_DESCRIPTION =
 	"the item changed in the meantime: call content_get again and retry with " +
 	"the new token.";
 
+/**
+ * A client written before `_rev` became required sees this instead of a bare
+ * type error, so the message has to carry the fix rather than name the field.
+ */
+const REV_MISSING_ERROR =
+	"_rev is required: call content_get for this item and pass back the _rev it returns.";
+
 const TAXONOMY_CURSOR_VERSION = 2;
 const MAX_TAXONOMY_CURSOR_LENGTH = 2048;
 
@@ -1061,7 +1068,7 @@ export function createMcpServer(
 					.describe(
 						"Override the publication timestamp (ISO 8601). Requires content:publish_any permission. Pass null to clear. Useful for content migrations.",
 					),
-				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
+				_rev: z.string({ error: REV_MISSING_ERROR }).describe(REV_PARAM_DESCRIPTION),
 			}),
 		},
 		async (args, extra) => {
@@ -1269,7 +1276,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
+				_rev: z.string({ error: REV_MISSING_ERROR }).describe(REV_PARAM_DESCRIPTION),
 				publishedAt: z.iso
 					.datetime({ offset: true, message: "must be an ISO 8601 datetime" })
 					.optional()
@@ -1323,7 +1330,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
+				_rev: z.string({ error: REV_MISSING_ERROR }).describe(REV_PARAM_DESCRIPTION),
 			}),
 		},
 		async (args, extra) => {
@@ -1454,7 +1461,7 @@ export function createMcpServer(
 			inputSchema: z.object({
 				collection: z.string().describe("Collection slug"),
 				id: z.string().describe("Content item ID or slug"),
-				_rev: z.string().describe(REV_PARAM_DESCRIPTION),
+				_rev: z.string({ error: REV_MISSING_ERROR }).describe(REV_PARAM_DESCRIPTION),
 			}),
 			annotations: { destructiveHint: true },
 		},

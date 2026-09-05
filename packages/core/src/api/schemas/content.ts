@@ -171,6 +171,11 @@ const contentDateOverride = z.iso
 	.datetime({ offset: true, message: "must be an ISO 8601 datetime" })
 	.nullish();
 
+const overrideLockFlag = z.boolean().optional().meta({
+	description:
+		"Write even though another editor holds this entry's edit lock. Without it the write is refused with 409 ENTRY_LOCKED.",
+});
+
 export const contentCreateBody = z
 	.object({
 		data: z.record(z.string(), z.unknown()),
@@ -201,6 +206,7 @@ export const contentUpdateBody = z
 			.optional()
 			.meta({ description: "Opaque revision token for optimistic concurrency" }),
 		skipRevision: z.boolean().optional(),
+		overrideLock: overrideLockFlag,
 		seo: contentSeoInput.optional(),
 		taxonomies: z.record(z.string(), z.array(z.string())).optional().meta({
 			description:
@@ -224,6 +230,7 @@ export const contentRevisionConditionBody = z.object({
 		.string()
 		.optional()
 		.meta({ description: "Opaque revision token for optimistic concurrency" }),
+	overrideLock: overrideLockFlag,
 });
 
 export const contentPublishBody = contentRevisionConditionBody

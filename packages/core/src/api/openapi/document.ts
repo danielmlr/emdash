@@ -38,6 +38,11 @@ import {
 	trashedContentListResponseSchema,
 } from "../schemas/content.js";
 import {
+	entryLockAcquireBody,
+	entryLockReleaseResponseSchema,
+	entryLockStatusSchema,
+} from "../schemas/entry-lock.js";
+import {
 	mediaUsageDetailsQuery,
 	mediaUsageDetailsResponseSchema,
 	mediaUsageProgressSchema,
@@ -209,6 +214,11 @@ function standardErrors(
 /** Common auth error responses (401 + 403) */
 const authErrors = standardErrors(401, 403);
 
+const entryPathParams = z.object({
+	collection: z.string().meta({ description: "Collection slug" }),
+	id: z.string().meta({ description: "Content ID or slug" }),
+});
+
 // ---------------------------------------------------------------------------
 // Content routes
 // ---------------------------------------------------------------------------
@@ -329,9 +339,12 @@ const contentPaths = {
 				"Moves the content item to trash. Use the permanent delete endpoint to remove permanently.",
 			tags: ["Content"],
 			requestParams: {
-				path: z.object({
-					collection: z.string().meta({ description: "Collection slug" }),
-					id: z.string().meta({ description: "Content ID or slug" }),
+				path: entryPathParams,
+				query: z.object({
+					overrideLock: z.enum(["true", "false"]).optional().meta({
+						description:
+							"Delete even though another editor holds this entry's edit lock. Without it the delete is refused with 409 ENTRY_LOCKED.",
+					}),
 				}),
 			},
 			responses: {
@@ -344,7 +357,7 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 500),
+				...standardErrors(404, 409, 500),
 			},
 		},
 	},
@@ -370,7 +383,7 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 500),
+				...standardErrors(404, 409, 500),
 			},
 		},
 	},
@@ -397,7 +410,7 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 500),
+				...standardErrors(404, 409, 500),
 			},
 		},
 	},
@@ -579,6 +592,74 @@ const contentPaths = {
 						[JSON_CONTENT]: {
 							schema: successEnvelope(contentResponseSchema),
 						},
+					},
+				},
+				...authErrors,
+				...standardErrors(404, 409, 500),
+			},
+		},
+	},
+
+	"/_emdash/api/content/{collection}/{id}/lock": {
+		get: {
+			operationId: "getEntryLock",
+			summary: "Read the entry's edit lock",
+			description: "Reports who is holding the entry, if anyone, without changing the lease.",
+			tags: ["Content"],
+			requestParams: {
+				path: entryPathParams,
+			},
+			responses: {
+				"200": {
+					description: "Current lock state",
+					content: {
+						[JSON_CONTENT]: { schema: successEnvelope(entryLockStatusSchema) },
+					},
+				},
+				...authErrors,
+				...standardErrors(404, 500),
+			},
+		},
+		post: {
+			operationId: "acquireEntryLock",
+			summary: "Take or refresh the entry's edit lock",
+			description:
+				"Takes the lock for the caller, or reports who holds it. `heldByCaller` " +
+				"tells the two apart. The lease expires after a few minutes without a " +
+				"write; a save on the same entry extends it. `takeover` claims the lock " +
+				"from whoever holds it, and their next save is refused so they find out.",
+			tags: ["Content"],
+			requestParams: {
+				path: entryPathParams,
+			},
+			requestBody: {
+				content: { [JSON_CONTENT]: { schema: entryLockAcquireBody } },
+			},
+			responses: {
+				"200": {
+					description: "Lock state after the attempt",
+					content: {
+						[JSON_CONTENT]: { schema: successEnvelope(entryLockStatusSchema) },
+					},
+				},
+				...authErrors,
+				...standardErrors(404, 500),
+			},
+		},
+		delete: {
+			operationId: "releaseEntryLock",
+			summary: "Release the caller's edit lock",
+			description:
+				"Releases the lock only when the caller holds it; `released` is false otherwise.",
+			tags: ["Content"],
+			requestParams: {
+				path: entryPathParams,
+			},
+			responses: {
+				"200": {
+					description: "Whether a lock was released",
+					content: {
+						[JSON_CONTENT]: { schema: successEnvelope(entryLockReleaseResponseSchema) },
 					},
 				},
 				...authErrors,

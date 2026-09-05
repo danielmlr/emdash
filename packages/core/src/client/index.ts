@@ -733,6 +733,8 @@ export class EmDashClient {
 			status?: string;
 			_rev?: string;
 			locale?: string;
+			/** Write even though another editor holds this entry's edit lock. */
+			overrideLock?: boolean;
 		},
 	): Promise<ContentItem> {
 		// Convert markdown strings to PT
@@ -747,6 +749,7 @@ export class EmDashClient {
 			slug: input.slug,
 			status: input.status,
 			...(input._rev ? { _rev: input._rev } : {}),
+			...(input.overrideLock ? { overrideLock: true } : {}),
 		};
 		const params = new URLSearchParams();
 		if (input.locale) params.set("locale", input.locale);
@@ -764,26 +767,41 @@ export class EmDashClient {
 	}
 
 	/** Delete (soft) a content item */
-	async delete(collection: string, id: string): Promise<void> {
+	async delete(
+		collection: string,
+		id: string,
+		options: { overrideLock?: boolean } = {},
+	): Promise<void> {
+		const query = options.overrideLock ? "?overrideLock=true" : "";
 		await this.request<unknown>(
 			"DELETE",
-			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
+			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}${query}`,
 		);
 	}
 
 	/** Publish a content item */
-	async publish(collection: string, id: string): Promise<void> {
+	async publish(
+		collection: string,
+		id: string,
+		options: { overrideLock?: boolean } = {},
+	): Promise<void> {
 		await this.request<unknown>(
 			"POST",
 			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/publish`,
+			options.overrideLock ? { overrideLock: true } : undefined,
 		);
 	}
 
 	/** Unpublish a content item */
-	async unpublish(collection: string, id: string): Promise<void> {
+	async unpublish(
+		collection: string,
+		id: string,
+		options: { overrideLock?: boolean } = {},
+	): Promise<void> {
 		await this.request<unknown>(
 			"POST",
 			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/unpublish`,
+			options.overrideLock ? { overrideLock: true } : undefined,
 		);
 	}
 
@@ -821,10 +839,15 @@ export class EmDashClient {
 	}
 
 	/** Discard draft revision, reverting to the published version */
-	async discardDraft(collection: string, id: string): Promise<void> {
+	async discardDraft(
+		collection: string,
+		id: string,
+		options: { overrideLock?: boolean } = {},
+	): Promise<void> {
 		await this.request<unknown>(
 			"POST",
 			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/discard-draft`,
+			options.overrideLock ? { overrideLock: true } : undefined,
 		);
 	}
 

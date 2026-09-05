@@ -156,6 +156,45 @@ Content-Type: application/json
 }
 ```
 
+### Entry Edit Lock
+
+```http
+GET    /_emdash/api/content/:collection/:id/lock
+POST   /_emdash/api/content/:collection/:id/lock
+DELETE /_emdash/api/content/:collection/:id/lock
+```
+
+`POST` takes the lock for the caller, or reports who is holding it.
+
+```json
+{
+	"success": true,
+	"data": {
+		"enabled": true,
+		"heldByCaller": false,
+		"holder": {
+			"userId": "01JB...",
+			"userName": "Ada",
+			"acquiredAt": "2026-05-01T09:12:04.117Z",
+			"expiresAt": "2026-05-01T09:19:04.117Z"
+		}
+	}
+}
+```
+
+`enabled` is `false` when the collection has edit locking switched off, and no
+lock is taken. The lease expires after a few minutes without a write; a save on
+the same entry extends it. Send `{ "takeover": true }` to claim the lock from
+whoever holds it. Their next save is then refused, which is how they find out.
+
+`DELETE` releases the lock only when the caller holds it, and reports
+`{ "released": false }` otherwise.
+
+While another user holds a live lock, `PUT`, `DELETE`, `/publish`, `/unpublish`
+and `/discard-draft` on that entry return `409 ENTRY_LOCKED` with the
+holder in `error.details`. Send `"overrideLock": true` in the request body to
+write anyway, or `?overrideLock=true` on `DELETE`, which has no body.
+
 ### Delete Content
 
 ```http

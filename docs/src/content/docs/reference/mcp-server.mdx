@@ -89,6 +89,8 @@ The server exposes tools across eight domains: content, schema, media, search, t
 
 ### Content Tools
 
+The write tools do not honour an entry's [edit lock](/reference/rest-api/#entry-edit-lock). An editor who has the entry open in the admin is only protected by `_rev`.
+
 #### `content_list`
 
 List content items in a collection with optional filtering and pagination.
@@ -148,8 +150,6 @@ Update an existing content item. Only include fields you want to change -- unspe
 | `slug` | `string` | No | New URL slug |
 | `status` | `string` | No | New status: `draft` or `published` |
 | `_rev` | `string` | No | Revision token from `content_get` for conflict detection |
-
-An entry's edit lock does not refuse writes from this tool. An editor who has the entry open in the admin is only protected by `_rev`.
 
 **Scope:** `content:write`
 

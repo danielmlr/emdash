@@ -36,7 +36,6 @@ export const entryLockReleaseResponseSchema = z
 	.object({ released: z.boolean() })
 	.meta({ id: "EntryLockReleaseResponse" });
 
-/** Inlined, not registered as a component, so it keeps the `success` discriminant of every error envelope. */
 export const entryLockConflictSchema = z.object({
 	success: z.literal(false),
 	error: z.object({

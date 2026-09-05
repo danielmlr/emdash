@@ -3,7 +3,7 @@
  *
  * POST /_emdash/api/content/{collection}/{id}/publish
  *
- * Optional JSON body: { publishedAt?: string, _rev?: string }
+ * Optional JSON body: { publishedAt?: string, _rev?: string, overrideLock?: boolean }
  *   publishedAt — ISO 8601 datetime to backdate the publish (e.g. when
  *   migrating content). Writing publishedAt requires content:publish_any.
  *   Without it, the existing published_at is preserved on re-publish and

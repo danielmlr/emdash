@@ -22,30 +22,49 @@ export interface EntryLockStatus {
 	heldByCaller: boolean;
 }
 
-function lockUrl(collection: string, id: string, locale?: string): string {
+function lockUrl(
+	collection: string,
+	id: string,
+	query: { locale?: string; token?: string },
+): string {
 	const path = `${API_BASE}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/lock`;
-	return locale ? `${path}?locale=${encodeURIComponent(locale)}` : path;
+	const params = new URLSearchParams();
+	if (query.locale) params.set("locale", query.locale);
+	if (query.token) params.set("token", query.token);
+	const search = params.toString();
+	return search ? `${path}?${search}` : path;
 }
 
 export async function acquireEntryLock(
 	collection: string,
 	id: string,
-	options: { locale?: string; takeover?: boolean } = {},
+	options: { locale?: string; takeover?: boolean; token?: string } = {},
 ): Promise<EntryLockStatus> {
-	const response = await apiFetch(lockUrl(collection, id, options.locale), {
+	const response = await apiFetch(lockUrl(collection, id, { locale: options.locale }), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ takeover: options.takeover ?? false }),
+		body: JSON.stringify({
+			takeover: options.takeover ?? false,
+			...(options.token ? { token: options.token } : {}),
+		}),
 	});
 	return parseApiResponse<EntryLockStatus>(response, i18n._(msg`Failed to lock the entry`));
 }
 
+/**
+ * `keepalive` lets the request outlive the page, for a release sent while the
+ * tab is closing; its answer is never read.
+ */
 export async function releaseEntryLock(
 	collection: string,
 	id: string,
-	options: { locale?: string } = {},
+	options: { locale?: string; token?: string; keepalive?: boolean } = {},
 ): Promise<void> {
-	const response = await apiFetch(lockUrl(collection, id, options.locale), { method: "DELETE" });
+	const response = await apiFetch(
+		lockUrl(collection, id, { locale: options.locale, token: options.token }),
+		{ method: "DELETE", keepalive: options.keepalive === true },
+	);
+	if (options.keepalive) return;
 	await parseApiResponse<{ released: boolean }>(
 		response,
 		i18n._(msg`Failed to release the entry lock`),

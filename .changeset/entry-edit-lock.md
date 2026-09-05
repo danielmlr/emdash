@@ -5,11 +5,13 @@
 
 Adds an edit lock per content entry, so two people no longer discover a collision only after both have done the work.
 
-Opening an entry in the admin takes a lock on it. A second editor is told who has it and chooses between opening the entry read-only, where nothing they type can be lost to a refused save, and taking it over. A take-over is not silent: the previous holder's next save is refused and a banner tells them who took the entry and that their changes are no longer being saved.
+Opening an entry in the admin takes a lock on it. A second editor is told who has it and chooses between opening the entry read-only, where nothing they type can be lost to a refused save, and taking it over. After a take-over, the previous holder is told within two minutes that the entry moved on, their next save is refused, and a banner names who holds it now.
 
-The lease expires after seven minutes without a write, and every save on the entry, autosave included, extends it, so the lock costs no extra request while someone is typing. Leaving the editor releases it; closing the tab lets it lapse.
+The lock lasts seven minutes. The admin renews it every two minutes while the entry is open, so a pause in typing does not lose it, and every save on the entry extends it too. Leaving the editor or closing the tab releases it; a tab that loses power or network lets it lapse.
 
-`PUT` and `DELETE` on `/_emdash/api/content/{collection}/{id}`, and its `/publish`, `/unpublish` and `/discard-draft` sub-routes, refuse a write against someone else's live lock with `409 ENTRY_LOCKED`, and the response's `error.details` names the holder. Pass `"overrideLock": true` in the request body to write anyway, or `?overrideLock=true` on `DELETE`, which has no body. The CLI exposes the same escape hatch as `--override-lock` on `content update`, `content delete`, `content publish` and `content unpublish`. The MCP content tools do not honour the lock yet.
+#### Who is newly refused
+
+Scripts, API tokens and the CLI that update, delete, publish, unpublish, schedule or discard an entry while an editor has it open in the admin now receive `409 ENTRY_LOCKED` where the write used to succeed. This applies to every collection once the migration has run. The response's `error.message` names the holder and `error.details` carries their `userId`, `userName`, `acquiredAt` and `expiresAt`. Pass `"overrideLock": true` in the request body to write anyway, or `?overrideLock=true` on `DELETE`, which has no body. The CLI takes `--override-lock` on `content update`, `content delete`, `content publish`, `content unpublish` and `content schedule`. The MCP content tools do not honour the lock yet.
 
 Locks are per entry and per locale, so two translations of the same entry can be edited at once.
 
@@ -25,4 +27,4 @@ Locking is on for every collection. Switch it off under **Content Types** → yo
 
 #### Upgrading
 
-Migration `075_entry_edit_locks` adds the `_emdash_entry_locks` table and an `edit_locking` column on `_emdash_collections`. Projects on the default `auto` runtime migration mode need no action; projects that migrate as a deployment step should run `emdash migrate` before deploying this version.
+Includes database migration `075_entry_edit_locks`. Projects on the default `auto` runtime migration mode need no action. Projects that migrate as a deployment step: run `emdash migrate` before deploying this version.

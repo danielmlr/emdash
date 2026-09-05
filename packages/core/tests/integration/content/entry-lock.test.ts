@@ -146,6 +146,17 @@ describe("entry edit lock", () => {
 		});
 	});
 
+	it("releases only for the session that last claimed the lock, when a token is given", async () => {
+		await handleEntryLockAcquire(db, "post", entryId, ADA, { token: "tab-1" });
+
+		expect(
+			await handleEntryLockRelease(db, "post", entryId, ADA, { token: "tab-2" }),
+		).toMatchObject({ success: true, data: { released: false } });
+		expect(
+			await handleEntryLockRelease(db, "post", entryId, ADA, { token: "tab-1" }),
+		).toMatchObject({ success: true, data: { released: true } });
+	});
+
 	describe("write path", () => {
 		it("allows a write against an entry nobody has opened", async () => {
 			expect(await claimEntryLockForWrite(db, "post", entryId, ADA)).toBeNull();
@@ -179,6 +190,7 @@ describe("entry edit lock", () => {
 
 			expect(refusal).toMatchObject({
 				code: "ENTRY_LOCKED",
+				message: "Ada is holding this entry",
 				details: { userId: ADA, userName: "Ada" },
 			});
 		});

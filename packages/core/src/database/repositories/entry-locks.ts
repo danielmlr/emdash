@@ -32,6 +32,7 @@ interface LockRow {
 	collection: string;
 	entry_id: string;
 	user_id: string;
+	token: string;
 	acquired_at: string;
 	expires_at: string;
 }
@@ -66,8 +67,15 @@ export class EntryLockRepository {
 	 * Claims the entry for `userId`, or reports who holds it. An expired lease
 	 * and the caller's own lease are both claimable; anyone else's live lease
 	 * needs `takeover`.
+	 *
+	 * `token` identifies the caller's editing session. The row keeps the latest
+	 * one and `release` matches on it, so two tabs of one account can share an
+	 * entry without the first tab to close dropping the lease the other still
+	 * relies on.
 	 */
-	async acquire(input: LeaseInput & { takeover?: boolean }): Promise<EntryLockClaim> {
+	async acquire(
+		input: LeaseInput & { token: string; takeover?: boolean },
+	): Promise<EntryLockClaim> {
 		for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt++) {
 			const claimed = await this.claim(input);
 			if (claimed) return { outcome: "acquired", lock: await this.withHolderName(claimed) };
@@ -81,9 +89,7 @@ export class EntryLockRepository {
 	/**
 	 * Extends the caller's own live lease, and reports whether they had one.
 	 * `false` lets a write path tell "mine, extended" from "someone else's, or
-	 * none" without taking a lease it was never given. This runs on every
-	 * autosave, so it stays one statement and reads no holder name it would
-	 * not use.
+	 * none" without taking a lease it was never given.
 	 */
 	async refreshHeld(input: LeaseInput): Promise<boolean> {
 		const result = await this.db
@@ -102,11 +108,7 @@ export class EntryLockRepository {
 		return row ? toEntryLock(row) : null;
 	}
 
-	/**
-	 * The live lease, but only while the collection still has locking switched
-	 * on. Folding the collection flag into the join keeps a write path that
-	 * misses its own lease at two round trips instead of three.
-	 */
+	/** The live lease, but only while the collection still has locking switched on. */
 	async findEnforceable(collection: string, entryId: string): Promise<EntryLock | null> {
 		const row = await this.liveQuery(collection, entryId)
 			.innerJoin(
@@ -119,13 +121,18 @@ export class EntryLockRepository {
 		return row ? toEntryLock(row) : null;
 	}
 
-	async release(key: LockKey): Promise<boolean> {
-		const result = await this.db
+	/**
+	 * Drops the caller's lease. With `token`, only the session that last
+	 * claimed the row can drop it; without, any session of the account can.
+	 */
+	async release(key: LockKey & { token?: string }): Promise<boolean> {
+		let query = this.db
 			.deleteFrom("_emdash_entry_locks")
 			.where("collection", "=", key.collection)
 			.where("entry_id", "=", key.entryId)
-			.where("user_id", "=", key.userId)
-			.executeTakeFirst();
+			.where("user_id", "=", key.userId);
+		if (key.token !== undefined) query = query.where("token", "=", key.token);
+		const result = await query.executeTakeFirst();
 		return Number(result.numDeletedRows ?? 0) > 0;
 	}
 
@@ -143,8 +150,14 @@ export class EntryLockRepository {
 	 * acquisition time when the holder is unchanged, so the admin can show how
 	 * long the entry has been open rather than how long ago it was last typed
 	 * into.
+	 *
+	 * Column references in the conflict branch are table-qualified: Postgres
+	 * sees both the stored row and `excluded` there and rejects a bare name as
+	 * ambiguous.
 	 */
-	private async claim(input: LeaseInput & { takeover?: boolean }): Promise<LockRow | undefined> {
+	private async claim(
+		input: LeaseInput & { token: string; takeover?: boolean },
+	): Promise<LockRow | undefined> {
 		const now = this.timestampOffset(0);
 		const expiresAt = this.timestampOffset(input.leaseSeconds);
 		return this.db
@@ -153,21 +166,27 @@ export class EntryLockRepository {
 				collection: input.collection,
 				entry_id: input.entryId,
 				user_id: input.userId,
+				token: input.token,
 				acquired_at: now,
 				expires_at: expiresAt,
 			})
 			.onConflict((oc) => {
 				const update = oc.columns(["collection", "entry_id"]).doUpdateSet({
 					user_id: input.userId,
+					token: input.token,
 					acquired_at: sql<string>`CASE
-						WHEN ${sql.ref("user_id")} = ${input.userId} THEN ${sql.ref("acquired_at")}
+						WHEN ${sql.ref("_emdash_entry_locks.user_id")} = ${input.userId}
+						THEN ${sql.ref("_emdash_entry_locks.acquired_at")}
 						ELSE ${now}
 					END`,
 					expires_at: expiresAt,
 				});
 				if (input.takeover === true) return update;
 				return update.where((eb) =>
-					eb.or([eb("user_id", "=", input.userId), this.leaseHasExpired("expires_at")]),
+					eb.or([
+						eb("_emdash_entry_locks.user_id", "=", input.userId),
+						this.leaseHasExpired("_emdash_entry_locks.expires_at"),
+					]),
 				);
 			})
 			.returningAll()
@@ -182,6 +201,7 @@ export class EntryLockRepository {
 				"_emdash_entry_locks.collection",
 				"_emdash_entry_locks.entry_id",
 				"_emdash_entry_locks.user_id",
+				"_emdash_entry_locks.token",
 				"_emdash_entry_locks.acquired_at",
 				"_emdash_entry_locks.expires_at",
 				"users.name as user_name",

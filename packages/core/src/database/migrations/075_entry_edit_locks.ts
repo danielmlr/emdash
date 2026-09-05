@@ -14,6 +14,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 		.addColumn("collection", "text", (col) => col.notNull())
 		.addColumn("entry_id", "text", (col) => col.notNull())
 		.addColumn("user_id", "text", (col) => col.notNull().references("users.id").onDelete("cascade"))
+		.addColumn("token", "text", (col) => col.notNull())
 		.addColumn("acquired_at", "text", (col) => col.notNull())
 		.addColumn("expires_at", "text", (col) => col.notNull())
 		.addPrimaryKeyConstraint("pk_emdash_entry_locks", ["collection", "entry_id"])

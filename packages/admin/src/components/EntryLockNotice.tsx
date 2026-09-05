@@ -43,7 +43,7 @@ export function EntryLockNotice({
 					<Dialog.Description dir="auto" className="text-kumo-subtle">
 						<Trans>
 							<strong dir="auto">{name}</strong> is editing this entry. Open it read-only, or take
-							over and let them know their next save will be refused.
+							over; they will be told the entry moved on.
 						</Trans>
 					</Dialog.Description>
 					<div className="mt-6 flex justify-end gap-2">
@@ -72,8 +72,8 @@ export function EntryLockNotice({
 				<p dir="auto" className="mt-1 text-sm text-kumo-subtle">
 					{state.status === "taken" ? (
 						<Trans>
-							<strong dir="auto">{name}</strong> took over while you were editing, so your changes
-							are no longer being saved. Take it back to carry on.
+							<strong dir="auto">{name}</strong> now holds this entry, so your changes are no longer
+							being saved. Take it back to carry on.
 						</Trans>
 					) : (
 						<Trans>

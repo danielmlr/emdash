@@ -39,6 +39,7 @@ import {
 } from "../schemas/content.js";
 import {
 	entryLockAcquireBody,
+	entryLockConflictSchema,
 	entryLockReleaseResponseSchema,
 	entryLockStatusSchema,
 } from "../schemas/entry-lock.js";
@@ -219,6 +220,14 @@ const entryPathParams = z.object({
 	id: z.string().meta({ description: "Content ID or slug" }),
 });
 
+/** 409 that carries the edit lock's holder in `error.details` */
+const entryLockConflict = {
+	"409": {
+		description: "Another editor holds the entry's edit lock",
+		content: { [JSON_CONTENT]: { schema: entryLockConflictSchema } },
+	},
+};
+
 // ---------------------------------------------------------------------------
 // Content routes
 // ---------------------------------------------------------------------------
@@ -357,7 +366,8 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 409, 500),
+				...standardErrors(404, 500),
+				...entryLockConflict,
 			},
 		},
 	},
@@ -383,7 +393,8 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 409, 500),
+				...standardErrors(404, 500),
+				...entryLockConflict,
 			},
 		},
 	},
@@ -410,7 +421,8 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 409, 500),
+				...standardErrors(404, 500),
+				...entryLockConflict,
 			},
 		},
 	},
@@ -440,6 +452,7 @@ const contentPaths = {
 				},
 				...authErrors,
 				...standardErrors(400, 404, 500),
+				...entryLockConflict,
 			},
 		},
 		delete: {
@@ -448,9 +461,12 @@ const contentPaths = {
 			description: "Reverts a scheduled item to draft status.",
 			tags: ["Content"],
 			requestParams: {
-				path: z.object({
-					collection: z.string().meta({ description: "Collection slug" }),
-					id: z.string().meta({ description: "Content ID or slug" }),
+				path: entryPathParams,
+				query: z.object({
+					overrideLock: z.enum(["true", "false"]).optional().meta({
+						description:
+							"Unschedule even though another editor holds this entry's edit lock. Without it the request is refused with 409 ENTRY_LOCKED.",
+					}),
 				}),
 			},
 			responses: {
@@ -464,6 +480,7 @@ const contentPaths = {
 				},
 				...authErrors,
 				...standardErrors(404, 500),
+				...entryLockConflict,
 			},
 		},
 	},
@@ -595,7 +612,8 @@ const contentPaths = {
 					},
 				},
 				...authErrors,
-				...standardErrors(404, 409, 500),
+				...standardErrors(404, 500),
+				...entryLockConflict,
 			},
 		},
 	},
@@ -625,9 +643,9 @@ const contentPaths = {
 			summary: "Take or refresh the entry's edit lock",
 			description:
 				"Takes the lock for the caller, or reports who holds it. `heldByCaller` " +
-				"tells the two apart. The lease expires after a few minutes without a " +
-				"write; a save on the same entry extends it. `takeover` claims the lock " +
-				"from whoever holds it, and their next save is refused so they find out.",
+				"tells the two apart. The lease lasts seven minutes; repeating this call " +
+				"and every save on the entry extend it. `takeover` claims the lock from " +
+				"whoever holds it; their next heartbeat or save reports the new holder.",
 			tags: ["Content"],
 			requestParams: {
 				path: entryPathParams,
@@ -654,6 +672,12 @@ const contentPaths = {
 			tags: ["Content"],
 			requestParams: {
 				path: entryPathParams,
+				query: z.object({
+					token: z.string().optional().meta({
+						description:
+							"The session token sent on acquire. With it, only the tab that last claimed the lock releases it.",
+					}),
+				}),
 			},
 			responses: {
 				"200": {

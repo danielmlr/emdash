@@ -2267,6 +2267,51 @@ describe("ContentEditor", () => {
 			}
 		});
 
+		it("retries a refused autosave once the entry is taken back", async () => {
+			vi.useFakeTimers();
+
+			try {
+				const onAutosave = vi.fn();
+				const props: ContentEditorProps = {
+					collection: "posts",
+					collectionLabel: "Post",
+					fields: defaultFields,
+					isNew: false,
+					item: makeItem(),
+					onSave: vi.fn(),
+					onAutosave,
+					isAutosaving: false,
+					autosaveCompletionToken: 0,
+					autosaveRejectionToken: 0,
+				};
+
+				const screen = await render(<ContentEditor {...props} />);
+				await screen.getByLabelText("Title").fill("Typed before the take-over");
+				await vi.advanceTimersByTimeAsync(2000);
+				expect(onAutosave).toHaveBeenCalledTimes(1);
+
+				await screen.rerender(<ContentEditor {...props} isAutosaving={true} />);
+				await screen.rerender(
+					<ContentEditor {...props} isAutosaving={false} autosaveRejectionToken={1} readOnly />,
+				);
+				await vi.advanceTimersByTimeAsync(10_000);
+				expect(onAutosave).toHaveBeenCalledTimes(1);
+
+				await screen.rerender(
+					<ContentEditor {...props} isAutosaving={false} autosaveRejectionToken={1} />,
+				);
+				await vi.advanceTimersByTimeAsync(2000);
+				expect(onAutosave).toHaveBeenCalledTimes(2);
+				expect(onAutosave).toHaveBeenLastCalledWith(
+					expect.objectContaining({
+						data: expect.objectContaining({ title: "Typed before the take-over" }),
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it("keeps the entry editable when nobody else holds it", async () => {
 			const screen = await renderEditor({ isNew: false, item: makeItem() });
 

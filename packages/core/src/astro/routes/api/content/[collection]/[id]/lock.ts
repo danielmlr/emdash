@@ -27,7 +27,7 @@ interface ResolvedEntry {
 
 /**
  * Resolves the entry the way every other single-entry route does, and applies
- * the same edit permission — holding a lock is the prelude to a write.
+ * the same edit permission, since holding a lock is the prelude to a write.
  */
 async function resolveEntry(
 	locals: App.Locals,
@@ -105,7 +105,7 @@ export const POST: APIRoute = async ({ params, request, locals, url }) => {
 			collection,
 			resolved.resolvedId,
 			resolved.userId,
-			{ takeover: body?.takeover },
+			{ takeover: body?.takeover, token: body?.token },
 		),
 	);
 };
@@ -127,6 +127,7 @@ export const DELETE: APIRoute = async ({ params, locals, url }) => {
 			collection,
 			resolved.resolvedId,
 			resolved.userId,
+			{ token: url.searchParams.get("token") ?? undefined },
 		),
 	);
 };

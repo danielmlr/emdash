@@ -1,4 +1,5 @@
 import type { Kysely } from "kysely";
+import { ulid } from "ulidx";
 
 import { EntryLockRepository, type EntryLock } from "../../database/repositories/entry-locks.js";
 import type { Database } from "../../database/types.js";
@@ -6,9 +7,9 @@ import { ErrorCode } from "../errors.js";
 import type { ApiResult } from "../types.js";
 
 /**
- * How long an entry stays locked without a save. Long enough to survive a
- * pause in typing, short enough that a closed tab frees the entry within a
- * coffee break.
+ * How long an entry stays locked without a heartbeat or save. Long enough to
+ * survive a pause in typing, short enough that a closed tab frees the entry
+ * within a coffee break.
  */
 export const ENTRY_LOCK_LEASE_MS = 7 * 60 * 1000;
 
@@ -45,6 +46,10 @@ function toHolder(lock: EntryLock): EntryLockHolder {
 	};
 }
 
+function holderLabel(holder: EntryLockHolder): string {
+	return holder.userName?.trim() ? holder.userName : "Another editor";
+}
+
 async function isLockingEnabled(db: Kysely<Database>, collection: string): Promise<boolean | null> {
 	const row = await db
 		.selectFrom("_emdash_collections")
@@ -67,15 +72,14 @@ function collectionNotFound(collection: string): ApiResult<never> {
 
 /**
  * Takes the entry's lock for `userId`, or reports who is holding it. A
- * take-over is only granted when the caller asks for one; the previous holder
- * learns of it when their next save is refused.
+ * take-over is only granted when the caller asks for one.
  */
 export async function handleEntryLockAcquire(
 	db: Kysely<Database>,
 	collection: string,
 	entryId: string,
 	userId: string,
-	options: { takeover?: boolean } = {},
+	options: { takeover?: boolean; token?: string } = {},
 ): Promise<ApiResult<EntryLockStatus>> {
 	try {
 		const enabled = await isLockingEnabled(db, collection);
@@ -88,6 +92,7 @@ export async function handleEntryLockAcquire(
 			collection,
 			entryId,
 			userId,
+			token: options.token ?? ulid(),
 			leaseSeconds: ENTRY_LOCK_LEASE_SECONDS,
 			takeover: options.takeover,
 		});
@@ -145,9 +150,15 @@ export async function handleEntryLockRelease(
 	collection: string,
 	entryId: string,
 	userId: string,
+	options: { token?: string } = {},
 ): Promise<ApiResult<{ released: boolean }>> {
 	try {
-		const released = await new EntryLockRepository(db).release({ collection, entryId, userId });
+		const released = await new EntryLockRepository(db).release({
+			collection,
+			entryId,
+			userId,
+			token: options.token,
+		});
 		return { success: true, data: { released } };
 	} catch (error) {
 		console.error("[entry-lock] release failed:", error);
@@ -186,9 +197,10 @@ export async function claimEntryLockForWrite(
 	const holder = await repo.findEnforceable(collection, entryId);
 	if (!holder) return null;
 
+	const details = toHolder(holder);
 	return {
 		code: ErrorCode.ENTRY_LOCKED,
-		message: "Another editor is holding this entry",
-		details: toHolder(holder),
+		message: `${holderLabel(details)} is holding this entry`,
+		details,
 	};
 }

@@ -14,6 +14,10 @@ import {
 } from "../../../src/astro/routes/api/content/[collection]/[id].js";
 import { POST as discardDraft } from "../../../src/astro/routes/api/content/[collection]/[id]/discard-draft.js";
 import { POST as publishContent } from "../../../src/astro/routes/api/content/[collection]/[id]/publish.js";
+import {
+	POST as scheduleContent,
+	DELETE as unscheduleContent,
+} from "../../../src/astro/routes/api/content/[collection]/[id]/schedule.js";
 import { POST as unpublishContent } from "../../../src/astro/routes/api/content/[collection]/[id]/unpublish.js";
 import { EntryLockRepository } from "../../../src/database/repositories/entry-locks.js";
 import type { Database } from "../../../src/database/types.js";
@@ -25,11 +29,31 @@ const WRITER = "user-linus";
 const ENTRY_ID = "01JXENTRY0000000000000000";
 
 const ROUTES = [
-	{ name: "PUT", handler: updateContent, method: "PUT", path: "" },
-	{ name: "DELETE", handler: deleteContent, method: "DELETE", path: "" },
-	{ name: "publish", handler: publishContent, method: "POST", path: "/publish" },
-	{ name: "unpublish", handler: unpublishContent, method: "POST", path: "/unpublish" },
-	{ name: "discard-draft", handler: discardDraft, method: "POST", path: "/discard-draft" },
+	{ name: "PUT", handler: updateContent, method: "PUT", path: "", body: {} },
+	{ name: "DELETE", handler: deleteContent, method: "DELETE", path: "", body: undefined },
+	{ name: "publish", handler: publishContent, method: "POST", path: "/publish", body: {} },
+	{ name: "unpublish", handler: unpublishContent, method: "POST", path: "/unpublish", body: {} },
+	{
+		name: "discard-draft",
+		handler: discardDraft,
+		method: "POST",
+		path: "/discard-draft",
+		body: {},
+	},
+	{
+		name: "schedule",
+		handler: scheduleContent,
+		method: "POST",
+		path: "/schedule",
+		body: { scheduledAt: "2030-01-01T00:00:00.000Z" },
+	},
+	{
+		name: "unschedule",
+		handler: unscheduleContent,
+		method: "DELETE",
+		path: "/schedule",
+		body: undefined,
+	},
 ] as const;
 
 describe("content write routes — entry edit lock", () => {
@@ -66,10 +90,14 @@ describe("content write routes — entry edit lock", () => {
 			method: route.method,
 			headers: { "Content-Type": "application/json" },
 			body:
-				route.method === "DELETE"
+				route.body === undefined
 					? undefined
-					: JSON.stringify(options.overrideLock ? { overrideLock: true } : {}),
+					: JSON.stringify({
+							...route.body,
+							...(options.overrideLock ? { overrideLock: true } : {}),
+						}),
 		});
+		const okItem = { success: true, data: { item: {} } };
 		return route.handler({
 			params: { collection: "posts", id: ENTRY_ID },
 			request,
@@ -79,12 +107,12 @@ describe("content write routes — entry edit lock", () => {
 				emdash: {
 					db,
 					handleContentGet,
-					handleContentUpdate: vi.fn().mockResolvedValue({ success: true, data: { item: {} } }),
-					handleContentPublish: vi.fn().mockResolvedValue({ success: true, data: { item: {} } }),
-					handleContentUnpublish: vi.fn().mockResolvedValue({ success: true, data: { item: {} } }),
-					handleContentDiscardDraft: vi
-						.fn()
-						.mockResolvedValue({ success: true, data: { item: {} } }),
+					handleContentUpdate: vi.fn().mockResolvedValue(okItem),
+					handleContentPublish: vi.fn().mockResolvedValue(okItem),
+					handleContentUnpublish: vi.fn().mockResolvedValue(okItem),
+					handleContentDiscardDraft: vi.fn().mockResolvedValue(okItem),
+					handleContentSchedule: vi.fn().mockResolvedValue(okItem),
+					handleContentUnschedule: vi.fn().mockResolvedValue(okItem),
 					handleContentDelete: vi.fn().mockResolvedValue({ success: true, data: {} }),
 				},
 			},
@@ -97,6 +125,7 @@ describe("content write routes — entry edit lock", () => {
 			collection: "posts",
 			entryId: ENTRY_ID,
 			userId,
+			token: `tab-${userId}`,
 			leaseSeconds: 300,
 		});
 	}
@@ -110,7 +139,11 @@ describe("content write routes — entry edit lock", () => {
 			expect(response.status).toBe(409);
 			expect(await response.json()).toMatchObject({
 				success: false,
-				error: { code: "ENTRY_LOCKED", details: { userId: HOLDER, userName: "Ada" } },
+				error: {
+					code: "ENTRY_LOCKED",
+					message: "Ada is holding this entry",
+					details: { userId: HOLDER, userName: "Ada" },
+				},
 			});
 		});
 

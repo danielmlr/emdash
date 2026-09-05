@@ -181,22 +181,22 @@ EmDash tracks changes to content. Access revision history from the editor sideba
 Restoring a revision creates a new revision with the restored content. The original revision
 history is preserved.
 
-### When Someone Else Has the Entry Open
+### Entry Open Elsewhere
 
-Opening an entry takes an edit lock on it. If a colleague already has it open, EmDash says who,
-and offers two ways forward:
+Opening an entry takes an edit lock on it. If a colleague already has it open, EmDash says who
+and offers two choices:
 
 - **Open read-only** shows the entry without accepting edits, so you cannot type work that will
   be thrown away.
-- **Take over** gives you the lock. The other person keeps what they typed, but their next save
-  is refused and a banner tells them you took over.
+- **Take over** gives you the lock. The other person keeps what they typed, but within two
+  minutes their editor tells them you hold the entry now, and their next save is refused.
 
-The lock is held while you type and released when you leave the editor. If you close the tab
-without leaving, it expires a few minutes later and the entry frees itself.
+The lock is renewed while the entry is open and released when you leave the editor or close the
+tab. If the tab loses power or network instead, the lock expires seven minutes later.
 
-Writes over the content API are refused against someone else's live lock with
-`409 ENTRY_LOCKED`; send `overrideLock: true` to write anyway. Locks are per entry and per
-locale, so two translations of the same entry can be edited at the same time.
+Locks are per entry and per locale, so two translations of the same entry can be edited at the
+same time. Scripts and API clients that write to a locked entry are refused; see
+[Entry Edit Lock](/reference/rest-api/#entry-edit-lock) in the REST API reference.
 
 Turn locking off for a collection under **Content Types** → your collection → **Edit locking**.
 

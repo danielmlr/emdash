@@ -29,8 +29,8 @@ describe("EntryLockNotice", () => {
 		);
 
 		await expect.element(screen.getByText("Ada", { exact: false })).toBeInTheDocument();
-		// The dialog backdrop swallows synthetic pointer events, so drive the
-		// button directly — same approach as the delete-dialog test.
+		// The dialog backdrop swallows synthetic pointer events, so the button is
+		// driven directly.
 		screen.getByRole("button", { name: "Open read-only" }).element().click();
 
 		await vi.waitFor(() => {

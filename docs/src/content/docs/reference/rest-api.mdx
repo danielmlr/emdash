@@ -164,7 +164,8 @@ POST   /_emdash/api/content/:collection/:id/lock
 DELETE /_emdash/api/content/:collection/:id/lock
 ```
 
-`POST` takes the lock for the caller, or reports who is holding it.
+`POST` takes the lock for the caller, or reports who is holding it. `GET` reports
+the same without touching the lease.
 
 ```json
 {
@@ -183,17 +184,22 @@ DELETE /_emdash/api/content/:collection/:id/lock
 ```
 
 `enabled` is `false` when the collection has edit locking switched off, and no
-lock is taken. The lease expires after a few minutes without a write; a save on
-the same entry extends it. Send `{ "takeover": true }` to claim the lock from
-whoever holds it. Their next save is then refused, which is how they find out.
+lock is taken. The lease lasts seven minutes; repeating the `POST` and every save
+on the entry extend it. Send `{ "takeover": true }` to claim the lock from
+whoever holds it; their next `POST` or save reports the new holder.
 
-`DELETE` releases the lock only when the caller holds it, and reports
-`{ "released": false }` otherwise.
+Send `{ "token": "<opaque string>" }` on `POST` to identify the editing session,
+and `?token=` on `DELETE`. With a token, only the session that last claimed the
+lock releases it, so a second tab of the same account keeps the lock when the
+first tab closes. `DELETE` releases the lock only when the caller holds it, and
+reports `{ "released": false }` otherwise.
 
-While another user holds a live lock, `PUT`, `DELETE`, `/publish`, `/unpublish`
-and `/discard-draft` on that entry return `409 ENTRY_LOCKED` with the
-holder in `error.details`. Send `"overrideLock": true` in the request body to
-write anyway, or `?overrideLock=true` on `DELETE`, which has no body.
+While another user holds a live lock, `PUT`, `DELETE`, `/publish`, `/unpublish`,
+`/schedule` and `/discard-draft` on that entry return `409 ENTRY_LOCKED`. The
+`error.message` names the holder and `error.details` carries their `userId`,
+`userName`, `acquiredAt` and `expiresAt`. Send `"overrideLock": true` in the
+request body to write anyway, or `?overrideLock=true` on the `DELETE` routes,
+which have no body.
 
 ### Delete Content
 

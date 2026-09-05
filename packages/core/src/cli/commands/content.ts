@@ -238,7 +238,7 @@ const updateCommand = defineCommand({
 			type: "boolean",
 			description: "Keep as draft instead of auto-publishing",
 		},
-		overrideLock: {
+		"override-lock": {
 			type: "boolean",
 			description: "Write even though another editor holds this entry's edit lock",
 		},
@@ -253,7 +253,7 @@ const updateCommand = defineCommand({
 				data,
 				_rev: args.rev,
 				locale: args.locale,
-				overrideLock: args.overrideLock,
+				overrideLock: args["override-lock"],
 			});
 
 			// Auto-publish unless --draft is set.
@@ -261,7 +261,7 @@ const updateCommand = defineCommand({
 			// collection supports revisions and data went to a draft).
 			if (!args.draft && updated.draftRevisionId) {
 				await client.publish(args.collection, updated.id, {
-					overrideLock: args.overrideLock,
+					overrideLock: args["override-lock"],
 				});
 			}
 
@@ -288,7 +288,7 @@ const deleteCommand = defineCommand({
 			description: "Content item ID or slug",
 			required: true,
 		},
-		overrideLock: {
+		"override-lock": {
 			type: "boolean",
 			description: "Write even though another editor holds this entry's edit lock",
 		},
@@ -298,7 +298,7 @@ const deleteCommand = defineCommand({
 		configureOutputMode(args);
 		try {
 			const client = createClientFromArgs(args);
-			await client.delete(args.collection, args.id, { overrideLock: args.overrideLock });
+			await client.delete(args.collection, args.id, { overrideLock: args["override-lock"] });
 			output({ success: true }, args);
 			consola.success(`Deleted ${args.collection}/${args.id}`);
 		} catch (error) {
@@ -321,7 +321,7 @@ const publishCommand = defineCommand({
 			description: "Content item ID or slug",
 			required: true,
 		},
-		overrideLock: {
+		"override-lock": {
 			type: "boolean",
 			description: "Write even though another editor holds this entry's edit lock",
 		},
@@ -331,7 +331,7 @@ const publishCommand = defineCommand({
 		configureOutputMode(args);
 		try {
 			const client = createClientFromArgs(args);
-			await client.publish(args.collection, args.id, { overrideLock: args.overrideLock });
+			await client.publish(args.collection, args.id, { overrideLock: args["override-lock"] });
 			output({ success: true }, args);
 			consola.success(`Published ${args.collection}/${args.id}`);
 		} catch (error) {
@@ -354,7 +354,7 @@ const unpublishCommand = defineCommand({
 			description: "Content item ID or slug",
 			required: true,
 		},
-		overrideLock: {
+		"override-lock": {
 			type: "boolean",
 			description: "Write even though another editor holds this entry's edit lock",
 		},
@@ -364,7 +364,7 @@ const unpublishCommand = defineCommand({
 		configureOutputMode(args);
 		try {
 			const client = createClientFromArgs(args);
-			await client.unpublish(args.collection, args.id, { overrideLock: args.overrideLock });
+			await client.unpublish(args.collection, args.id, { overrideLock: args["override-lock"] });
 			output({ success: true }, args);
 			consola.success(`Unpublished ${args.collection}/${args.id}`);
 		} catch (error) {
@@ -392,13 +392,20 @@ const scheduleCommand = defineCommand({
 			description: "ISO 8601 datetime to publish at",
 			required: true,
 		},
+		"override-lock": {
+			type: "boolean",
+			description: "Write even though another editor holds this entry's edit lock",
+		},
 		...connectionArgs,
 	},
 	async run({ args }) {
 		configureOutputMode(args);
 		try {
 			const client = createClientFromArgs(args);
-			await client.schedule(args.collection, args.id, { at: args.at });
+			await client.schedule(args.collection, args.id, {
+				at: args.at,
+				overrideLock: args["override-lock"],
+			});
 			output({ success: true }, args);
 			consola.success(`Scheduled ${args.collection}/${args.id} for ${args.at}`);
 		} catch (error) {

@@ -439,7 +439,7 @@ export interface CollectionTable {
 	comments_moderation: Generated<string>; // 'all' | 'first_time' | 'none'
 	comments_closed_after_days: Generated<number>; // 0 = never close
 	comments_auto_approve_users: Generated<number>; // 0 or 1
-	edit_locking: Generated<number>; // 0 or 1 — take an edit lock when an entry is opened
+	edit_locking: Generated<number>; // 0 or 1; take an edit lock when an entry is opened
 	created_at: Generated<string>;
 	updated_at: Generated<string>;
 }
@@ -867,6 +867,7 @@ export interface EntryLockTable {
 	collection: string;
 	entry_id: string; // ID in the ec_* table
 	user_id: string;
+	token: string; // identifies the holder's editing session, one per tab
 	acquired_at: string; // ISO 8601 with milliseconds
 	expires_at: string; // ISO 8601 with milliseconds
 }

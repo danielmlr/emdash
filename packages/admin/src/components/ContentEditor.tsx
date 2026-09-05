@@ -222,11 +222,7 @@ export interface ContentEditorProps {
 	onSeoChange?: (seo: ContentSeoInput) => void;
 	/** Admin manifest for resolving plugin field widgets */
 	manifest?: import("../lib/api/client.js").AdminManifest | null;
-	/**
-	 * Show the entry without accepting edits. Set while another editor holds
-	 * the entry's edit lock, so nothing typed here can be lost to a refused
-	 * save.
-	 */
+	/** Show the entry without accepting edits. */
 	readOnly?: boolean;
 	/** Rendered above the fields; carries the edit-lock dialog and banner. */
 	notice?: React.ReactNode;
@@ -490,6 +486,12 @@ export function ContentEditor({
 		setRejectedAutosaveState(pendingAutosaveStateRef.current);
 		pendingAutosaveStateRef.current = null;
 	}, [autosaveRejectionToken]);
+
+	// A save refused under someone else's lock is retried once the entry is
+	// writable again, so taking the entry back does not need a further edit.
+	React.useEffect(() => {
+		if (!readOnly) setRejectedAutosaveState(null);
+	}, [readOnly]);
 
 	const hasInvalidUrls = React.useCallback(
 		(data: Record<string, unknown>) => {
@@ -793,11 +795,9 @@ export function ContentEditor({
 								</Badge>
 							)}
 						</div>
-						{/* `disabled` on a fieldset reaches every control below it. While
-						    another editor holds the entry, a control that would certainly be
-						    refused is worse than one that is visibly unavailable. The
-						    distraction-free toggles stay outside: they change the view, not the
-						    entry, and disabling the exit would strand a reader in the overlay. */}
+						{/* The distraction-free toggles stay outside the disabled fieldsets:
+						    they change the view, not the entry, and a reader must be able to
+						    leave the overlay. */}
 						<div className="flex items-center gap-2">
 							{!isDistractionFree ? (
 								// Below lg, actions move here from the (hidden) panel.

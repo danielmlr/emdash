@@ -1383,7 +1383,6 @@ export async function handleContentPermanentDelete(
 				// Clean up revisions for permanently deleted content
 				const revisionRepo = new RevisionRepository(trx);
 				await revisionRepo.deleteByEntry(collection, resolvedId);
-				// Clean up any edit lock left on permanently deleted content
 				await new EntryLockRepository(trx).releaseEntry(collection, resolvedId);
 			}
 

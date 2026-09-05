@@ -806,11 +806,15 @@ export class EmDashClient {
 	}
 
 	/** Schedule publishing */
-	async schedule(collection: string, id: string, options: { at: string }): Promise<void> {
+	async schedule(
+		collection: string,
+		id: string,
+		options: { at: string; overrideLock?: boolean },
+	): Promise<void> {
 		await this.request<unknown>(
 			"POST",
 			`/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/schedule`,
-			{ scheduledAt: options.at },
+			{ scheduledAt: options.at, ...(options.overrideLock ? { overrideLock: true } : {}) },
 		);
 	}
 

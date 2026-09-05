@@ -222,6 +222,7 @@ export const contentScheduleBody = z
 			description: "ISO 8601 datetime for scheduled publishing",
 			example: "2025-06-15T09:00:00Z",
 		}),
+		overrideLock: overrideLockFlag,
 	})
 	.meta({ id: "ContentScheduleBody" });
 

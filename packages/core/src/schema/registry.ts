@@ -196,7 +196,7 @@ export async function buildSeedCollectionCaptureFingerprint(
 				hidden: input.hidden ?? false,
 				sortOrder: input.sortOrder ?? null,
 				commentsEnabled: input.commentsEnabled ?? false,
-				editLocking: input.editLocking ?? true,
+				...(input.editLocking === false ? { editLocking: false } : {}),
 				urlPattern: input.urlPattern ?? null,
 				routable: input.routable ?? true,
 			},

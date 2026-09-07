@@ -411,7 +411,7 @@ msgstr "{label} — Übersetzung anzeigen"
 #. placeholder {1}: images.length
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:170
 msgid "{label} moved to position {0} of {1}."
-msgstr ""
+msgstr "{label} wurde auf Position {0} von {1} verschoben."
 
 #. placeholder {0}: to + 1
 #: packages/admin/src/components/BylineCreditsEditor.tsx:291
@@ -655,11 +655,11 @@ msgstr "Ein Medienordner mit diesem Namen existiert bereits"
 #: packages/admin/src/components/ContentSettingsPanel.tsx:214
 #: packages/admin/src/components/ContentSettingsPanel.tsx:236
 msgid "A publication time has not been selected"
-msgstr ""
+msgstr "Es wurde noch kein Publikationszeitpunkt gewählt"
 
 #: packages/admin/src/components/ContentEditor.tsx:668
 msgid "A publishing action is already in progress"
-msgstr ""
+msgstr "Es läuft bereits ein Publizierungsvorgang"
 
 #: packages/admin/src/components/settings/GeneralSettings.tsx:176
 msgid "A short description of your site"
@@ -1739,16 +1739,16 @@ msgstr "Logo ändern"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:617
 msgid "Change publication date"
-msgstr ""
+msgstr "Publikationsdatum ändern"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:602
 msgid "Change publication date: {formattedValue}"
-msgstr ""
+msgstr "Publikationsdatum ändern: {formattedValue}"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:506
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:467
 msgid "Change schedule"
-msgstr ""
+msgstr "Planung ändern"
 
 #: packages/admin/src/components/RegistryPluginDetail.tsx:874
 msgid "Changelog"
@@ -1808,7 +1808,7 @@ msgstr "Wähle eine Datei aus der Bibliothek oder lade eine neue hoch."
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:474
 msgid "Choose a new publication time for this draft."
-msgstr ""
+msgstr "Wähle einen neuen Publikationszeitpunkt für diesen Entwurf."
 
 #. placeholder {0}: formatFileFormat(item.mimeType)
 #: packages/admin/src/components/MediaDetailPanel.tsx:907
@@ -1838,11 +1838,11 @@ msgstr "Ersatzbild auswählen"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:472
 msgid "Choose when these changes replace the live version."
-msgstr ""
+msgstr "Wähle, wann diese Änderungen die Live-Version ersetzen."
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:475
 msgid "Choose when this draft becomes public."
-msgstr ""
+msgstr "Wähle, wann dieser Entwurf öffentlich wird."
 
 #: packages/admin/src/components/Settings.tsx:134
 msgid "Choose your preferred admin language"
@@ -1962,7 +1962,7 @@ msgstr "Galerie-Einstellungen schließen"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:89
 msgid "Close image settings"
-msgstr ""
+msgstr "Bildeinstellungen schließen"
 
 #: packages/admin/src/components/users/UserDetail.tsx:121
 msgid "Close panel"
@@ -2522,7 +2522,7 @@ msgstr "Übersetzung {0} erstellt"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:970
 msgid "Created and updated"
-msgstr ""
+msgstr "Erstellt und aktualisiert"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:123
 msgid "Created At"
@@ -2912,7 +2912,7 @@ msgstr "Verweigern"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:473
 msgid "Describe the image"
-msgstr ""
+msgstr "Beschreibe das Bild"
 
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:486
 #: packages/admin/src/components/editor/ImageNode.tsx:285
@@ -2921,7 +2921,7 @@ msgstr "Beschreibe das Bild..."
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:461
 msgid "Describe the image's purpose and relevant details for people who cannot see it."
-msgstr ""
+msgstr "Beschreibe den Zweck des Bildes und wichtige Details für Menschen, die das Bild nicht sehen können."
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:680
 #: packages/admin/src/components/MediaDetailPanel.tsx:1584
@@ -3091,7 +3091,7 @@ msgstr "Anzeigename für den Adminbereich"
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:390
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:398
 msgid "Display size"
-msgstr ""
+msgstr "Anzeigegröße"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:601
 msgid "Display Size"
@@ -3189,11 +3189,11 @@ msgstr "Entwurf"
 #: packages/admin/src/components/ContentSettingsPanel.tsx:191
 #: packages/admin/src/components/ContentSettingsPanel.tsx:213
 msgid "Draft changes"
-msgstr ""
+msgstr "Entwurfsänderungen"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:157
 msgid "Draft version"
-msgstr ""
+msgstr "Entwurfsversion"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:119
 msgid "draft, published, or archived"
@@ -3326,7 +3326,7 @@ msgstr "{title} bearbeiten"
 #: packages/admin/src/components/ImageFieldRenderer.tsx:422
 #: packages/admin/src/components/MediaPickerModal.tsx:1584
 msgid "Edit asset"
-msgstr ""
+msgstr "Medienelement bearbeiten"
 
 #: packages/admin/src/components/BylineFieldEditor.tsx:209
 msgid "Edit byline field"
@@ -3334,7 +3334,7 @@ msgstr "Autorenzeilen-Feld bearbeiten"
 
 #: packages/admin/src/components/ImageFieldRenderer.tsx:420
 msgid "Edit dark mode asset"
-msgstr ""
+msgstr "Dark-Mode-Medienelement bearbeiten"
 
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:330
 msgid "Edit Domain"
@@ -4458,7 +4458,7 @@ msgstr "Erste Seite"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:166
 msgid "First publication"
-msgstr ""
+msgstr "Erste Publizierung"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:64
 msgid "First-time commenters only"
@@ -4466,7 +4466,7 @@ msgstr "Nur Erstkommentatoren"
 
 #: packages/admin/src/components/ContentEditor.tsx:671
 msgid "Fix invalid fields before changing the schedule"
-msgstr ""
+msgstr "Korrigiere ungültige Felder, bevor du die Planung änderst"
 
 #: packages/admin/src/components/MediaDetailPanel.tsx:1622
 #: packages/admin/src/components/MediaDetailPanel.tsx:1633
@@ -4742,7 +4742,7 @@ msgstr "Horizontal {0} %, vertikal {1} %"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:192
 msgid "Hour"
-msgstr ""
+msgstr "Stunde"
 
 #: packages/admin/src/components/WordPressImport.tsx:1536
 msgid "How to create an Application Password"
@@ -4811,7 +4811,7 @@ msgstr "Bild {0}"
 #: packages/admin/src/components/ImageFieldRenderer.tsx:317
 #: packages/admin/src/components/ImageFieldRenderer.tsx:331
 msgid "Image actions"
-msgstr ""
+msgstr "Bildaktionen"
 
 #: packages/admin/src/components/FieldEditor.tsx:237
 msgid "Image from media library"
@@ -5211,7 +5211,7 @@ msgstr "JSX"
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:413
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:414
 msgid "Keep aspect ratio"
-msgstr ""
+msgstr "Seitenverhältnis beibehalten"
 
 #: packages/admin/src/components/settings/MediaUsageSettings.tsx:316
 msgid "Keep editing paused and deploy a compatible EmDash version before continuing."
@@ -5394,7 +5394,7 @@ msgstr "Listenansicht"
 #: packages/admin/src/components/ContentSettingsPanel.tsx:207
 #: packages/admin/src/components/ContentSettingsPanel.tsx:229
 msgid "Live version"
-msgstr ""
+msgstr "Live-Version"
 
 #: packages/admin/src/components/ContentEditor.tsx:911
 #: packages/admin/src/components/ContentEditor.tsx:961
@@ -5552,7 +5552,7 @@ msgstr "Lädt…"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:110
 msgid "Local time"
-msgstr ""
+msgstr "Ortszeit"
 
 #: packages/admin/src/components/ContentList.tsx:619
 #: packages/admin/src/components/ContentList.tsx:761
@@ -5920,7 +5920,7 @@ msgstr "Untergeordnete Abschnittsüberschrift"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:214
 msgid "Minute"
-msgstr ""
+msgstr "Minute"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:519
 msgid "Moderation"
@@ -5953,11 +5953,11 @@ msgstr "Weitere Informationen zu {label}"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:464
 msgid "More information about Alt text"
-msgstr ""
+msgstr "Weitere Informationen zum Alt-Text"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:388
 msgid "More information about Display size"
-msgstr ""
+msgstr "Weitere Informationen zur Anzeigegröße"
 
 #: packages/admin/src/components/MarketplaceBrowse.tsx:42
 msgid "Most Popular"
@@ -6066,12 +6066,12 @@ msgstr "Nach {0} verschoben"
 #. placeholder {1}: images.length
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:156
 msgid "Moving {label} to position {0} of {1}."
-msgstr ""
+msgstr "{label} wird auf Position {0} von {1} verschoben."
 
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:169
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:175
 msgid "Moving {label} was cancelled."
-msgstr ""
+msgstr "Das Verschieben von {label} wurde abgebrochen."
 
 #: packages/admin/src/components/FieldEditor.tsx:224
 msgid "Multi Select"
@@ -6681,7 +6681,7 @@ msgstr "Optionale Beschreibung"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:490
 msgid "Optional hover text"
-msgstr ""
+msgstr "Optionaler Tooltip-Text"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:697
 msgid "Optional tooltip on hover"
@@ -6908,7 +6908,7 @@ msgstr "Pro Seite"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:233
 msgid "Period"
-msgstr ""
+msgstr "AM/PM"
 
 #: packages/admin/src/components/ContentList.tsx:1546
 msgid "Permanently delete \"{title}\"? This cannot be undone."
@@ -6932,7 +6932,7 @@ msgstr "Wähle eine beliebige Methode, um dein Administratorkonto anzulegen."
 
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:143
 msgid "Picked up {label}."
-msgstr ""
+msgstr "{label} aufgenommen."
 
 #: packages/admin/src/components/Widgets.tsx:154
 msgid "Placeholder text"
@@ -7116,7 +7116,7 @@ msgstr "Vorbereiten..."
 
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:179
 msgid "Press Space to pick up an image. Use the Arrow keys to move it, then press Space to drop it."
-msgstr ""
+msgstr "Drücke die Leertaste, um ein Bild aufzunehmen. Verwende die Pfeiltasten, um es zu verschieben, und drücke dann die Leertaste, um es abzulegen."
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:387
 #: packages/admin/src/components/ContentTypeEditor.tsx:81
@@ -7181,7 +7181,7 @@ msgstr "Anbieter:"
 #: packages/admin/src/components/ContentSettingsPanel.tsx:949
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:621
 msgid "Publication date"
-msgstr ""
+msgstr "Publikationsdatum"
 
 #: packages/admin/src/components/ContentList.tsx:505
 #: packages/admin/src/components/ContentSettingsPanel.tsx:526
@@ -7193,15 +7193,15 @@ msgstr "Publizieren"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:543
 msgid "Publish changes"
-msgstr ""
+msgstr "Änderungen publizieren"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:479
 msgid "Publish changes now"
-msgstr ""
+msgstr "Änderungen jetzt publizieren"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:479
 msgid "Publish now"
-msgstr ""
+msgstr "Jetzt publizieren"
 
 #: packages/admin/src/components/ContentList.tsx:858
 #: packages/admin/src/components/ContentList.tsx:869
@@ -7242,7 +7242,7 @@ msgstr "Release-Richtlinie des Herausgebers"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:908
 msgid "Publishing summary"
-msgstr ""
+msgstr "Übersicht zur Publizierung"
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:47
 msgid "Python"
@@ -7309,7 +7309,7 @@ msgstr "Bereit"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:192
 msgid "Ready to publish now or schedule for later"
-msgstr ""
+msgstr "Kann jetzt publiziert oder für später geplant werden"
 
 #: packages/admin/src/components/Dashboard.tsx:348
 msgid "Recent Activity"
@@ -7483,7 +7483,7 @@ msgstr "Bild {0} entfernen"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:307
 msgid "Remove image?"
-msgstr ""
+msgstr "Bild entfernen?"
 
 #. placeholder {0}: index + 1
 #: packages/admin/src/components/PortableTextEditor.tsx:2345
@@ -7506,7 +7506,7 @@ msgstr "Passkey entfernen?"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:517
 msgid "Remove schedule"
-msgstr ""
+msgstr "Planung aufheben"
 
 #: packages/admin/src/components/FieldEditor.tsx:650
 msgid "Remove sub-field"
@@ -7576,15 +7576,15 @@ msgstr "Ersetzen"
 #: packages/admin/src/components/ContentEditor.tsx:2046
 #: packages/admin/src/components/ImageFieldRenderer.tsx:559
 msgid "Replace {label}"
-msgstr ""
+msgstr "{label} ersetzen"
 
 #: packages/admin/src/components/ImageFieldRenderer.tsx:405
 msgid "Replace dark mode image"
-msgstr ""
+msgstr "Dark-Mode-Bild ersetzen"
 
 #: packages/admin/src/components/ImageFieldRenderer.tsx:556
 msgid "Replace dark mode variant for {label}"
-msgstr ""
+msgstr "Dark-Mode-Variante für {label} ersetzen"
 
 #: packages/admin/src/components/editor/GalleryDetailPanel.tsx:503
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:323
@@ -7950,7 +7950,7 @@ msgstr "Alt-Text speichern"
 
 #: packages/admin/src/components/ContentEditor.tsx:1025
 msgid "Save anyway"
-msgstr ""
+msgstr "Trotzdem speichern"
 
 #: packages/admin/src/components/BylineCreditsEditor.tsx:1015
 #: packages/admin/src/components/BylineFieldEditor.tsx:318
@@ -7967,7 +7967,7 @@ msgstr "Inhalt vor dem Publizieren als Entwurf speichern"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:623
 msgid "Save date"
-msgstr ""
+msgstr "Datum speichern"
 
 #: packages/admin/src/components/settings/PasskeyItem.tsx:132
 msgid "Save name"
@@ -7979,7 +7979,7 @@ msgstr "Speichere oder verwirf die übrigen Änderungen, bevor du zuschneidest."
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:476
 msgid "Save schedule"
-msgstr ""
+msgstr "Planung speichern"
 
 #: packages/admin/src/components/PluginSettings.tsx:166
 #: packages/admin/src/components/PluginSettings.tsx:209
@@ -8031,16 +8031,16 @@ msgstr "Planen"
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:469
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:476
 msgid "Schedule changes"
-msgstr ""
+msgstr "Änderungen planen"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:487
 msgid "Schedule date"
-msgstr ""
+msgstr "Geplantes Datum"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:487
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:470
 msgid "Schedule publication"
-msgstr ""
+msgstr "Publizierung planen"
 
 #: packages/admin/src/components/ContentList.tsx:860
 #: packages/admin/src/components/ContentSettingsPanel.tsx:545
@@ -8051,13 +8051,13 @@ msgstr "Geplant"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:136
 msgid "Scheduled for {formattedSchedule}"
-msgstr ""
+msgstr "Geplant für {formattedSchedule}"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:144
 #: packages/admin/src/components/ContentSettingsPanel.tsx:235
 #: packages/admin/src/components/ContentSettingsPanel.tsx:549
 msgid "Scheduled publication"
-msgstr ""
+msgstr "Geplante Publizierung"
 
 #: packages/admin/src/components/Dashboard.tsx:111
 msgid "Scheduled publishing needs attention"
@@ -8065,7 +8065,7 @@ msgstr "Die geplante Publizierung erfordert Aufmerksamkeit"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:547
 msgid "Scheduled update"
-msgstr ""
+msgstr "Geplante Aktualisierung"
 
 #: packages/admin/src/components/WordPressImport.tsx:2338
 msgid "Schema Changes"
@@ -8542,7 +8542,7 @@ msgstr "Lege eine benutzerdefinierte Anzeigegröße für dieses Bild fest."
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:385
 msgid "Set a custom width and height for this image in the document. Reset uses the original media dimensions. The original media file is unchanged."
-msgstr ""
+msgstr "Lege eine benutzerdefinierte Breite und Höhe für dieses Bild im Dokument fest. „Zurücksetzen“ verwendet die ursprünglichen Abmessungen des Mediums. Die Original-Mediendatei bleibt unverändert."
 
 #: packages/admin/src/components/editor/CodeBlockNode.tsx:239
 msgid "Set language"
@@ -9215,7 +9215,7 @@ msgstr "Das sieht nicht nach einem gültigen Migrationsschlüssel aus. Erzeuge i
 
 #: packages/admin/src/components/ContentEditor.tsx:1021
 msgid "This entry changed somewhere else after you opened it."
-msgstr ""
+msgstr "Dieser Eintrag wurde an anderer Stelle geändert, nachdem du ihn geöffnet hast."
 
 #: packages/admin/src/components/PortableTextEditor.tsx:3352
 msgid "This field contains unsupported Portable Text marks: <0>{markList}</0>. Remove them through the API before editing or saving this content."
@@ -9264,7 +9264,7 @@ msgstr "Bei umfangreichen Exporten kann dies eine Weile dauern."
 
 #: packages/admin/src/components/media/useMediaAssetEditor.tsx:82
 msgid "This media item could not be loaded. Try again."
-msgstr ""
+msgstr "Dieses Medienelement konnte nicht geladen werden. Versuche es erneut."
 
 #: packages/admin/src/components/media/useMediaAssetEditor.tsx:80
 #: packages/admin/src/components/MediaDetailPanel.tsx:811
@@ -9327,7 +9327,7 @@ msgstr "Dieses Update macht die folgenden Routen ohne Authentifizierung zugängl
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:158
 msgid "This version is not visible on the site"
-msgstr ""
+msgstr "Diese Version ist auf der Webseite nicht sichtbar"
 
 #: packages/admin/src/components/Widgets.tsx:715
 msgid "This will delete the widget area and all its widgets. This action cannot be undone."
@@ -9369,7 +9369,7 @@ msgstr "Gedanken, Anleitungen und mehr"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:182
 msgid "Time"
-msgstr ""
+msgstr "Uhrzeit"
 
 #: packages/admin/src/components/PublishingDateTimeEditor.tsx:252
 #: packages/admin/src/components/settings/GeneralSettings.tsx:332
@@ -9428,7 +9428,7 @@ msgstr "TOML"
 
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:487
 msgid "Tooltip text"
-msgstr ""
+msgstr "Tooltip-Text"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:77
 msgid "Track content history"
@@ -10089,16 +10089,16 @@ msgstr "Besucher, die diese Pfade aufrufen, erhalten eine Fehlermeldung."
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:208
 msgid "Visitors see the published version until the scheduled update"
-msgstr ""
+msgstr "Besucher sehen die publizierte Version bis zur geplanten Aktualisierung"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:176
 #: packages/admin/src/components/ContentSettingsPanel.tsx:230
 msgid "Visitors see this published version"
-msgstr ""
+msgstr "Besucher sehen diese publizierte Version"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:186
 msgid "Visitors still see the published version"
-msgstr ""
+msgstr "Besucher sehen weiterhin die publizierte Version"
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:57
 msgid "Vue"
@@ -10174,7 +10174,7 @@ msgstr "Was beim Importieren passieren wird:"
 
 #: packages/admin/src/components/ContentEditor.tsx:1022
 msgid "What you typed is still here. Saving replaces the newer version."
-msgstr ""
+msgstr "Deine Eingaben sind noch vorhanden. Beim Speichern wird die neuere Version überschrieben."
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:125
 msgid "When the entry was created"
@@ -10364,7 +10364,7 @@ msgstr "Du kannst deine eigene Rolle nicht ändern"
 #: packages/admin/src/components/media/useMediaAssetEditor.tsx:69
 #: packages/admin/src/components/media/useMediaAssetEditor.tsx:78
 msgid "You do not have permission to edit this asset."
-msgstr ""
+msgstr "Du hast keine Berechtigung, dieses Medienelement zu bearbeiten."
 
 #: packages/admin/src/components/MediaLibrary.tsx:647
 msgid "You don’t have permission to move this file."

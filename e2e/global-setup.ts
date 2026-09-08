@@ -47,8 +47,8 @@ const TARGETS: Record<string, Target> = {
 const TARGET = TARGETS[process.env.EMDASH_E2E_TARGET ?? "node"] ?? TARGETS.node!;
 const FIXTURE_DIR = TARGET.fixtureDir;
 const CLI_BINARY = resolve(ROOT, "packages/core/dist/cli/index.mjs");
-const PORT = 4444;
-const MARKETPLACE_PORT = 4445;
+const PORT = 4464;
+const MARKETPLACE_PORT = 4465;
 const SERVER_INFO_PATH = join(tmpdir(), "emdash-pw-server.json");
 
 // Regex patterns

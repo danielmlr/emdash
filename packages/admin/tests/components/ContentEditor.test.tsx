@@ -1033,7 +1033,7 @@ describe("ContentEditor", () => {
 					summary: { kind: "string", label: "Summary", validation: { maxLength: 160 } },
 				},
 			});
-			const input = screen.getByLabelText("Summary");
+			const input = screen.getByLabelText("Summary", { exact: true });
 			await expect.element(input).toHaveAttribute("maxlength", "160");
 			await expect.element(screen.getByText("5 of 160 characters")).toBeInTheDocument();
 			await expect.element(input).not.toHaveAttribute("aria-invalid");
@@ -1050,7 +1050,7 @@ describe("ContentEditor", () => {
 					summary: { kind: "string", label: "Summary", validation: { maxLength: 160 } },
 				},
 			});
-			const input = screen.getByLabelText("Summary");
+			const input = screen.getByLabelText("Summary", { exact: true });
 			await expect.element(input).toHaveAttribute("aria-invalid", "true");
 			await expect.element(screen.getByText("170 of 160 characters")).toBeInTheDocument();
 		});
@@ -1061,7 +1061,7 @@ describe("ContentEditor", () => {
 					summary: { kind: "string", label: "Summary", validation: { minLength: 10 } },
 				},
 			});
-			const input = screen.getByLabelText("Summary");
+			const input = screen.getByLabelText("Summary", { exact: true });
 			await expect.element(screen.getByText("At least 10 characters")).toBeInTheDocument();
 			await expect.element(input).not.toHaveAttribute("aria-invalid");
 

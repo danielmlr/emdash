@@ -1565,6 +1565,9 @@ function FieldRenderer({
 			const text = typeof value === "string" ? value : "";
 			const length = lengthConstraints(field.validation);
 			const tooLong = isOutOfBounds(text.length, length, typeof value === "string");
+			const hint = hasBounds(length) ? (
+				<LengthHint count={text.length} bounds={length} />
+			) : undefined;
 			return (
 				<Input
 					label={<span className={labelClass}>{label}</span>}
@@ -1573,13 +1576,9 @@ function FieldRenderer({
 					onChange={(e) => handleChange(e.target.value)}
 					required={field.required}
 					maxLength={length.max}
-					variant={tooLong ? "error" : undefined}
 					aria-invalid={tooLong || undefined}
-					description={
-						hasBounds(length) ? (
-							<LengthHint count={text.length} bounds={length} violated={tooLong} />
-						) : undefined
-					}
+					description={hint}
+					error={boundsError(hint, tooLong)}
 					dir="auto"
 					className={
 						minimal
@@ -1593,6 +1592,7 @@ function FieldRenderer({
 		case "number": {
 			const range = rangeConstraints(field.validation);
 			const outOfRange = typeof value === "number" && isOutOfBounds(value, range, true);
+			const hint = hasBounds(range) ? <RangeHint bounds={range} /> : undefined;
 			return (
 				<Input
 					label={<span className={labelClass}>{label}</span>}
@@ -1603,11 +1603,9 @@ function FieldRenderer({
 					required={field.required}
 					min={range.min}
 					max={range.max}
-					variant={outOfRange ? "error" : undefined}
 					aria-invalid={outOfRange || undefined}
-					description={
-						hasBounds(range) ? <RangeHint bounds={range} violated={outOfRange} /> : undefined
-					}
+					description={hint}
+					error={boundsError(hint, outOfRange)}
 				/>
 			);
 		}
@@ -1650,6 +1648,9 @@ function FieldRenderer({
 			const text = typeof value === "string" ? value : "";
 			const length = lengthConstraints(field.validation);
 			const tooLong = isOutOfBounds(text.length, length, typeof value === "string");
+			const hint = hasBounds(length) ? (
+				<LengthHint count={text.length} bounds={length} />
+			) : undefined;
 			return (
 				<InputArea
 					label={label}
@@ -1658,13 +1659,9 @@ function FieldRenderer({
 					onChange={(e) => handleChange(e.target.value)}
 					rows={10}
 					maxLength={length.max}
-					variant={tooLong ? "error" : undefined}
 					aria-invalid={tooLong || undefined}
-					description={
-						hasBounds(length) ? (
-							<LengthHint count={text.length} bounds={length} violated={tooLong} />
-						) : undefined
-					}
+					description={hint}
+					error={boundsError(hint, tooLong)}
 					dir="auto"
 					placeholder={t`Enter markdown content...`}
 				/>
@@ -1895,12 +1892,15 @@ function isOutOfBounds(value: number, { min, max }: Bounds, hasValue: boolean) {
 	return hasValue && min !== undefined && value < min;
 }
 
-interface BoundsHintProps {
-	bounds: Bounds;
-	violated: boolean;
+function boundsError(hint: React.ReactNode, violated: boolean) {
+	return violated && hint ? { message: hint, match: true } : undefined;
 }
 
-function LengthHint({ count, bounds, violated }: BoundsHintProps & { count: number }) {
+interface BoundsHintProps {
+	bounds: Bounds;
+}
+
+function LengthHint({ count, bounds }: BoundsHintProps & { count: number }) {
 	const { i18n } = useLingui();
 	const counted = i18n.number(count);
 	let text: string;
@@ -1921,13 +1921,13 @@ function LengthHint({ count, bounds, violated }: BoundsHintProps & { count: numb
 		return null;
 	}
 	return (
-		<span dir="auto" className={cn("tabular-nums", violated && "text-kumo-danger")}>
+		<span dir="auto" className="tabular-nums">
 			{text}
 		</span>
 	);
 }
 
-function RangeHint({ bounds, violated }: BoundsHintProps) {
+function RangeHint({ bounds }: BoundsHintProps) {
 	const { t, i18n } = useLingui();
 	let text: string;
 	if (bounds.min !== undefined && bounds.max !== undefined) {
@@ -1944,7 +1944,7 @@ function RangeHint({ bounds, violated }: BoundsHintProps) {
 		return null;
 	}
 	return (
-		<span dir="auto" className={cn("tabular-nums", violated && "text-kumo-danger")}>
+		<span dir="auto" className="tabular-nums">
 			{text}
 		</span>
 	);

@@ -195,8 +195,10 @@ The lock is renewed while the entry is open and released when you leave the edit
 tab. If the tab loses power or network instead, the lock expires seven minutes later.
 
 Locks are per entry and per locale, so two translations of the same entry can be edited at the
-same time. Scripts and API clients that write to a locked entry are refused; see
-[Entry Edit Lock](/reference/rest-api/#entry-edit-lock) in the REST API reference.
+same time. Scripts, API clients and AI tools connected over MCP that write to a locked entry are
+refused; see [Entry edit lock](/reference/rest-api/#entry-edit-lock) in the REST API reference and
+[Content lifecycle and bylines](/reference/mcp-server/#content-lifecycle-and-bylines) in the MCP
+server reference.
 
 Turn locking off for a collection under **Content Types** → your collection → **Edit locking**.
 

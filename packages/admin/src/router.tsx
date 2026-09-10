@@ -41,6 +41,7 @@ import { ContentTypeEditor } from "./components/ContentTypeEditor";
 import { ContentTypeList } from "./components/ContentTypeList";
 import { Dashboard } from "./components/Dashboard";
 import { DeviceAuthorizePage } from "./components/DeviceAuthorizePage";
+import { EntryLockNotice } from "./components/EntryLockNotice";
 import { InviteAcceptPage } from "./components/InviteAcceptPage";
 import { LoginPage } from "./components/LoginPage";
 import { MarketplaceBrowse } from "./components/MarketplaceBrowse";
@@ -144,6 +145,7 @@ import { runBulkAction } from "./lib/bulk";
 import { usePluginPage } from "./lib/plugin-context";
 import { getPluginBlocks } from "./lib/pluginBlocks";
 import { sanitizeRedirectUrl } from "./lib/url";
+import { useEntryLock } from "./lib/useEntryLock";
 import { BylineSchemaPage } from "./routes/byline-schema";
 import { BylinesPage } from "./routes/bylines";
 import { UsersPage } from "./routes/users";
@@ -176,6 +178,10 @@ interface AutosaveMutationInput {
 	targetId: string;
 	targetLocale?: string;
 	changes: Pick<ContentUpdateChanges, "data" | "slug" | "bylines" | "_rev">;
+}
+
+function isSaveConflict(error: unknown): boolean {
+	return error instanceof ApiResponseError && error.code === "CONFLICT";
 }
 
 function patchAutosaveQueries(
@@ -449,8 +455,8 @@ function ContentListPage() {
 
 	// Fetch trashed items
 	const { data: trashedData, isLoading: isTrashedLoading } = useQuery({
-		queryKey: ["content", collection, "trash"],
-		queryFn: () => fetchTrashedContent(collection),
+		queryKey: ["content", collection, "trash", { locale: activeLocale }],
+		queryFn: () => fetchTrashedContent(collection, { locale: activeLocale }),
 	});
 
 	const deleteMutation = useMutation({
@@ -861,6 +867,12 @@ function ContentEditPage() {
 		queryFn: () => fetchContent(collection, id, { locale: activeLocale }),
 		enabled: !i18n || !!activeLocale,
 	});
+	const entryLock = useEntryLock({
+		collection,
+		entryId: id,
+		locale: activeLocale,
+		ready: Boolean(rawItem),
+	});
 	const revisionTokensRef = React.useRef(new Map<string, string | undefined>());
 	const activeRevisionEntryRef = React.useRef("");
 	if (activeRevisionEntryRef.current !== id) {
@@ -985,6 +997,7 @@ function ContentEditPage() {
 		autosaveRejectionSequenceRef.current += 1;
 		setAutosaveRejection({ entryId, token: autosaveRejectionSequenceRef.current });
 	}, []);
+	const [conflictedEntryId, setConflictedEntryId] = React.useState("");
 	const { data: bylinesData, isSuccess: bylinesLoaded } = useQuery({
 		queryKey: ["bylines", "picker", itemLocale ?? null],
 		queryFn: () => fetchBylines({ locale: itemLocale, limit: 100 }),
@@ -1033,15 +1046,35 @@ function ContentEditPage() {
 		},
 		[collection, queryClient, rawItem?.draftRevisionId],
 	);
+	const recoverFromSaveConflict = React.useCallback(
+		async (entryId: string) => {
+			setConflictedEntryId(entryId);
+			try {
+				const server = await fetchContent(collection, entryId, {
+					locale: rawItem?.locale ?? activeLocale,
+				});
+				revisionTokensRef.current.set(entryId, server._rev);
+				return true;
+			} catch {
+				// Dropping the refused token would make the next save a blind write, so
+				// it stays. Offering to save over a version that could not be read
+				// would promise a write the server refuses again.
+				setConflictedEntryId((conflicted) => (conflicted === entryId ? "" : conflicted));
+				return false;
+			}
+		},
+		[activeLocale, collection, rawItem?.locale],
+	);
 	const handleContentUpdateError = React.useCallback(
-		(error: unknown) => {
+		(error: unknown, targetId: string) => {
+			if (entryLock.reportWriteError(error, targetId)) return;
 			toastManager.add({
 				title: t`Failed to save`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
 				type: "error",
 			});
 		},
-		[t, toastManager],
+		[entryLock.reportWriteError, t, toastManager],
 	);
 
 	const updateMutation = useMutation({
@@ -1061,9 +1094,13 @@ function ContentEditPage() {
 			}
 		},
 		onSuccess: (_, variables) => {
+			setConflictedEntryId((current) => (current === variables.targetId ? "" : current));
 			handleContentUpdateSuccess(variables.targetId);
 		},
-		onError: handleContentUpdateError,
+		onError: async (error, variables) => {
+			if (isSaveConflict(error) && (await recoverFromSaveConflict(variables.targetId))) return;
+			handleContentUpdateError(error, variables.targetId);
+		},
 		onSettled: (_, __, variables) => {
 			if (variables.source === "editor") {
 				updateEditorSavePendingCount(variables.targetId, -1);
@@ -1084,7 +1121,7 @@ function ContentEditPage() {
 		onSuccess: () => {
 			handleContentUpdateSuccess(id);
 		},
-		onError: handleContentUpdateError,
+		onError: (error) => handleContentUpdateError(error, id),
 	});
 
 	// Autosave mutation - skips revision creation
@@ -1100,6 +1137,7 @@ function ContentEditPage() {
 			return savedItem;
 		},
 		onSuccess: (savedItem, variables) => {
+			setConflictedEntryId((current) => (current === variables.targetId ? "" : current));
 			recordAutosaveCompletion(variables.targetId);
 			patchAutosaveQueries(queryClient, {
 				collection,
@@ -1113,8 +1151,10 @@ function ContentEditPage() {
 			// Keep the cache fresh without refetching older server state back into the form
 			// while the user is still typing.
 		},
-		onError: (err, variables) => {
+		onError: async (err, variables) => {
+			if (isSaveConflict(err) && (await recoverFromSaveConflict(variables.targetId))) return;
 			if (isTerminalRequestError(err)) recordAutosaveRejection(variables.targetId);
+			if (entryLock.reportWriteError(err, variables.targetId)) return;
 			toastManager.add({
 				title: t`Autosave failed`,
 				description: err instanceof Error ? err.message : t`An error occurred`,
@@ -1139,6 +1179,7 @@ function ContentEditPage() {
 			toastManager.add({ title: t`Published`, description: t`Content is now live` });
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to publish`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1157,6 +1198,7 @@ function ContentEditPage() {
 			toastManager.add({ title: t`Unpublished`, description: t`Content removed from public view` });
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to unpublish`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1168,6 +1210,7 @@ function ContentEditPage() {
 	const discardDraftMutation = useMutation({
 		mutationFn: () => discardDraft(collection, id, { locale: rawItem?.locale ?? activeLocale }),
 		onSuccess: () => {
+			setConflictedEntryId((conflicted) => (conflicted === id ? "" : conflicted));
 			void queryClient.invalidateQueries({
 				queryKey: ["content", collection, id],
 			});
@@ -1178,6 +1221,7 @@ function ContentEditPage() {
 			});
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to discard changes`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1185,20 +1229,45 @@ function ContentEditPage() {
 			});
 		},
 	});
-
+	const applyScheduleChange = React.useCallback(
+		async (changedItem: ContentItem, savedItem?: ContentItem) => {
+			await queryClient.cancelQueries({ queryKey: ["content", collection, id] });
+			const currentChangedItem = changedItem._rev
+				? changedItem
+				: await fetchContent(collection, id, { locale: rawItem?.locale ?? activeLocale });
+			if (currentChangedItem._rev) {
+				revisionTokensRef.current.set(id, currentChangedItem._rev);
+			}
+			queryClient.setQueriesData<ContentItem>(
+				{ queryKey: ["content", collection, id] },
+				(existing) => {
+					const currentItem = savedItem ?? existing;
+					return currentItem
+						? {
+								...currentItem,
+								...currentChangedItem,
+								data: currentItem.data,
+								slug: currentItem.slug,
+								byline: currentItem.byline ?? existing?.byline,
+								bylines: currentItem.bylines ?? existing?.bylines,
+							}
+						: currentChangedItem;
+				},
+			);
+		},
+		[activeLocale, collection, id, queryClient, rawItem?.locale],
+	);
 	const scheduleMutation = useMutation({
 		mutationFn: (scheduledAt: string) =>
 			scheduleContent(collection, id, scheduledAt, { locale: rawItem?.locale ?? activeLocale }),
 		onSuccess: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["content", collection, id],
-			});
 			toastManager.add({
 				title: t`Scheduled`,
 				description: t`Content has been scheduled for publishing`,
 			});
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to schedule`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1211,15 +1280,13 @@ function ContentEditPage() {
 		mutationFn: () =>
 			unscheduleContent(collection, id, { locale: rawItem?.locale ?? activeLocale }),
 		onSuccess: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["content", collection, id],
-			});
 			toastManager.add({
 				title: t`Unscheduled`,
 				description: t`Content reverted to draft`,
 			});
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to unschedule`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1271,6 +1338,7 @@ function ContentEditPage() {
 			});
 		},
 		onError: (error) => {
+			if (entryLock.reportWriteError(error, id)) return;
 			toastManager.add({
 				title: t`Failed to delete`,
 				description: error instanceof Error ? error.message : t`An error occurred`,
@@ -1323,10 +1391,33 @@ function ContentEditPage() {
 		[activeLocale, id, rawItem?.locale, updateMutation.mutate],
 	);
 	const handlePublishedAtChange = React.useCallback(
-		(publishedAt: string) => {
-			publishedAtMutation.mutate(publishedAt);
+		async (
+			publishedAt: string,
+			payload?: {
+				data: Record<string, unknown>;
+				slug?: string;
+				bylines?: BylineCreditInput[];
+			},
+		) => {
+			await serializeEditorSave(async () => {
+				if (!payload) return;
+				return updateMutation.mutateAsync({
+					targetId: id,
+					targetLocale: rawItem?.locale ?? activeLocale,
+					source: "editor",
+					changes: payload,
+				});
+			});
+			await publishedAtMutation.mutateAsync(publishedAt);
 		},
-		[publishedAtMutation.mutate],
+		[
+			activeLocale,
+			id,
+			publishedAtMutation.mutateAsync,
+			rawItem?.locale,
+			serializeEditorSave,
+			updateMutation.mutateAsync,
+		],
 	);
 
 	const handleSeoChange = React.useCallback(
@@ -1382,12 +1473,63 @@ function ContentEditPage() {
 		[discardDraftMutation.mutate],
 	);
 	const handleSchedule = React.useCallback(
-		(scheduledAt: string) => scheduleMutation.mutate(scheduledAt),
-		[scheduleMutation.mutate],
+		async (
+			scheduledAt: string,
+			payload?: {
+				data: Record<string, unknown>;
+				slug?: string;
+				bylines?: BylineCreditInput[];
+			},
+		) => {
+			const savedItem = await serializeEditorSave(async () => {
+				if (!payload) return;
+				return updateMutation.mutateAsync({
+					targetId: id,
+					targetLocale: rawItem?.locale ?? activeLocale,
+					source: "editor",
+					changes: payload,
+				});
+			});
+			const scheduledItem = await scheduleMutation.mutateAsync(scheduledAt);
+			await applyScheduleChange(scheduledItem, savedItem);
+		},
+		[
+			activeLocale,
+			applyScheduleChange,
+			id,
+			rawItem?.locale,
+			scheduleMutation.mutateAsync,
+			serializeEditorSave,
+			updateMutation.mutateAsync,
+		],
 	);
 	const handleUnschedule = React.useCallback(
-		() => unscheduleMutation.mutate(),
-		[unscheduleMutation.mutate],
+		async (payload?: {
+			data: Record<string, unknown>;
+			slug?: string;
+			bylines?: BylineCreditInput[];
+		}) => {
+			const savedItem = await serializeEditorSave(async () => {
+				if (!payload) return;
+				return updateMutation.mutateAsync({
+					targetId: id,
+					targetLocale: rawItem?.locale ?? activeLocale,
+					source: "editor",
+					changes: payload,
+				});
+			});
+			const unscheduledItem = await unscheduleMutation.mutateAsync();
+			await applyScheduleChange(unscheduledItem, savedItem);
+		},
+		[
+			activeLocale,
+			applyScheduleChange,
+			id,
+			rawItem?.locale,
+			serializeEditorSave,
+			unscheduleMutation.mutateAsync,
+			updateMutation.mutateAsync,
+		],
 	);
 	const handleDelete = React.useCallback(() => deleteMutation.mutate(), [deleteMutation.mutate]);
 	const handleTranslate = React.useCallback(
@@ -1436,12 +1578,14 @@ function ContentEditPage() {
 			}
 			autosaveCompletionToken={autosaveCompletion.entryId === id ? autosaveCompletion.token : 0}
 			autosaveRejectionToken={autosaveRejection.entryId === id ? autosaveRejection.token : 0}
+			hasSaveConflict={conflictedEntryId === id}
 			onPublish={handlePublish}
 			onUnpublish={handleUnpublish}
 			onDiscardDraft={handleDiscardDraft}
 			onSchedule={handleSchedule}
 			onUnschedule={handleUnschedule}
 			isScheduling={scheduleMutation.isPending}
+			isUnscheduling={unscheduleMutation.isPending}
 			onPublishedAtChange={handlePublishedAtChange}
 			isUpdatingPublishedAt={publishedAtMutation.isPending}
 			onDelete={handleDelete}
@@ -1463,6 +1607,15 @@ function ContentEditPage() {
 			onQuickCreateByline={handleQuickCreateByline}
 			onQuickEditByline={handleQuickEditByline}
 			manifest={manifest ?? null}
+			readOnly={entryLock.readOnly}
+			notice={
+				<EntryLockNotice
+					state={entryLock.state}
+					onTakeOver={entryLock.takeOver}
+					onReadInstead={entryLock.readInstead}
+					isTakingOver={entryLock.isTakingOver}
+				/>
+			}
 		/>
 	);
 }

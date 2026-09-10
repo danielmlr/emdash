@@ -24,7 +24,7 @@
  * import resolves there at typecheck time without our help.
  */
 
-import { encodeCursor } from "./database/repositories/types.js";
+import { encodeCursor, type ContentSeo } from "./database/repositories/types.js";
 import { getFallbackChain, getI18nConfig, isI18nEnabled } from "./i18n/config.js";
 import {
 	creditsFromFoldedBylines,
@@ -40,8 +40,10 @@ import {
 	contentNamespaces,
 	invalidateSchemaObjectCache,
 } from "./object-cache/index.js";
+import { primeSeoPanel } from "./page/seo-panel.js";
 import { requestCached } from "./request-cache.js";
 import { getRequestContext } from "./request-context.js";
+import { resetRegisteredCollectionsCache } from "./schema/collection-slugs-cache.js";
 import { compileUrlPattern } from "./schema/url-pattern.js";
 import type { TaxonomyTerm } from "./taxonomies/types.js";
 import { isMissingTableError } from "./utils/db-errors.js";
@@ -398,8 +400,21 @@ export async function getEmDashCollection<T extends string, D = InferCollectionD
 	// Cursor-paginated calls are exempt: their limit is part of the
 	// pagination contract.
 	const bucketed = bucketFilter(filter);
+
+	// Preview and edit-mode requests skip `loadCollectionCached`. That path
+	// reduces every entry to a JSON snapshot (`entrySnapshot`) and rebuilds it
+	// with `reviveEntry`, which cannot carry the `edit` proxy and re-attaches
+	// the no-op — so annotations spread as `{...entry.edit.title}` would render
+	// nothing on list pages. `getEmDashEntry` has the same bypass for the same
+	// reason (see its `serveDrafts` branch). The request-scoped cache still
+	// collapses duplicate queries within the render.
+	const ctx = getRequestContext();
+	const serveDrafts = ctx?.editMode === true || ctx?.preview !== undefined;
+
 	const cached = await requestCached(collectionCacheKey(type, bucketed.fetchFilter), () =>
-		loadCollectionCached<T, D>(type, bucketed.fetchFilter),
+		serveDrafts
+			? getEmDashCollectionUncached<T, D>(type, bucketed.fetchFilter)
+			: loadCollectionCached<T, D>(type, bucketed.fetchFilter),
 	);
 	return bucketed.requestedLimit === undefined
 		? cached
@@ -979,6 +994,15 @@ export async function getEmDashEntry<T extends string, D = InferCollectionData<T
 	}
 	const revived = snapshot.value.entry ? reviveEntry<D>(snapshot.value.entry) : null;
 	if (revived && !canExposeRevisionMetadata(revived, type)) stripRevisionMetadata(revived);
+	if (revived) {
+		// On a warm object-cache hit the loader never runs, so prime the
+		// SEO panel cache from the snapshot's data (a no-op after a miss,
+		// where the loader already primed).
+		// eslint-disable-next-line typescript/no-unsafe-type-assertion -- snapshot `data` is always a record
+		const { id: rowId, seo } = revived.data as Record<string, unknown>;
+		// eslint-disable-next-line typescript/no-unsafe-type-assertion -- `data.seo` is written by the loader as ContentSeo
+		if (seo && typeof rowId === "string") primeSeoPanel(type, rowId, seo as ContentSeo);
+	}
 	return {
 		entry: revived,
 		isPreview: snapshot.value.isPreview,
@@ -1326,11 +1350,13 @@ const urlPatternCache: UrlPatternCache =
  * Call when collection URL patterns change (schema updates).
  *
  * Also busts the distributed schema cache (collection metadata such as
- * `commentsEnabled`, `supports`, fields read by `getCollectionInfo`), since
+ * `commentsEnabled`, `supports`, fields read by `getCollectionInfo`) and the
+ * per-isolate registered-collection-slugs cache used by term counting, since
  * every schema-mutation path already routes through here.
  */
 export function invalidateUrlPatternCache(): void {
 	urlPatternCache.patterns = null;
+	resetRegisteredCollectionsCache();
 	invalidateSchemaObjectCache();
 }
 

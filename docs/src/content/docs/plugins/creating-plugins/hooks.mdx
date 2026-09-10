@@ -166,7 +166,7 @@ Do not put HTML in `reason`. The admin renders the value as text.
 
 From the host process, throw `ContentSaveRejectedError` (exported from `emdash`) instead. The API returns `SAVE_REJECTED` with your message. Any other exception from either execution mode fails the save with a generic `CONTENT_HOOK_ERROR` response.
 
-**Event:** `{ content, collection, isNew }` — **Returns:** modified content, a sandbox hook error result, or `void`.
+**Event:** `{ content, collection, isNew, id }` — **Returns:** modified content, a sandbox hook error result, or `void`. On an update, `id` is the ID of the existing item and `content` holds only the submitted field values; load the stored item with `ctx.content.get(event.collection, event.id)`.
 
 ### `content:afterSave`
 
@@ -327,7 +327,7 @@ Contributes typed metadata to `<head>` — meta tags, OpenGraph properties, allo
 | `link`     | `<link rel="canonical\|alternate" href="...">`     | canonical: singleton; alternate: `key` or `hreflang`  |
 | `jsonld`   | `<script type="application/ld+json">`              | `id` (if present)                                     |
 
-First contribution wins for any dedupe key. Link `rel` is restricted to a security-locked allowlist (`canonical`, `alternate`, `author`, `license`, `nlweb`, `site.standard.document`); `href` must be HTTP or HTTPS.
+First contribution wins for any dedupe key. `<EmDashHead>` composes contributions in the order plugins → site settings → template-provided base metadata, so plugin contributions override everything below them. On content pages, the entry's SEO panel values are folded into the page context before the base metadata is generated — they replace the template-provided fields (and are what your hook sees on the page context), while plugin contributions still win via first-wins dedup. Link `rel` is restricted to a security-locked allowlist (`canonical`, `alternate`, `author`, `license`, `nlweb`, `site.standard.document`); `href` must be HTTP or HTTPS.
 
 ### `page:fragments`
 

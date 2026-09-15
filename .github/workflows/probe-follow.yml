@@ -1,0 +1,21 @@
+name: CI Rerun Probe Follow
+
+on:
+  workflow_run:
+    workflows: ["CI Rerun Probe"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  follow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the triggering run
+        env:
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGERING: ${{ github.event.workflow_run.triggering_actor.login }}
+          SENDER: ${{ github.event.sender.login }}
+        run: echo "FOLLOW attempt=$ATTEMPT conclusion=$CONCLUSION triggering_actor=$TRIGGERING sender=$SENDER"

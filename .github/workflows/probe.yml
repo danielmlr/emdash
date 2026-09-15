@@ -1,0 +1,20 @@
+name: CI Rerun Probe
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  flaky:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on attempts 1 and 2
+        env:
+          ATTEMPT: ${{ github.run_attempt }}
+        run: '[ "$ATTEMPT" -ge 3 ]'
+  steady:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

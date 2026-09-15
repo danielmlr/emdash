@@ -1,0 +1,19 @@
+name: CI Rerun Probe
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  flaky:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "attempt ${{ github.run_attempt }}"
+          test "${{ github.run_attempt }}" != "1"
+  steady:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo steady

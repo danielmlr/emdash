@@ -27,8 +27,10 @@ export {
 	createPluginContext,
 	createKVAccess,
 	createStorageAccess,
-	createContentAccess,
 	createContentAccessWithWrite,
+	createRedirectAccess,
+	RedirectAccessError,
+	createSchemaAccess,
 	createMediaAccess,
 	createMediaAccessWithWrite,
 	createHttpAccess,
@@ -39,6 +41,7 @@ export {
 	createUrlHelper,
 	createSiteInfo,
 } from "./context.js";
+export { createContentAccess } from "./content-access.js";
 export type { PluginContextFactoryOptions } from "./context.js";
 export { CronAccessImpl } from "./cron.js";
 
@@ -91,6 +94,7 @@ export type {
 	SandboxOptions,
 	SandboxEmailMessage,
 	SandboxEmailSendCallback,
+	SandboxContentCreateCallback,
 	ResourceLimits,
 	PluginCodeStorage,
 	SerializedRequest,
@@ -138,6 +142,11 @@ export type {
 	UserInfo,
 	UserAccess,
 	ContentItem,
+	ContentTranslationSummary,
+	ContentRevisionInfo,
+	SchemaAccess,
+	CollectionSchemaInfo,
+	FieldSchemaInfo,
 	ContentCreateOptions,
 	ContentWriteInput,
 	CronTaskInfo,
@@ -148,6 +157,14 @@ export type {
 	TaxonomyDefInfo,
 	TaxonomyTermInfo,
 	TaxonomyReadOptions,
+	RedirectAccess,
+	RedirectAccessWithWrite,
+	RedirectCreateInput,
+	RedirectInfo,
+	RedirectListOptions,
+	RedirectStatus,
+	RedirectUpdateInput,
+	VersionedRedirect,
 
 	// Hook types
 	PluginHooks,

@@ -78,8 +78,9 @@ export class LockingSqliteAdapter extends SqliteAdapter {
 		if (heldSince === undefined) return;
 		this.#held.delete(db);
 		// A lock left behind by a successful run goes unnoticed until the next
-		// pending migration, so a failed write is retried; being conditional,
-		// it cannot clear a lock taken since.
+		// pending migration, so a failed write is retried. The write is
+		// conditional on this run's acquire time, so a retry after a write that
+		// landed can still clear a lock another run took in the same millisecond.
 		for (let attempt = 1; ; attempt++) {
 			try {
 				// oxlint-disable-next-line no-await-in-loop -- retries are sequential
@@ -121,7 +122,8 @@ export async function readMigrationLock(
 
 /**
  * Release a lock its holder never released. The row is cleared only while it
- * still holds `heldSince`, so a lock taken again since it was read stays.
+ * still holds `heldSince`, so a lock taken again since it was read stays
+ * unless it was taken in that same millisecond.
  */
 export async function clearMigrationLock(
 	// eslint-disable-next-line typescript/no-explicit-any -- writes a table outside the Database type

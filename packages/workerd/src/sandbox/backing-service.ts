@@ -73,9 +73,13 @@ export function createBackingServiceHandler(runner: WorkerdSandboxRunner): Backi
 					storageCollections: claims.storageCollections,
 					storageConfig: runner.getPluginStorageConfig(claims.pluginId, claims.version),
 					i18nConfig: getI18nConfig(),
+					siteInfo: runner.getSiteInfo(),
 					db: runner.db,
 					beforeContentWrite: runner.beforeContentWrite,
+					contentCreate: runner.contentCreate ?? undefined,
 					emailSend: () => runner.emailSend,
+					cronReschedule: () => runner.cronReschedule?.(),
+					now: runner.now,
 					storage: runner.mediaStorage,
 				});
 				handlerCache.set(cacheKey, bridgeHandler);

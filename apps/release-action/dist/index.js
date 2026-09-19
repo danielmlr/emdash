@@ -1119,6 +1119,7 @@ const sbomSchema = _sbomSchema;
 var releaseExtension_exports = /* @__PURE__ */ __exportAll({
 	contentAccessSchema: () => contentAccessSchema,
 	contentReadConstraintsSchema: () => contentReadConstraintsSchema,
+	contentRevisionsReadConstraintsSchema: () => contentRevisionsReadConstraintsSchema,
 	contentWriteConstraintsSchema: () => contentWriteConstraintsSchema,
 	declaredAccessSchema: () => declaredAccessSchema$1,
 	emailAccessSchema: () => emailAccessSchema,
@@ -1134,6 +1135,11 @@ var releaseExtension_exports = /* @__PURE__ */ __exportAll({
 	pageAccessSchema: () => pageAccessSchema,
 	pageFragmentsConstraintsSchema: () => pageFragmentsConstraintsSchema,
 	provenanceSchema: () => provenanceSchema,
+	redirectsAccessSchema: () => redirectsAccessSchema,
+	redirectsReadConstraintsSchema: () => redirectsReadConstraintsSchema,
+	redirectsWriteConstraintsSchema: () => redirectsWriteConstraintsSchema,
+	schemaAccessSchema: () => schemaAccessSchema,
+	schemaReadConstraintsSchema: () => schemaReadConstraintsSchema,
 	taxonomiesAccessSchema: () => taxonomiesAccessSchema,
 	taxonomiesReadConstraintsSchema: () => taxonomiesReadConstraintsSchema,
 	usersAccessSchema: () => usersAccessSchema,
@@ -1144,11 +1150,15 @@ const _contentAccessSchema = /* @__PURE__ */ object$1({
 	get read() {
 		return /* @__PURE__ */ optional$1(contentReadConstraintsSchema);
 	},
+	get revisionsRead() {
+		return /* @__PURE__ */ optional$1(contentRevisionsReadConstraintsSchema);
+	},
 	get write() {
 		return /* @__PURE__ */ optional$1(contentWriteConstraintsSchema);
 	}
 });
 const _contentReadConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#contentReadConstraints")) });
+const _contentRevisionsReadConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#contentRevisionsReadConstraints")) });
 const _contentWriteConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#contentWriteConstraints")) });
 const _declaredAccessSchema = /* @__PURE__ */ object$1({
 	$type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#declaredAccess")),
@@ -1166,6 +1176,12 @@ const _declaredAccessSchema = /* @__PURE__ */ object$1({
 	},
 	get page() {
 		return /* @__PURE__ */ optional$1(pageAccessSchema);
+	},
+	get redirects() {
+		return /* @__PURE__ */ optional$1(redirectsAccessSchema);
+	},
+	get schema() {
+		return /* @__PURE__ */ optional$1(schemaAccessSchema);
 	},
 	get taxonomies() {
 		return /* @__PURE__ */ optional$1(taxonomiesAccessSchema);
@@ -1234,6 +1250,24 @@ const _provenanceSchema = /* @__PURE__ */ object$1({
 	sourceRepository: /* @__PURE__ */ constrain(/* @__PURE__ */ genericUriString(), [/* @__PURE__ */ stringLength(0, 1024)]),
 	url: /* @__PURE__ */ constrain(/* @__PURE__ */ genericUriString(), [/* @__PURE__ */ stringLength(0, 2048)])
 });
+const _redirectsAccessSchema = /* @__PURE__ */ object$1({
+	$type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#redirectsAccess")),
+	get read() {
+		return /* @__PURE__ */ optional$1(redirectsReadConstraintsSchema);
+	},
+	get write() {
+		return /* @__PURE__ */ optional$1(redirectsWriteConstraintsSchema);
+	}
+});
+const _redirectsReadConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#redirectsReadConstraints")) });
+const _redirectsWriteConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#redirectsWriteConstraints")) });
+const _schemaAccessSchema = /* @__PURE__ */ object$1({
+	$type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#schemaAccess")),
+	get read() {
+		return /* @__PURE__ */ optional$1(schemaReadConstraintsSchema);
+	}
+});
+const _schemaReadConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#schemaReadConstraints")) });
 const _taxonomiesAccessSchema = /* @__PURE__ */ object$1({
 	$type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#taxonomiesAccess")),
 	get read() {
@@ -1250,6 +1284,7 @@ const _usersAccessSchema = /* @__PURE__ */ object$1({
 const _usersReadConstraintsSchema = /* @__PURE__ */ object$1({ $type: /* @__PURE__ */ optional$1(/* @__PURE__ */ literal$1("com.emdashcms.experimental.package.releaseExtension#usersReadConstraints")) });
 const contentAccessSchema = _contentAccessSchema;
 const contentReadConstraintsSchema = _contentReadConstraintsSchema;
+const contentRevisionsReadConstraintsSchema = _contentRevisionsReadConstraintsSchema;
 const contentWriteConstraintsSchema = _contentWriteConstraintsSchema;
 const declaredAccessSchema$1 = _declaredAccessSchema;
 const emailAccessSchema = _emailAccessSchema;
@@ -1265,6 +1300,11 @@ const networkRequestConstraintsSchema = _networkRequestConstraintsSchema;
 const pageAccessSchema = _pageAccessSchema;
 const pageFragmentsConstraintsSchema = _pageFragmentsConstraintsSchema;
 const provenanceSchema = _provenanceSchema;
+const redirectsAccessSchema = _redirectsAccessSchema;
+const redirectsReadConstraintsSchema = _redirectsReadConstraintsSchema;
+const redirectsWriteConstraintsSchema = _redirectsWriteConstraintsSchema;
+const schemaAccessSchema = _schemaAccessSchema;
+const schemaReadConstraintsSchema = _schemaReadConstraintsSchema;
 const taxonomiesAccessSchema = _taxonomiesAccessSchema;
 const taxonomiesReadConstraintsSchema = _taxonomiesReadConstraintsSchema;
 const usersAccessSchema = _usersAccessSchema;
@@ -7785,8 +7825,12 @@ const CURRENT_PLUGIN_CAPABILITIES = [
 	"network:request",
 	"network:request:unrestricted",
 	"content:read",
+	"content:revisions:read",
 	"content:write",
+	"schema:read",
 	"taxonomies:read",
+	"redirects:read",
+	"redirects:write",
 	"media:read",
 	"media:write",
 	"users:read",
@@ -7874,7 +7918,9 @@ const manifestHookEntrySchema = object({
 	name: _enum(HOOK_NAMES),
 	exclusive: boolean().optional(),
 	priority: number().int().optional(),
-	timeout: number().int().positive().optional()
+	timeout: number().int().positive().optional(),
+	dependencies: array(string().min(1)).optional(),
+	errorPolicy: _enum(["continue", "abort"]).optional()
 });
 /**
 * Structured route entry for manifest — name plus optional metadata.
@@ -7885,8 +7931,20 @@ const manifestHookEntrySchema = object({
 const routeNamePattern = /^[a-zA-Z0-9][a-zA-Z0-9_\-/]*$/;
 const manifestRouteEntrySchema = object({
 	name: string().min(1).regex(routeNamePattern, "Route name must be a safe path segment"),
-	public: boolean().optional()
+	public: boolean().optional(),
+	permission: string().min(1).optional(),
+	cacheControl: string().min(1).optional()
 });
+const pluginJsonSchema = record(string(), unknown());
+const pluginMcpConfigSchema = object({ tools: array(object({
+	name: string().min(1),
+	description: string().min(1),
+	route: string().min(1),
+	permission: string().min(1),
+	destructive: boolean(),
+	inputSchema: pluginJsonSchema,
+	outputSchema: pluginJsonSchema.optional()
+})) });
 /** Index field names must be valid identifiers to prevent SQL injection via JSON path expressions */
 const indexFieldName = string().regex(/^[a-zA-Z][a-zA-Z0-9_]*$/);
 const storageCollectionSchema = object({
@@ -7986,9 +8044,15 @@ const accessConstraints = record(string(), unknown());
 const declaredAccessSchema = object({
 	content: object({
 		read: accessConstraints.optional(),
+		revisionsRead: accessConstraints.optional(),
 		write: accessConstraints.optional()
 	}).optional(),
+	schema: object({ read: accessConstraints.optional() }).optional(),
 	taxonomies: object({ read: accessConstraints.optional() }).optional(),
+	redirects: object({
+		read: accessConstraints.optional(),
+		write: accessConstraints.optional()
+	}).optional(),
 	media: object({
 		read: accessConstraints.optional(),
 		write: accessConstraints.optional()
@@ -8021,6 +8085,7 @@ const pluginManifestSchema = object({
 	storage: record(string(), storageCollectionSchema),
 	hooks: array(union([_enum(HOOK_NAMES), manifestHookEntrySchema])),
 	routes: array(union([string().min(1).regex(routeNamePattern, "Route name must be a safe path segment"), manifestRouteEntrySchema])),
+	mcp: pluginMcpConfigSchema.optional(),
 	admin: pluginAdminConfigSchema
 });
 /**
@@ -8094,11 +8159,17 @@ function normalizeCapability(cap) {
 function capabilitiesToDeclaredAccess(capabilities, allowedHosts) {
 	const caps = new Set(capabilities.map((c) => normalizeCapability(c)));
 	const out = {};
-	if (caps.has("content:read") || caps.has("content:write")) {
+	if (caps.has("content:read") || caps.has("content:revisions:read") || caps.has("content:write")) {
 		out.content = { read: {} };
 		if (caps.has("content:write")) out.content.write = {};
 	}
+	if (caps.has("content:revisions:read")) (out.content ??= {}).revisionsRead = {};
+	if (caps.has("schema:read")) out.schema = { read: {} };
 	if (caps.has("taxonomies:read")) out.taxonomies = { read: {} };
+	if (caps.has("redirects:read") || caps.has("redirects:write")) {
+		out.redirects = { read: {} };
+		if (caps.has("redirects:write")) out.redirects.write = {};
+	}
 	if (caps.has("media:read") || caps.has("media:write")) {
 		out.media = { read: {} };
 		if (caps.has("media:write")) out.media.write = {};
@@ -8127,7 +8198,17 @@ function declaredAccessToCapabilities(declaredAccess) {
 		caps.add("content:write");
 		caps.add("content:read");
 	}
+	if (declaredAccess.content?.revisionsRead) {
+		caps.add("content:revisions:read");
+		caps.add("content:read");
+	}
+	if (declaredAccess.schema?.read) caps.add("schema:read");
 	if (declaredAccess.taxonomies?.read) caps.add("taxonomies:read");
+	if (declaredAccess.redirects?.read) caps.add("redirects:read");
+	if (declaredAccess.redirects?.write) {
+		caps.add("redirects:write");
+		caps.add("redirects:read");
+	}
 	if (declaredAccess.media?.read) caps.add("media:read");
 	if (declaredAccess.media?.write) {
 		caps.add("media:write");

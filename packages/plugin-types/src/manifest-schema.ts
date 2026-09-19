@@ -23,8 +23,12 @@ export const CURRENT_PLUGIN_CAPABILITIES = [
 	"network:request",
 	"network:request:unrestricted",
 	"content:read",
+	"content:revisions:read",
 	"content:write",
+	"schema:read",
 	"taxonomies:read",
+	"redirects:read",
+	"redirects:write",
 	"media:read",
 	"media:write",
 	"users:read",
@@ -121,6 +125,8 @@ const manifestHookEntrySchema = z.object({
 	exclusive: z.boolean().optional(),
 	priority: z.number().int().optional(),
 	timeout: z.number().int().positive().optional(),
+	dependencies: z.array(z.string().min(1)).optional(),
+	errorPolicy: z.enum(["continue", "abort"]).optional(),
 });
 
 /**
@@ -134,6 +140,24 @@ const routeNamePattern = /^[a-zA-Z0-9][a-zA-Z0-9_\-/]*$/;
 const manifestRouteEntrySchema = z.object({
 	name: z.string().min(1).regex(routeNamePattern, "Route name must be a safe path segment"),
 	public: z.boolean().optional(),
+	permission: z.string().min(1).optional(),
+	cacheControl: z.string().min(1).optional(),
+});
+
+const pluginJsonSchema = z.record(z.string(), z.unknown());
+
+const pluginMcpConfigSchema = z.object({
+	tools: z.array(
+		z.object({
+			name: z.string().min(1),
+			description: z.string().min(1),
+			route: z.string().min(1),
+			permission: z.string().min(1),
+			destructive: z.boolean(),
+			inputSchema: pluginJsonSchema,
+			outputSchema: pluginJsonSchema.optional(),
+		}),
+	),
 });
 
 // ── Sub-schemas ─────────────────────────────────────────────────
@@ -242,9 +266,17 @@ const accessConstraints = z.record(z.string(), z.unknown());
  */
 const declaredAccessSchema = z.object({
 	content: z
+		.object({
+			read: accessConstraints.optional(),
+			revisionsRead: accessConstraints.optional(),
+			write: accessConstraints.optional(),
+		})
+		.optional(),
+	schema: z.object({ read: accessConstraints.optional() }).optional(),
+	taxonomies: z.object({ read: accessConstraints.optional() }).optional(),
+	redirects: z
 		.object({ read: accessConstraints.optional(), write: accessConstraints.optional() })
 		.optional(),
-	taxonomies: z.object({ read: accessConstraints.optional() }).optional(),
 	media: z
 		.object({ read: accessConstraints.optional(), write: accessConstraints.optional() })
 		.optional(),
@@ -304,6 +336,7 @@ export const pluginManifestSchema = z.object({
 			manifestRouteEntrySchema,
 		]),
 	),
+	mcp: pluginMcpConfigSchema.optional(),
 	admin: pluginAdminConfigSchema,
 });
 
@@ -331,8 +364,24 @@ export function reconcileManifestAccess(manifest: ValidatedPluginManifest): Plug
  * Normalize a manifest hook entry — plain strings become `{ name }` objects.
  */
 export function normalizeManifestHook(
-	entry: string | { name: string; exclusive?: boolean; priority?: number; timeout?: number },
-): { name: string; exclusive?: boolean; priority?: number; timeout?: number } {
+	entry:
+		| string
+		| {
+				name: string;
+				exclusive?: boolean;
+				priority?: number;
+				timeout?: number;
+				dependencies?: string[];
+				errorPolicy?: "continue" | "abort";
+		  },
+): {
+	name: string;
+	exclusive?: boolean;
+	priority?: number;
+	timeout?: number;
+	dependencies?: string[];
+	errorPolicy?: "continue" | "abort";
+} {
 	if (typeof entry === "string") {
 		return { name: entry };
 	}
@@ -342,9 +391,13 @@ export function normalizeManifestHook(
 /**
  * Normalize a manifest route entry — plain strings become `{ name }` objects.
  */
-export function normalizeManifestRoute(entry: string | { name: string; public?: boolean }): {
+export function normalizeManifestRoute(
+	entry: string | { name: string; public?: boolean; permission?: string; cacheControl?: string },
+): {
 	name: string;
 	public?: boolean;
+	permission?: string;
+	cacheControl?: string;
 } {
 	if (typeof entry === "string") {
 		return { name: entry };

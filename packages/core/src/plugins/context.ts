@@ -8,11 +8,23 @@
 import type { Kysely } from "kysely";
 import { ulid } from "ulidx";
 
+import {
+	handleRedirectCreate,
+	handleRedirectDelete,
+	handleRedirectList,
+	handleRedirectUpdate,
+} from "../api/handlers/redirects.js";
+import { createRedirectBody, updateRedirectBody } from "../api/schemas/redirects.js";
 import { ContentRepository } from "../database/repositories/content.js";
 import { EntryLockRepository } from "../database/repositories/entry-locks.js";
 import { MediaRepository } from "../database/repositories/media.js";
 import { OptionsRepository } from "../database/repositories/options.js";
 import { PluginStorageRepository } from "../database/repositories/plugin-storage.js";
+import {
+	RedirectRepository,
+	type Redirect,
+	type VersionedRedirectRecord,
+} from "../database/repositories/redirect.js";
 import { SeoRepository } from "../database/repositories/seo.js";
 import { TaxonomyRepository, type Taxonomy } from "../database/repositories/taxonomy.js";
 import { UserRepository } from "../database/repositories/user.js";
@@ -26,9 +38,11 @@ import {
 } from "../import/ssrf.js";
 import { enrichImageMetadata } from "../media/enrich.js";
 import { markContentMediaUsageCollectionStaleSafely } from "../media/usage/content-refresh.js";
+import { SchemaRegistry } from "../schema/registry.js";
 import { invalidateSiteSettingsCache } from "../settings/index.js";
 import type { Storage } from "../storage/types.js";
 import { assertStorageKey } from "./conditional-storage.js";
+import { createContentAccess } from "./content-access.js";
 import { CronAccessImpl } from "./cron.js";
 import type { EmailPipeline } from "./email.js";
 import type {
@@ -55,13 +69,25 @@ import type {
 	MediaItem,
 	PaginatedResult,
 	QueryOptions,
-	ContentListOptions,
 	MediaListOptions,
 	TaxonomyAccess,
 	TaxonomyDefInfo,
 	TaxonomyTermInfo,
 	TaxonomyReadOptions,
+	RedirectAccess,
+	RedirectAccessWithWrite,
+	RedirectCreateInput,
+	RedirectInfo,
+	RedirectListOptions,
+	RedirectStatus,
+	RedirectUpdateInput,
+	VersionedRedirect,
+	SchemaAccess,
+	CollectionSchemaInfo,
+	PluginContentCreateCallback,
 } from "./types.js";
+
+export { createContentAccess } from "./content-access.js";
 
 // =============================================================================
 // KV Access
@@ -250,88 +276,53 @@ function taxonomyToTermInfo(term: Taxonomy): TaxonomyTermInfo {
 	};
 }
 
-/**
- * Create read-only content access
- */
-export function createContentAccess(db: Kysely<Database>): ContentAccess {
-	const contentRepo = new ContentRepository(db);
-	const seoRepo = new SeoRepository(db);
-
+function collectionToSchemaInfo(
+	collection: Awaited<ReturnType<SchemaRegistry["getCollectionWithFields"]>>,
+): CollectionSchemaInfo | null {
+	if (!collection) return null;
 	return {
-		async get(collection: string, id: string): Promise<ContentItem | null> {
-			const item = await contentRepo.findById(collection, id);
-			if (!item) return null;
+		slug: collection.slug,
+		label: collection.label,
+		labelSingular: collection.labelSingular ?? null,
+		description: collection.description ?? null,
+		supports: collection.supports,
+		hasSeo: collection.hasSeo,
+		titleField: collection.titleField ?? null,
+		dateField: collection.dateField ?? null,
+		urlPattern: collection.urlPattern ?? null,
+		routable: collection.routable !== false,
+		hidden: collection.hidden,
+		fields: collection.fields.map((field) => ({
+			slug: field.slug,
+			label: field.label,
+			type: field.type,
+			required: field.required,
+			unique: field.unique,
+			...(field.defaultValue === undefined ? {} : { default: field.defaultValue }),
+			...(field.validation === undefined ? {} : { validation: field.validation }),
+			...(field.widget === undefined ? {} : { widget: field.widget }),
+			...(field.options === undefined ? {} : { options: field.options }),
+			searchable: field.searchable,
+			indexed: field.indexed,
+			translatable: field.translatable,
+			sortOrder: field.sortOrder,
+		})),
+	};
+}
 
-			const result: ContentItem = {
-				id: item.id,
-				type: item.type,
-				slug: item.slug,
-				status: item.status,
-				data: item.data,
-				createdAt: item.createdAt,
-				updatedAt: item.updatedAt,
-				locale: item.locale,
-				publishedAt: item.publishedAt,
-				scheduledAt: item.scheduledAt,
-			};
-
-			if (await seoRepo.isEnabled(collection)) {
-				result.seo = await seoRepo.get(collection, item.id);
+export function createSchemaAccess(db: Kysely<Database>): SchemaAccess {
+	const registry = new SchemaRegistry(db);
+	return {
+		async listCollections() {
+			const collections: CollectionSchemaInfo[] = [];
+			for (const collection of await registry.listCollectionsWithFields()) {
+				const info = collectionToSchemaInfo(collection);
+				if (info) collections.push(info);
 			}
-
-			return result;
+			return collections;
 		},
-
-		async list(
-			collection: string,
-			options?: ContentListOptions,
-		): Promise<PaginatedResult<ContentItem>> {
-			// Convert orderBy format if provided
-			let orderBy: { field: string; direction: "asc" | "desc" } | undefined;
-			if (options?.orderBy) {
-				const entries = Object.entries(options.orderBy);
-				const first = entries[0];
-				if (first) {
-					orderBy = { field: first[0], direction: first[1] };
-				}
-			}
-
-			const result = await contentRepo.findMany(collection, {
-				limit: options?.limit ?? 50,
-				cursor: options?.cursor,
-				orderBy,
-				where: options?.where,
-			});
-
-			const items: ContentItem[] = result.items.map((item) => ({
-				id: item.id,
-				type: item.type,
-				slug: item.slug,
-				status: item.status,
-				data: item.data,
-				createdAt: item.createdAt,
-				updatedAt: item.updatedAt,
-				locale: item.locale,
-				publishedAt: item.publishedAt,
-				scheduledAt: item.scheduledAt,
-			}));
-
-			if (items.length > 0 && (await seoRepo.isEnabled(collection))) {
-				const seoMap = await seoRepo.getMany(
-					collection,
-					items.map((i) => i.id),
-				);
-				for (const item of items) {
-					const seo = seoMap.get(item.id);
-					if (seo) item.seo = seo;
-				}
-			}
-
-			return {
-				items,
-				cursor: result.nextCursor,
-				hasMore: !!result.nextCursor,
-			};
+		async getCollection(slug) {
+			return collectionToSchemaInfo(await registry.getCollectionWithFields(slug));
 		},
 	};
 }
@@ -378,6 +369,152 @@ export function createTaxonomyAccess(db: Kysely<Database>): TaxonomyAccess {
 	};
 }
 
+export class RedirectAccessError extends Error {
+	override readonly name = "RedirectAccessError";
+
+	constructor(
+		readonly code: string,
+		message: string,
+	) {
+		super(message);
+	}
+}
+
+const REDIRECT_REVISION_PREFIX = "r1.";
+const BASE64_PADDING_RE = /=+$/;
+
+function encodeRedirectRevision(id: string, revision: string): string {
+	const payload = `${id}\0${revision}`;
+	return `${REDIRECT_REVISION_PREFIX}${btoa(payload)
+		.replaceAll("+", "-")
+		.replaceAll("/", "_")
+		.replace(BASE64_PADDING_RE, "")}`;
+}
+
+function decodeRedirectRevision(id: string, revision: string): string {
+	if (typeof revision !== "string" || !revision.startsWith(REDIRECT_REVISION_PREFIX)) {
+		throw new RedirectAccessError("INVALID_PRECONDITION", "Invalid redirect revision");
+	}
+	try {
+		const encoded = revision
+			.slice(REDIRECT_REVISION_PREFIX.length)
+			.replaceAll("-", "+")
+			.replaceAll("_", "/");
+		const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+		const [revisionId, updatedAt, extra] = atob(padded).split("\0");
+		if (revisionId !== id || !updatedAt || extra !== undefined) throw new Error("invalid");
+		return updatedAt;
+	} catch (error) {
+		if (error instanceof RedirectAccessError) throw error;
+		throw new RedirectAccessError("INVALID_PRECONDITION", "Invalid redirect revision");
+	}
+}
+
+function toRedirectInfo(redirect: Redirect): RedirectInfo {
+	return {
+		...redirect,
+		type: redirect.type as RedirectStatus,
+	};
+}
+
+function toVersionedRedirect(record: VersionedRedirectRecord): VersionedRedirect {
+	return {
+		redirect: toRedirectInfo(record.redirect),
+		_rev: encodeRedirectRevision(record.redirect.id, record.configRevision),
+	};
+}
+
+async function readVersionedRedirect(
+	repo: RedirectRepository,
+	id: string,
+): Promise<VersionedRedirect | null> {
+	const record = await repo.findVersionedById(id);
+	return record ? toVersionedRedirect(record) : null;
+}
+
+function throwRedirectResult(error: { code: string; message: string }): never {
+	throw new RedirectAccessError(error.code, error.message);
+}
+
+function assertNoAutomaticRedirectMarker(input: object): void {
+	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+		throw new RedirectAccessError("VALIDATION_ERROR", "Redirect input must be an object");
+	}
+	if (Object.hasOwn(input, "auto")) {
+		throw new RedirectAccessError(
+			"VALIDATION_ERROR",
+			"The automatic redirect marker is managed by EmDash",
+		);
+	}
+}
+
+export function createRedirectAccess(db: Kysely<Database>): RedirectAccess;
+export function createRedirectAccess(db: Kysely<Database>, writable: true): RedirectAccessWithWrite;
+export function createRedirectAccess(
+	db: Kysely<Database>,
+	writable = false,
+): RedirectAccess | RedirectAccessWithWrite {
+	const repo = new RedirectRepository(db);
+	const readAccess: RedirectAccess = {
+		async list(options: RedirectListOptions = {}) {
+			const result = await handleRedirectList(db, options);
+			if (!result.success) return throwRedirectResult(result.error);
+			return {
+				items: result.data.items.map(toRedirectInfo),
+				cursor: result.data.nextCursor,
+				hasMore: result.data.nextCursor !== undefined,
+			};
+		},
+		get: (id: string) => readVersionedRedirect(repo, id),
+	};
+	if (!writable) return readAccess;
+
+	return {
+		...readAccess,
+		async create(input: RedirectCreateInput) {
+			assertNoAutomaticRedirectMarker(input);
+			const parsed = createRedirectBody.safeParse(input);
+			if (!parsed.success) {
+				throw new RedirectAccessError(
+					"VALIDATION_ERROR",
+					parsed.error.issues[0]?.message ?? "Invalid redirect",
+				);
+			}
+			const result = await handleRedirectCreate(db, parsed.data);
+			if (!result.success) return throwRedirectResult(result.error);
+			const current = await readVersionedRedirect(repo, result.data.id);
+			if (!current) throw new RedirectAccessError("NOT_FOUND", "Created redirect not found");
+			return current;
+		},
+		async update(id: string, input: RedirectUpdateInput & { _rev: string }) {
+			assertNoAutomaticRedirectMarker(input);
+			const { _rev, ...patch } = input;
+			const expectedRevision = decodeRedirectRevision(id, _rev);
+			const parsed = updateRedirectBody.safeParse(patch);
+			if (!parsed.success) {
+				throw new RedirectAccessError(
+					"VALIDATION_ERROR",
+					parsed.error.issues[0]?.message ?? "Invalid redirect",
+				);
+			}
+			const result = await handleRedirectUpdate(db, id, parsed.data, { expectedRevision });
+			if (!result.success) return throwRedirectResult(result.error);
+			const current = await readVersionedRedirect(repo, result.data.id);
+			if (!current) throw new RedirectAccessError("NOT_FOUND", "Updated redirect not found");
+			return current;
+		},
+		async delete(id: string, options: { _rev: string }) {
+			if (typeof options !== "object" || options === null) {
+				throw new RedirectAccessError("INVALID_PRECONDITION", "Invalid redirect revision");
+			}
+			const expectedRevision = decodeRedirectRevision(id, options._rev);
+			const result = await handleRedirectDelete(db, id, { expectedRevision });
+			if (!result.success) return throwRedirectResult(result.error);
+			return result.data.deleted;
+		},
+	};
+}
+
 /**
  * Create full content access with write operations.
  *
@@ -390,8 +527,14 @@ export function createTaxonomyAccess(db: Kysely<Database>): TaxonomyAccess {
 export function createContentAccessWithWrite(
 	db: Kysely<Database>,
 	beforeContentWrite?: () => Promise<void>,
+	accessOptions?: { site?: SiteInfo; revisions?: boolean },
+	contentCreate?: (data: {
+		collection: string;
+		input: ContentWriteInput;
+		options?: ContentCreateOptions;
+	}) => Promise<ContentItem>,
 ): ContentAccessWithWrite {
-	const readAccess = createContentAccess(db);
+	const readAccess = createContentAccess(db, accessOptions);
 
 	return {
 		...readAccess,
@@ -403,6 +546,13 @@ export function createContentAccessWithWrite(
 		): Promise<ContentItem> {
 			const locale = resolveContentCreateLocale(options?.locale);
 			await beforeContentWrite?.();
+			if (contentCreate) {
+				return contentCreate({
+					collection,
+					input: data,
+					options: { ...options, locale },
+				});
+			}
 			const { fields, seo } = splitSeoFromInput(data);
 			let contentMutated = false;
 
@@ -417,6 +567,7 @@ export function createContentAccessWithWrite(
 						type: collection,
 						data: fields,
 						locale,
+						translationOf: options?.translationOf,
 					});
 					contentMutated = true;
 
@@ -1037,6 +1188,7 @@ export function createUserAccess(db: Kysely<Database>): UserAccess {
 export interface PluginContextFactoryOptions {
 	db: Kysely<Database>;
 	beforeContentWrite?: () => Promise<void>;
+	contentCreate?: PluginContentCreateCallback;
 	/**
 	 * Resolver for the database connection, preferred over `db` when present.
 	 * Called per `createContext()` so connection-backed adapters (e.g. Postgres
@@ -1072,6 +1224,8 @@ export interface PluginContextFactoryOptions {
 	 * If not provided, ctx.cron will not be available.
 	 */
 	cronReschedule?: () => void;
+	/** Clock used to calculate the first run of recurring plugin tasks. */
+	now?: () => Date;
 	/**
 	 * Email pipeline instance for ctx.email.
 	 * If not provided (or no provider configured), ctx.email will be undefined.
@@ -1092,6 +1246,7 @@ export interface PluginContextFactoryOptions {
 export class PluginContextFactory {
 	private resolveDb: () => Kysely<Database>;
 	private beforeContentWrite?: () => Promise<void>;
+	private contentCreate?: PluginContentCreateCallback;
 	private storage?: Storage;
 	private getUploadUrl?: (
 		filename: string,
@@ -1100,6 +1255,7 @@ export class PluginContextFactory {
 	private site: SiteInfo;
 	private urlHelper: (path: string) => string;
 	private cronReschedule?: () => void;
+	private now: () => Date;
 	private emailPipeline?: EmailPipeline;
 	/**
 	 * Plugin IDs already warned about a missing media-write backend, so the
@@ -1112,11 +1268,13 @@ export class PluginContextFactory {
 		const fixedDb = options.db;
 		this.resolveDb = options.getDb ?? (() => fixedDb);
 		this.beforeContentWrite = options.beforeContentWrite;
+		this.contentCreate = options.contentCreate;
 		this.storage = options.storage;
 		this.getUploadUrl = options.getUploadUrl;
 		this.site = createSiteInfo(options.siteInfo ?? {});
 		this.urlHelper = createUrlHelper(this.site.url);
 		this.cronReschedule = options.cronReschedule;
+		this.now = options.now ?? (() => new Date());
 		this.emailPipeline = options.emailPipeline;
 	}
 
@@ -1144,15 +1302,37 @@ export class PluginContextFactory {
 		// names ("read:content", "write:content") never appear here.
 		let content: ContentAccess | ContentAccessWithWrite | undefined;
 		if (capabilities.has("content:write")) {
-			content = createContentAccessWithWrite(db, this.beforeContentWrite);
+			content = createContentAccessWithWrite(
+				db,
+				this.beforeContentWrite,
+				{
+					site: this.site,
+					revisions: capabilities.has("content:revisions:read"),
+				},
+				this.contentCreate
+					? (input) => this.contentCreate!(plugin.id, input.collection, input.input, input.options)
+					: undefined,
+			);
 		} else if (capabilities.has("content:read")) {
-			content = createContentAccess(db);
+			content = createContentAccess(db, {
+				site: this.site,
+				revisions: capabilities.has("content:revisions:read"),
+			});
 		}
+
+		const schema = capabilities.has("schema:read") ? createSchemaAccess(db) : undefined;
 
 		// Capability-gated: taxonomies (read-only)
 		let taxonomies: TaxonomyAccess | undefined;
 		if (capabilities.has("taxonomies:read")) {
 			taxonomies = createTaxonomyAccess(db);
+		}
+
+		let redirects: RedirectAccess | RedirectAccessWithWrite | undefined;
+		if (capabilities.has("redirects:write")) {
+			redirects = createRedirectAccess(db, true);
+		} else if (capabilities.has("redirects:read")) {
+			redirects = createRedirectAccess(db);
 		}
 
 		// Capability-gated: media
@@ -1197,7 +1377,7 @@ export class PluginContextFactory {
 		// the runtime provided a reschedule callback (i.e. cron is wired up).
 		let cron: CronAccess | undefined;
 		if (this.cronReschedule) {
-			cron = new CronAccessImpl(db, plugin.id, this.cronReschedule);
+			cron = new CronAccessImpl(db, plugin.id, this.cronReschedule, this.now);
 		}
 
 		// Email access — requires email:send capability AND a configured provider
@@ -1218,7 +1398,9 @@ export class PluginContextFactory {
 			storage,
 			kv,
 			content,
+			schema,
 			taxonomies,
+			redirects,
 			media,
 			http,
 			log,

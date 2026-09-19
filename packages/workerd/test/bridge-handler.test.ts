@@ -38,6 +38,13 @@ async function setupTables(db: Kysely<any>) {
 		.addPrimaryKeyConstraint("pk_plugin_storage", ["plugin_id", "collection", "id"])
 		.execute();
 
+	await db.schema
+		.createTable("options")
+		.addColumn("name", "text", (col) => col.primaryKey())
+		.addColumn("value", "text", (col) => col.notNull())
+		.addColumn("revision", "text", (col) => col.notNull())
+		.execute();
+
 	// Users table (matches migration 001)
 	await db.schema
 		.createTable("users")
@@ -113,6 +120,28 @@ describe("Bridge Handler Conformance", () => {
 	// ── KV Operations ────────────────────────────────────────────────────
 
 	describe("KV operations", () => {
+		it("reads and writes admin-managed settings through ctx.kv", async () => {
+			await db
+				.insertInto("options" as any)
+				.values({
+					name: "plugin:test-plugin:settings:enabled",
+					value: JSON.stringify(false),
+					revision: "settings-revision",
+				})
+				.execute();
+			const handler = makeHandler({});
+
+			expect((await call(handler, "kv/get", { key: "settings:enabled" })).result).toBe(false);
+			await call(handler, "kv/set", { key: "settings:enabled", value: true });
+
+			expect(
+				await db
+					.selectFrom("options" as any)
+					.select("value" as any)
+					.where("name" as any, "=", "plugin:test-plugin:settings:enabled")
+					.executeTakeFirst(),
+			).toEqual({ value: JSON.stringify(true) });
+		});
 		it("set and get a value", async () => {
 			const handler = makeHandler({});
 			await call(handler, "kv/set", { key: "test", value: "hello" });
@@ -177,6 +206,51 @@ describe("Bridge Handler Conformance", () => {
 			const resultA = await call(handlerA, "kv/get", { key: "secret" });
 			expect(resultA.result).toBe("a-data");
 		});
+	});
+
+	it("scopes cron scheduling to the sandboxed plugin", async () => {
+		await db.schema
+			.createTable("_emdash_cron_tasks")
+			.addColumn("id", "text", (col) => col.primaryKey())
+			.addColumn("plugin_id", "text", (col) => col.notNull())
+			.addColumn("task_name", "text", (col) => col.notNull())
+			.addColumn("schedule", "text", (col) => col.notNull())
+			.addColumn("is_oneshot", "integer", (col) => col.notNull())
+			.addColumn("data", "text")
+			.addColumn("next_run_at", "text", (col) => col.notNull())
+			.addColumn("last_run_at", "text")
+			.addColumn("status", "text", (col) => col.notNull())
+			.addColumn("locked_at", "text")
+			.addColumn("enabled", "integer", (col) => col.notNull())
+			.addUniqueConstraint("uq_cron_plugin_task", ["plugin_id", "task_name"])
+			.execute();
+		const reschedule = vi.fn();
+		const handler = createBridgeHandler({
+			pluginId: "cron-plugin",
+			version: "1.0.0",
+			capabilities: [],
+			allowedHosts: [],
+			storageCollections: [],
+			db,
+			emailSend: () => null,
+			cronReschedule: reschedule,
+		});
+
+		await call(handler, "cron/schedule", {
+			name: "daily",
+			schedule: "@daily",
+			data: { source: "sandbox" },
+		});
+		const result = await call(handler, "cron/list");
+
+		expect(result.result).toEqual([expect.objectContaining({ name: "daily", schedule: "@daily" })]);
+		expect(reschedule).toHaveBeenCalledOnce();
+		expect(
+			await db
+				.selectFrom("_emdash_cron_tasks" as any)
+				.select("plugin_id" as any)
+				.executeTakeFirst(),
+		).toMatchObject({ plugin_id: "cron-plugin" });
 	});
 
 	describe.each(["kv", "storage"] as const)("%s conditional operations", (kind) => {
@@ -389,16 +463,31 @@ describe("Bridge Handler Conformance", () => {
 	// ── Capability Enforcement ────────────────────────────────────────────
 
 	describe("capability enforcement", () => {
-		it("rejects content read without read:content capability", async () => {
+		it("separately denies schema and revision history reads", async () => {
+			const handler = makeHandler({ capabilities: ["content:read"] });
+			expect((await call(handler, "schema/listCollections")).error).toContain(
+				"Missing capability: schema:read",
+			);
+			expect(
+				(
+					await call(handler, "content/listRevisions", {
+						collection: "posts",
+						id: "123",
+					})
+				).error,
+			).toContain("Missing capability: content:revisions:read");
+		});
+
+		it("rejects content read without content:read capability", async () => {
 			const handler = makeHandler({ capabilities: [] });
 			const result = await call(handler, "content/get", {
 				collection: "posts",
 				id: "123",
 			});
-			expect(result.error).toContain("Missing capability: read:content");
+			expect(result.error).toContain("Missing capability: content:read");
 		});
 
-		it("allows content read with read:content", async () => {
+		it("allows content read with the canonical content:read capability", async () => {
 			// Create a content table first
 			await db.schema
 				.createTable("ec_posts")
@@ -407,7 +496,7 @@ describe("Bridge Handler Conformance", () => {
 				.addColumn("title", "text")
 				.execute();
 
-			const handler = makeHandler({ capabilities: ["read:content"] });
+			const handler = makeHandler({ capabilities: ["content:read"] });
 			const result = await call(handler, "content/get", {
 				collection: "posts",
 				id: "123",
@@ -417,7 +506,104 @@ describe("Bridge Handler Conformance", () => {
 			expect(result.result).toBeNull();
 		});
 
-		it("write:content does NOT imply read:content (matches Cloudflare bridge)", async () => {
+		it("returns the typed content shape and honors list filters and ordering", async () => {
+			await db.schema
+				.createTable("ec_posts")
+				.addColumn("id", "text", (col) => col.primaryKey())
+				.addColumn("slug", "text")
+				.addColumn("status", "text", (col) => col.notNull())
+				.addColumn("locale", "text")
+				.addColumn("title", "text")
+				.addColumn("created_at", "text", (col) => col.notNull())
+				.addColumn("updated_at", "text", (col) => col.notNull())
+				.addColumn("published_at", "text")
+				.addColumn("scheduled_at", "text")
+				.addColumn("deleted_at", "text")
+				.execute();
+			await db.schema
+				.createTable("_emdash_collections")
+				.addColumn("id", "text", (col) => col.primaryKey())
+				.addColumn("slug", "text", (col) => col.notNull())
+				.addColumn("has_seo", "integer", (col) => col.notNull())
+				.execute();
+			await db.schema
+				.createTable("_emdash_seo")
+				.addColumn("collection", "text", (col) => col.notNull())
+				.addColumn("content_id", "text", (col) => col.notNull())
+				.addColumn("seo_title", "text")
+				.addColumn("seo_description", "text")
+				.addColumn("seo_image", "text")
+				.addColumn("seo_canonical", "text")
+				.addColumn("seo_no_index", "integer", (col) => col.notNull())
+				.addPrimaryKeyConstraint("pk_seo", ["collection", "content_id"])
+				.execute();
+			await db
+				.insertInto("_emdash_collections" as any)
+				.values({ id: "posts", slug: "posts", has_seo: 1 })
+				.execute();
+			const now = new Date().toISOString();
+			await db
+				.insertInto("ec_posts" as any)
+				.values([
+					{
+						id: "post-a",
+						slug: "a",
+						status: "draft",
+						locale: "en",
+						title: "A",
+						created_at: now,
+						updated_at: now,
+						published_at: null,
+						scheduled_at: null,
+						deleted_at: null,
+					},
+					{
+						id: "post-b",
+						slug: "b",
+						status: "published",
+						locale: "en",
+						title: "B",
+						created_at: now,
+						updated_at: now,
+						published_at: now,
+						scheduled_at: null,
+						deleted_at: null,
+					},
+				])
+				.execute();
+			await db
+				.insertInto("_emdash_seo" as any)
+				.values({
+					collection: "posts",
+					content_id: "post-b",
+					seo_title: "SEO B",
+					seo_description: null,
+					seo_image: null,
+					seo_canonical: null,
+					seo_no_index: 0,
+				})
+				.execute();
+
+			const handler = makeHandler({ capabilities: ["content:read"] });
+			const result = await call(handler, "content/list", {
+				collection: "posts",
+				where: { status: "published" },
+				orderBy: { slug: "asc" },
+			});
+			const list = result.result as { items: Array<Record<string, unknown>> };
+
+			expect(list.items).toHaveLength(1);
+			expect(list.items[0]).toMatchObject({
+				id: "post-b",
+				slug: "b",
+				status: "published",
+				publishedAt: now,
+				scheduledAt: null,
+				seo: { title: "SEO B" },
+			});
+		});
+
+		it("content:write does not imply content:read at the bridge boundary", async () => {
 			// The bridge enforces capabilities strictly: a plugin that declares
 			// only write:content cannot call ctx.content.get/list. This matches
 			// the Cloudflare PluginBridge behavior. The plugin must declare
@@ -434,7 +620,7 @@ describe("Bridge Handler Conformance", () => {
 				collection: "posts",
 				id: "123",
 			});
-			expect(result.error).toContain("Missing capability: read:content");
+			expect(result.error).toContain("Missing capability: content:read");
 		});
 
 		it("rejects taxonomy read without taxonomies:read capability", async () => {
@@ -580,10 +766,10 @@ describe("Bridge Handler Conformance", () => {
 			expect((localized.result as unknown[]).length).toBe(1);
 		});
 
-		it("rejects user read without read:users capability", async () => {
+		it("rejects user read without users:read capability", async () => {
 			const handler = makeHandler({ capabilities: [] });
 			const result = await call(handler, "users/get", { id: "user-1" });
-			expect(result.error).toContain("Missing capability: read:users");
+			expect(result.error).toContain("Missing capability: users:read");
 		});
 
 		it("allows user read with read:users", async () => {
@@ -595,12 +781,12 @@ describe("Bridge Handler Conformance", () => {
 			expect(user.email).toBe("test@example.com");
 		});
 
-		it("rejects network fetch without network:fetch capability", async () => {
+		it("rejects network fetch without network:request capability", async () => {
 			const handler = makeHandler({ capabilities: [] });
 			const result = await call(handler, "http/fetch", {
 				url: "https://example.com",
 			});
-			expect(result.error).toContain("Missing capability: network:fetch");
+			expect(result.error).toContain("Missing capability: network:request");
 		});
 
 		it("blocks private network targets before dispatch", async () => {
@@ -801,6 +987,24 @@ describe("Bridge Handler Conformance", () => {
 	// ── Limit clamping ────────────────────────────────────────────────────
 
 	describe("list endpoints clamp negative limit", () => {
+		it("does not discard invalid content filters or ordering", async () => {
+			await db.schema
+				.createTable("ec_posts")
+				.addColumn("id", "text", (col) => col.primaryKey())
+				.addColumn("deleted_at", "text")
+				.addColumn("title", "text")
+				.execute();
+			const handler = makeHandler({ capabilities: ["content:read"] });
+
+			const result = await call(handler, "content/list", {
+				collection: "posts",
+				orderBy: { title: "sideways" },
+			});
+
+			expect(result.error).toContain(
+				'Parameter orderBy must be an object mapping field to "asc"|"desc"',
+			);
+		});
 		it("content/list clamps negative limit to 1", async () => {
 			await db.schema
 				.createTable("ec_posts")

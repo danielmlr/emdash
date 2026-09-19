@@ -16,15 +16,48 @@
 
 import {
 	ContentRepository,
+	CronAccessImpl,
+	createContentAccess,
+	createRedirectAccess,
+	createSchemaAccess,
 	createHttpAccess,
 	createSandboxRouteErrorEnvelope,
 	createUnrestrictedHttpAccess,
+	normalizeCapabilities,
+	OptionsRepository,
 	PluginStorageRepository,
+	RedirectAccessError,
 	StorageSerializationError,
 	resolveContentCreateLocale,
 } from "emdash";
-import type { Database, I18nConfig, SandboxEmailSendCallback } from "emdash";
+import type {
+	ContentFieldFilters,
+	ContentListOptions,
+	Database,
+	I18nConfig,
+	RedirectCreateInput,
+	RedirectListOptions,
+	RedirectUpdateInput,
+	SandboxEmailSendCallback,
+	SandboxContentCreateCallback,
+	SiteInfo,
+} from "emdash";
 import type { Kysely } from "kysely";
+
+const CONTENT_CREATE_ERROR_CODES = new Set([
+	"CONFLICT",
+	"NOT_FOUND",
+	"SAVE_REJECTED",
+	"VALIDATION_ERROR",
+]);
+
+function contentCreateErrorDetails(error: unknown): { code: string; message: string } | null {
+	if (!(error instanceof Error) || !isRecord(error)) return null;
+	const code = error.code;
+	return typeof code === "string" && CONTENT_CREATE_ERROR_CODES.has(code)
+		? { code, message: error.message }
+		: null;
+}
 
 /**
  * Schema view of a content table (ec_${collection}) for kysely. The standard
@@ -109,11 +142,31 @@ export interface BridgeHandlerOptions {
 	/** Full storage config (with indexes) for proper query/count delegation */
 	storageConfig?: Record<string, BridgeStorageCollectionConfig>;
 	i18nConfig?: I18nConfig | null;
+	siteInfo?: SiteInfo;
 	db: Kysely<Database>;
 	beforeContentWrite?: () => Promise<void>;
+	contentCreate?: SandboxContentCreateCallback;
+	contentCreateProvider?: () => SandboxContentCreateCallback | null;
 	emailSend: () => SandboxEmailSendCallback | null;
+	cronReschedule?: () => void;
+	now?: () => Date;
 	/** Storage for media uploads. Optional; media/upload throws if not provided. */
 	storage?: BridgeStorage | null;
+}
+
+type RedirectBridgeResult<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: { code: string; message: string } };
+
+async function redirectBridgeResult<T>(action: () => Promise<T>): Promise<RedirectBridgeResult<T>> {
+	try {
+		return { ok: true, value: await action() };
+	} catch (error) {
+		if (error instanceof RedirectAccessError) {
+			return { ok: false, error: { code: error.code, message: error.message } };
+		}
+		throw error;
+	}
 }
 
 /**
@@ -123,6 +176,7 @@ export interface BridgeHandlerOptions {
 export function createBridgeHandler(
 	opts: BridgeHandlerOptions,
 ): (request: Request) => Promise<Response> {
+	const normalizedOpts = { ...opts, capabilities: normalizeCapabilities(opts.capabilities) };
 	return async (request: Request): Promise<Response> => {
 		try {
 			const url = new URL(request.url);
@@ -140,7 +194,7 @@ export function createBridgeHandler(
 				}
 			}
 
-			const result = await dispatch(opts, method, body);
+			const result = await dispatch(normalizedOpts, method, body);
 			return Response.json({ result });
 		} catch (error) {
 			const sandboxRouteError = createSandboxRouteErrorEnvelope(error);
@@ -165,6 +219,19 @@ export function createBridgeHandler(
 						},
 					},
 					{ status: 503 },
+				);
+			}
+			const contentCreateError = contentCreateErrorDetails(error);
+			if (contentCreateError) {
+				const status =
+					contentCreateError.code === "NOT_FOUND"
+						? 404
+						: contentCreateError.code === "CONFLICT"
+							? 409
+							: 400;
+				return Response.json(
+					{ error: { name: contentCreateError.code, ...contentCreateError } },
+					{ status },
 				);
 			}
 			const message = error instanceof Error ? error.message : "Internal error";
@@ -192,17 +259,23 @@ async function dispatch(
 		case "kv/set":
 			return kvSet(db, pluginId, requireString(body, "key"), body.value);
 		case "kv/getVersioned":
-			return getStorageRepo(opts, "__kv").getVersioned(requireString(body, "key"));
+			return kvGetVersioned(db, pluginId, requireString(body, "key"), opts);
 		case "kv/compareAndSet":
-			return getStorageRepo(opts, "__kv").compareAndSet(
+			return kvCompareAndSet(
+				db,
+				pluginId,
 				requireString(body, "key"),
 				requireExpectedRevision(body),
 				body.value,
+				opts,
 			);
 		case "kv/compareAndDelete":
-			return getStorageRepo(opts, "__kv").compareAndDelete(
+			return kvCompareAndDelete(
+				db,
+				pluginId,
 				requireString(body, "key"),
 				requireString(body, "expectedRevision"),
+				opts,
 			);
 		case "kv/delete":
 			return kvDelete(db, pluginId, requireString(body, "key"));
@@ -211,19 +284,81 @@ async function dispatch(
 
 		// ── Content ─────────────────────────────────────────────────────
 		case "content/get":
-			requireCapability(opts, "read:content");
-			return contentGet(db, requireString(body, "collection"), requireString(body, "id"));
+			requireCapability(opts, "content:read");
+			return contentGet(db, requireString(body, "collection"), requireString(body, "id"), opts);
 		case "content/list":
-			requireCapability(opts, "read:content");
-			return contentList(db, requireString(body, "collection"), body);
-		case "content/create":
-			requireCapability(opts, "write:content");
-			const createOptions = optionalRecord(body, "options");
-			const locale = resolveContentCreateLocale(
-				createOptions ? optionalString(createOptions, "locale") : undefined,
-				opts.i18nConfig ?? null,
+			requireCapability(opts, "content:read");
+			return contentList(db, requireString(body, "collection"), body, opts);
+		case "content/translations":
+			requireCapability(opts, "content:read");
+			return contentAccess(opts).getTranslations!(
+				requireString(body, "collection"),
+				requireString(body, "id"),
 			);
+		case "content/publicUrl":
+			requireCapability(opts, "content:read");
+			return contentAccess(opts).getPublicUrl!(
+				requireString(body, "collection"),
+				requireString(body, "id"),
+			);
+		case "content/listRevisions":
+			requireCapability(opts, "content:revisions:read");
+			return contentAccess(opts).listRevisions!(
+				requireString(body, "collection"),
+				requireString(body, "id"),
+				optionalRecord(body, "options") ?? undefined,
+			);
+		case "content/getRevision":
+			requireCapability(opts, "content:revisions:read");
+			return contentAccess(opts).getRevision!(
+				requireString(body, "collection"),
+				requireString(body, "id"),
+				requireString(body, "revisionId"),
+			);
+		case "schema/listCollections":
+			requireCapability(opts, "schema:read");
+			return createSchemaAccess(db).listCollections();
+		case "schema/getCollection":
+			requireCapability(opts, "schema:read");
+			return createSchemaAccess(db).getCollection(requireString(body, "slug"));
+		case "content/create":
+			requireCapability(opts, "content:write");
+			const createOptions = optionalRecord(body, "options");
+			let locale: string;
+			try {
+				locale = resolveContentCreateLocale(
+					createOptions ? optionalString(createOptions, "locale") : undefined,
+					opts.i18nConfig ?? null,
+				);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : "Invalid locale";
+				throw Object.assign(new Error(message), {
+					name: "VALIDATION_ERROR",
+					code: "VALIDATION_ERROR",
+				});
+			}
 			await opts.beforeContentWrite?.();
+			const runtimeContentCreate = opts.contentCreateProvider?.() ?? opts.contentCreate;
+			if (runtimeContentCreate) {
+				const originHookValue = optionalString(body, "originHook");
+				const originHook =
+					originHookValue === "content:beforeSave" || originHookValue === "content:afterSave"
+						? originHookValue
+						: undefined;
+				return runtimeContentCreate(
+					pluginId,
+					requireString(body, "collection"),
+					requireRecord(body, "data"),
+					{
+						locale,
+						translationOf: createOptions
+							? optionalString(createOptions, "translationOf")
+							: undefined,
+						originHook,
+						sandboxOrigin: true,
+					},
+				);
+			}
 			return contentCreate(
 				db,
 				requireString(body, "collection"),
@@ -231,7 +366,7 @@ async function dispatch(
 				locale,
 			);
 		case "content/update":
-			requireCapability(opts, "write:content");
+			requireCapability(opts, "content:write");
 			await opts.beforeContentWrite?.();
 			return contentUpdate(
 				db,
@@ -240,11 +375,11 @@ async function dispatch(
 				requireRecord(body, "data"),
 			);
 		case "content/delete":
-			requireCapability(opts, "write:content");
+			requireCapability(opts, "content:write");
 			await opts.beforeContentWrite?.();
 			return contentDelete(db, requireString(body, "collection"), requireString(body, "id"));
 		case "content/createMany":
-			requireCapability(opts, "write:content");
+			requireCapability(opts, "content:write");
 			const createManyLocale = resolveContentCreateLocale(undefined, opts.i18nConfig ?? null);
 			await opts.beforeContentWrite?.();
 			return contentCreateMany(
@@ -254,7 +389,7 @@ async function dispatch(
 				createManyLocale,
 			);
 		case "content/updateMany":
-			requireCapability(opts, "write:content");
+			requireCapability(opts, "content:write");
 			await opts.beforeContentWrite?.();
 			return contentUpdateMany(
 				db,
@@ -262,7 +397,7 @@ async function dispatch(
 				requireUpdateManyItems(body, "items"),
 			);
 		case "content/deleteMany":
-			requireCapability(opts, "write:content");
+			requireCapability(opts, "content:write");
 			await opts.beforeContentWrite?.();
 			return contentDeleteMany(
 				db,
@@ -289,15 +424,45 @@ async function dispatch(
 				optionalString(body, "locale"),
 			);
 
+		// ── Redirects ─────────────────────────────────────────────────────
+		case "redirect/list":
+			requireCapability(opts, "redirects:read");
+			return redirectBridgeResult(() =>
+				createRedirectAccess(db).list(requireRedirectListOptions(body)),
+			);
+		case "redirect/get":
+			requireCapability(opts, "redirects:read");
+			return redirectBridgeResult(() => createRedirectAccess(db).get(requireString(body, "id")));
+		case "redirect/create":
+			requireCapability(opts, "redirects:write");
+			return redirectBridgeResult(() =>
+				createRedirectAccess(db, true).create(requireRedirectCreateInput(body)),
+			);
+		case "redirect/update":
+			requireCapability(opts, "redirects:write");
+			return redirectBridgeResult(() =>
+				createRedirectAccess(db, true).update(
+					requireString(body, "id"),
+					requireRedirectUpdateInput(body),
+				),
+			);
+		case "redirect/delete":
+			requireCapability(opts, "redirects:write");
+			return redirectBridgeResult(() =>
+				createRedirectAccess(db, true).delete(requireString(body, "id"), {
+					_rev: requireString(body, "revision"),
+				}),
+			);
+
 		// ── Media ───────────────────────────────────────────────────────
 		case "media/get":
-			requireCapability(opts, "read:media");
+			requireCapability(opts, "media:read");
 			return mediaGet(db, requireString(body, "id"));
 		case "media/list":
-			requireCapability(opts, "read:media");
+			requireCapability(opts, "media:read");
 			return mediaList(db, body);
 		case "media/upload":
-			requireCapability(opts, "write:media");
+			requireCapability(opts, "media:write");
 			return mediaUpload(
 				db,
 				requireString(body, "filename"),
@@ -307,12 +472,12 @@ async function dispatch(
 				opts.storage,
 			);
 		case "media/delete":
-			requireCapability(opts, "write:media");
+			requireCapability(opts, "media:write");
 			return mediaDelete(db, requireString(body, "id"), opts.storage);
 
 		// ── HTTP ────────────────────────────────────────────────────────
 		case "http/fetch":
-			requireCapability(opts, "network:fetch");
+			requireCapability(opts, "network:request");
 			return httpFetch(requireString(body, "url"), body.init, opts);
 
 		// ── Email ───────────────────────────────────────────────────────
@@ -327,14 +492,32 @@ async function dispatch(
 
 		// ── Users ───────────────────────────────────────────────────────
 		case "users/get":
-			requireCapability(opts, "read:users");
+			requireCapability(opts, "users:read");
 			return userGet(db, requireString(body, "id"));
 		case "users/getByEmail":
-			requireCapability(opts, "read:users");
+			requireCapability(opts, "users:read");
 			return userGetByEmail(db, requireString(body, "email"));
 		case "users/list":
-			requireCapability(opts, "read:users");
+			requireCapability(opts, "users:read");
 			return userList(db, body);
+
+		// ── Cron ────────────────────────────────────────────────────────
+		case "cron/schedule":
+			return new CronAccessImpl(
+				db,
+				pluginId,
+				opts.cronReschedule ?? (() => undefined),
+				opts.now,
+			).schedule(requireString(body, "name"), {
+				schedule: requireString(body, "schedule"),
+				data: optionalRecord(body, "data"),
+			});
+		case "cron/cancel":
+			return new CronAccessImpl(db, pluginId, opts.cronReschedule ?? (() => undefined)).cancel(
+				requireString(body, "name"),
+			);
+		case "cron/list":
+			return new CronAccessImpl(db, pluginId, opts.cronReschedule ?? (() => undefined)).list();
 
 		// ── Storage (document store, scoped to declared collections) ────
 		case "storage/get":
@@ -509,6 +692,81 @@ function requireString(body: Record<string, unknown>, key: string): string {
 	return value;
 }
 
+const REDIRECT_STATUSES = new Set([301, 302, 307, 308, 410, 451]);
+
+function hasOptionalString(value: Record<string, unknown>, key: string): boolean {
+	return value[key] === undefined || typeof value[key] === "string";
+}
+
+function hasOptionalNullableString(value: Record<string, unknown>, key: string): boolean {
+	return value[key] === undefined || value[key] === null || typeof value[key] === "string";
+}
+
+function hasOptionalBoolean(value: Record<string, unknown>, key: string): boolean {
+	return value[key] === undefined || typeof value[key] === "boolean";
+}
+
+function hasOptionalRedirectStatus(value: Record<string, unknown>): boolean {
+	return (
+		value.type === undefined ||
+		(typeof value.type === "number" && REDIRECT_STATUSES.has(value.type))
+	);
+}
+
+function isRedirectCreateInput(value: unknown): value is RedirectCreateInput {
+	return (
+		isRecord(value) &&
+		typeof value.source === "string" &&
+		hasOptionalString(value, "destination") &&
+		hasOptionalRedirectStatus(value) &&
+		hasOptionalBoolean(value, "enabled") &&
+		hasOptionalNullableString(value, "groupName")
+	);
+}
+
+function isRedirectUpdateInput(value: unknown): value is RedirectUpdateInput & { _rev: string } {
+	return (
+		isRecord(value) &&
+		typeof value._rev === "string" &&
+		hasOptionalString(value, "source") &&
+		hasOptionalString(value, "destination") &&
+		hasOptionalRedirectStatus(value) &&
+		hasOptionalBoolean(value, "enabled") &&
+		hasOptionalNullableString(value, "groupName")
+	);
+}
+
+function isRedirectListOptions(value: unknown): value is RedirectListOptions {
+	return (
+		isRecord(value) &&
+		(value.limit === undefined || typeof value.limit === "number") &&
+		hasOptionalString(value, "cursor") &&
+		hasOptionalString(value, "search") &&
+		hasOptionalString(value, "group") &&
+		hasOptionalBoolean(value, "enabled") &&
+		hasOptionalBoolean(value, "auto")
+	);
+}
+
+function requireRedirectListOptions(body: Record<string, unknown>): RedirectListOptions {
+	if (!isRedirectListOptions(body)) throw new Error("Invalid redirect list options");
+	return body;
+}
+
+function requireRedirectCreateInput(body: Record<string, unknown>): RedirectCreateInput {
+	const value = body.input;
+	if (!isRedirectCreateInput(value)) throw new Error("Invalid redirect create input");
+	return value;
+}
+
+function requireRedirectUpdateInput(
+	body: Record<string, unknown>,
+): RedirectUpdateInput & { _rev: string } {
+	const value = body.input;
+	if (!isRedirectUpdateInput(value)) throw new Error("Invalid redirect update input");
+	return value;
+}
+
 function optionalString(body: Record<string, unknown>, key: string): string | undefined {
 	const value = body[key];
 	if (value === undefined) return undefined;
@@ -599,20 +857,12 @@ function requireOrderBy(
 }
 
 function requireCapability(opts: BridgeHandlerOptions, capability: string): void {
-	// Strict capability check matching the Cloudflare PluginBridge.
-	// We do NOT imply write → read here: a plugin that declares only
-	// write:content cannot call ctx.content.get/list. The plugin must
-	// declare read:content explicitly. This matches the Cloudflare bridge
-	// behavior and ensures sandboxed plugins behave the same on both runners.
-	//
-	// Note: the in-process PluginContextFactory in core does build the read
-	// API onto the write object, so a trusted plugin can read with only
-	// write:content. The sandbox bridges are stricter on purpose — they
-	// enforce the manifest as written.
-	//
-	// The one exception: network:fetch:any is documented as a strict
-	// superset of network:fetch, so the broader capability satisfies it.
-	if (capability === "network:fetch" && opts.capabilities.includes("network:fetch:any")) return;
+	if (
+		capability === "network:request" &&
+		opts.capabilities.includes("network:request:unrestricted")
+	) {
+		return;
+	}
 	if (!opts.capabilities.includes(capability)) {
 		// Error message matches Cloudflare PluginBridge format
 		throw new Error(`Missing capability: ${capability}`);
@@ -651,10 +901,19 @@ function rowToContentItem(
 ): {
 	id: string;
 	type: string;
+	slug: string | null;
+	status: string;
 	data: Record<string, unknown>;
 	createdAt: string;
 	updatedAt: string;
 	locale: string;
+	publishedAt: string | null;
+	scheduledAt: string | null;
+	authorId: string | null;
+	translationGroup: string | null;
+	liveRevisionId: string | null;
+	draftRevisionId: string | null;
+	version: number;
 } {
 	const data: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(row)) {
@@ -674,17 +933,40 @@ function rowToContentItem(
 	return {
 		id: typeof row.id === "string" ? row.id : String(row.id),
 		type: collection,
+		slug: typeof row.slug === "string" ? row.slug : null,
+		status: typeof row.status === "string" ? row.status : "draft",
 		data,
 		createdAt: typeof row.created_at === "string" ? row.created_at : new Date().toISOString(),
 		updatedAt: typeof row.updated_at === "string" ? row.updated_at : new Date().toISOString(),
 		locale: typeof row.locale === "string" ? row.locale : "en",
+		publishedAt: typeof row.published_at === "string" ? row.published_at : null,
+		scheduledAt: typeof row.scheduled_at === "string" ? row.scheduled_at : null,
+		authorId: typeof row.author_id === "string" ? row.author_id : null,
+		translationGroup: typeof row.translation_group === "string" ? row.translation_group : null,
+		liveRevisionId: typeof row.live_revision_id === "string" ? row.live_revision_id : null,
+		draftRevisionId: typeof row.draft_revision_id === "string" ? row.draft_revision_id : null,
+		version: typeof row.version === "number" ? row.version : Number(row.version) || 1,
 	};
 }
 
 // ── KV Operations ────────────────────────────────────────────────────────
 // Uses _plugin_storage with collection='__kv' (matching Cloudflare bridge)
 
+const SETTINGS_KEY_PREFIX = "settings:";
+
+function pluginOptionKey(pluginId: string, key: string): string {
+	return `plugin:${pluginId}:${key}`;
+}
+
+function isSettingsKey(key: string): boolean {
+	return key.startsWith(SETTINGS_KEY_PREFIX);
+}
+
 async function kvGet(db: Kysely<Database>, pluginId: string, key: string): Promise<unknown> {
+	if (isSettingsKey(key)) {
+		const value = await new OptionsRepository(db).get(pluginOptionKey(pluginId, key));
+		if (value !== null) return value;
+	}
 	const row = await db
 		.selectFrom("_plugin_storage")
 		.where("plugin_id", "=", pluginId)
@@ -706,10 +988,70 @@ async function kvSet(
 	key: string,
 	value: unknown,
 ): Promise<void> {
+	if (isSettingsKey(key)) {
+		await new OptionsRepository(db).set(pluginOptionKey(pluginId, key), value);
+		await kvDeleteLegacy(db, pluginId, key);
+		return;
+	}
 	await new PluginStorageRepository(db, pluginId, "__kv", []).put(key, value);
 }
 
-async function kvDelete(db: Kysely<Database>, pluginId: string, key: string): Promise<boolean> {
+async function kvGetVersioned(
+	db: Kysely<Database>,
+	pluginId: string,
+	key: string,
+	opts: BridgeHandlerOptions,
+) {
+	if (isSettingsKey(key)) {
+		const value = await new OptionsRepository(db).getVersioned(pluginOptionKey(pluginId, key));
+		if (value !== null) return value;
+	}
+	return getStorageRepo(opts, "__kv").getVersioned(key);
+}
+
+async function kvCompareAndSet(
+	db: Kysely<Database>,
+	pluginId: string,
+	key: string,
+	expectedRevision: string | null,
+	value: unknown,
+	opts: BridgeHandlerOptions,
+) {
+	if (!isSettingsKey(key)) {
+		return getStorageRepo(opts, "__kv").compareAndSet(key, expectedRevision, value);
+	}
+	const result = await new OptionsRepository(db).compareAndSet(
+		pluginOptionKey(pluginId, key),
+		expectedRevision,
+		value,
+	);
+	if (result.applied) await kvDeleteLegacy(db, pluginId, key);
+	return result;
+}
+
+async function kvCompareAndDelete(
+	db: Kysely<Database>,
+	pluginId: string,
+	key: string,
+	expectedRevision: string,
+	opts: BridgeHandlerOptions,
+) {
+	if (!isSettingsKey(key)) {
+		return getStorageRepo(opts, "__kv").compareAndDelete(key, expectedRevision);
+	}
+	const result = await new OptionsRepository(db).compareAndDelete(
+		pluginOptionKey(pluginId, key),
+		expectedRevision,
+	);
+	if (result.applied) await kvDeleteLegacy(db, pluginId, key);
+	return result;
+}
+
+async function kvDeleteLegacy(
+	db: Kysely<Database>,
+	pluginId: string,
+	key: string,
+): Promise<boolean> {
 	const result = await db
 		.deleteFrom("_plugin_storage")
 		.where("plugin_id", "=", pluginId)
@@ -717,6 +1059,17 @@ async function kvDelete(db: Kysely<Database>, pluginId: string, key: string): Pr
 		.where("id", "=", key)
 		.executeTakeFirst();
 	return BigInt(result.numDeletedRows) > 0n;
+}
+
+async function kvDelete(db: Kysely<Database>, pluginId: string, key: string): Promise<boolean> {
+	if (isSettingsKey(key)) {
+		const [optionDeleted, legacyDeleted] = await Promise.all([
+			new OptionsRepository(db).delete(pluginOptionKey(pluginId, key)),
+			kvDeleteLegacy(db, pluginId, key),
+		]);
+		return optionDeleted || legacyDeleted;
+	}
+	return kvDeleteLegacy(db, pluginId, key);
 }
 
 async function kvList(
@@ -732,10 +1085,19 @@ async function kvList(
 		.select(["id", "data"])
 		.execute();
 
-	return rows.map((r) => ({
-		key: r.id,
-		value: JSON.parse(r.data),
-	}));
+	const entries = new Map(rows.map((row) => [row.id, JSON.parse(row.data) as unknown]));
+	const optionPrefix = `plugin:${pluginId}:`;
+	const settingsPrefix = SETTINGS_KEY_PREFIX.startsWith(prefix)
+		? `${optionPrefix}${SETTINGS_KEY_PREFIX}`
+		: prefix.startsWith(SETTINGS_KEY_PREFIX)
+			? `${optionPrefix}${prefix}`
+			: null;
+	if (settingsPrefix) {
+		for (const [name, value] of await new OptionsRepository(db).getByPrefix(settingsPrefix)) {
+			entries.set(name.slice(optionPrefix.length), value);
+		}
+	}
+	return Array.from(entries, ([key, value]) => ({ key, value }));
 }
 
 // ── Content Operations ───────────────────────────────────────────────────
@@ -744,27 +1106,19 @@ async function contentGet(
 	db: Kysely<Database>,
 	collection: string,
 	id: string,
-): Promise<{
-	id: string;
-	type: string;
-	data: Record<string, unknown>;
-	createdAt: string;
-	updatedAt: string;
-	locale: string;
-} | null> {
+	opts: BridgeHandlerOptions,
+): ReturnType<ReturnType<typeof createContentAccess>["get"]> {
 	validateCollectionName(collection);
-	const table = `ec_${collection}`;
 	try {
+		return await contentAccess(opts).get(collection, id);
+	} catch {
 		const row = await asContentDb(db)
-			.selectFrom(table)
+			.selectFrom(`ec_${collection}`)
 			.where("id", "=", id)
 			.where("deleted_at", "is", null)
 			.selectAll()
 			.executeTakeFirst();
-		if (!row) return null;
-		return rowToContentItem(collection, row);
-	} catch {
-		return null;
+		return row ? rowToContentItem(collection, row) : null;
 	}
 }
 
@@ -772,45 +1126,53 @@ async function contentList(
 	db: Kysely<Database>,
 	collection: string,
 	opts: Record<string, unknown>,
-): Promise<{
-	items: Array<{
-		id: string;
-		type: string;
-		data: Record<string, unknown>;
-		createdAt: string;
-		updatedAt: string;
-		locale: string;
-	}>;
-	cursor?: string;
-	hasMore: boolean;
-}> {
+	handlerOptions: BridgeHandlerOptions,
+): ReturnType<ReturnType<typeof createContentAccess>["list"]> {
 	validateCollectionName(collection);
-	const table = `ec_${collection}`;
 	const limit = Math.max(1, Math.min(Number(opts.limit) || 50, 100));
 	try {
+		const where = optionalRecord(opts, "where");
+		const fieldFilters = where?.fieldFilters;
+		if (fieldFilters !== undefined && !isRecord(fieldFilters)) {
+			throw new Error("Parameter where.fieldFilters must be an object when provided");
+		}
+		const options: ContentListOptions = {
+			limit,
+			cursor: optionalString(opts, "cursor"),
+			orderBy: requireOrderBy(opts, "orderBy"),
+			where: where
+				? {
+						status: optionalString(where, "status"),
+						locale: optionalString(where, "locale"),
+						// eslint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- repository validates the open custom-field filter vocabulary
+						fieldFilters: fieldFilters as ContentFieldFilters | undefined,
+					}
+				: undefined,
+		};
+		return await contentAccess(handlerOptions).list(collection, options);
+	} catch (error) {
+		if (opts.where !== undefined || opts.orderBy !== undefined) throw error;
 		let query = asContentDb(db)
-			.selectFrom(table)
+			.selectFrom(`ec_${collection}`)
 			.where("deleted_at", "is", null)
 			.selectAll()
 			.orderBy("id", "desc");
-
-		if (typeof opts.cursor === "string") {
-			query = query.where("id", "<", opts.cursor);
-		}
-
+		if (typeof opts.cursor === "string") query = query.where("id", "<", opts.cursor);
 		const rows = await query.limit(limit + 1).execute();
-		const pageRows = rows.slice(0, limit);
-		const items = pageRows.map((row) => rowToContentItem(collection, row));
-		const hasMore = rows.length > limit;
-
+		const items = rows.slice(0, limit).map((row) => rowToContentItem(collection, row));
 		return {
 			items,
-			cursor: hasMore && items.length > 0 ? items.at(-1)!.id : undefined,
-			hasMore,
+			cursor: rows.length > limit && items.length > 0 ? items.at(-1)!.id : undefined,
+			hasMore: rows.length > limit,
 		};
-	} catch {
-		return { items: [], hasMore: false };
 	}
+}
+
+function contentAccess(opts: BridgeHandlerOptions) {
+	return createContentAccess(opts.db, {
+		site: opts.siteInfo,
+		revisions: opts.capabilities.includes("content:revisions:read"),
+	});
 }
 
 async function contentCreate(
@@ -818,14 +1180,7 @@ async function contentCreate(
 	collection: string,
 	data: Record<string, unknown>,
 	locale?: string,
-): Promise<{
-	id: string;
-	type: string;
-	data: Record<string, unknown>;
-	createdAt: string;
-	updatedAt: string;
-	locale: string;
-}> {
+): Promise<ReturnType<typeof rowToContentItem>> {
 	validateCollectionName(collection);
 	const table = `ec_${collection}`;
 
@@ -866,14 +1221,12 @@ async function contentCreate(
 		.executeTakeFirst();
 
 	if (!created) {
-		return {
+		return rowToContentItem(collection, {
 			id,
-			type: collection,
-			data: {},
-			createdAt: now,
-			updatedAt: now,
+			created_at: now,
+			updated_at: now,
 			locale: locale ?? "en",
-		};
+		});
 	}
 	return rowToContentItem(collection, created);
 }
@@ -883,28 +1236,24 @@ async function contentUpdate(
 	collection: string,
 	id: string,
 	data: Record<string, unknown>,
-): Promise<{
-	id: string;
-	type: string;
-	data: Record<string, unknown>;
-	createdAt: string;
-	updatedAt: string;
-	locale: string;
-}> {
+): Promise<ReturnType<typeof rowToContentItem>> {
 	validateCollectionName(collection);
 	const updated = await new ContentRepository(db).updateDraftAware(collection, id, {
 		data,
 		status: typeof data.status === "string" ? data.status : undefined,
 		slug: data.slug === undefined ? undefined : typeof data.slug === "string" ? data.slug : null,
 	});
-	return {
+	return rowToContentItem(collection, {
+		...updated.data,
 		id: updated.id,
-		type: updated.type,
-		data: updated.data,
-		createdAt: updated.createdAt,
-		updatedAt: updated.updatedAt,
-		locale: updated.locale ?? "en",
-	};
+		slug: updated.slug,
+		status: updated.status,
+		created_at: updated.createdAt,
+		updated_at: updated.updatedAt,
+		published_at: updated.publishedAt,
+		scheduled_at: updated.scheduledAt,
+		locale: updated.locale,
+	});
 }
 
 async function contentDelete(
@@ -1467,7 +1816,7 @@ async function httpFetch(
 	headers: Record<string, string>;
 	bodyBase64: string;
 }> {
-	const hasAnyFetch = opts.capabilities.includes("network:fetch:any");
+	const hasAnyFetch = opts.capabilities.includes("network:request:unrestricted");
 	const httpAccess = hasAnyFetch
 		? createUnrestrictedHttpAccess(opts.pluginId)
 		: createHttpAccess(opts.pluginId, opts.allowedHosts || []);

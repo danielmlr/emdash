@@ -5,6 +5,7 @@ import {
 	createReviewCheck,
 	findReviewCheck,
 	fetchUnifiedDiff,
+	GitHubRateLimitError,
 	postReview,
 	removePullRequestLabel,
 	updateReviewCheck,
@@ -20,6 +21,7 @@ function requestBody(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>): Record<
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 
 describe("GitHub review checks", () => {
@@ -206,6 +208,55 @@ describe("GitHub review checks", () => {
 		).resolves.toBe(456);
 	});
 
+	it("surfaces a reset-aware rate limit while discovering a review check", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-09-19T10:00:00.000Z"));
+		const resetAt = Math.floor((Date.now() + 30_000) / 1_000);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>().mockResolvedValue(
+				new Response("API rate limit exceeded", {
+					status: 403,
+					headers: {
+						"x-ratelimit-reset": String(resetAt),
+					},
+				}),
+			),
+		);
+
+		const error = await findReviewCheck(
+			TOKEN,
+			"emdash-cms",
+			"emdash",
+			"head-sha",
+			"attempt-1",
+		).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(GitHubRateLimitError);
+		expect(error).toMatchObject({ retryDelayMs: 31_000 });
+	});
+
+	it("surfaces Retry-After when review check creation is rate limited", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>().mockResolvedValue(
+				new Response("secondary rate limit", {
+					status: 403,
+					headers: { "retry-after": "12" },
+				}),
+			),
+		);
+
+		const error = await createReviewCheck(TOKEN, "emdash-cms", "emdash", {
+			headSha: "head-sha",
+			attemptId: "attempt-1",
+			prNumber: 42,
+		}).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(GitHubRateLimitError);
+		expect(error).toMatchObject({ retryDelayMs: 12_000 });
+	});
+
 	it("does not retry a review POST after an ambiguous server error", async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()
@@ -222,6 +273,143 @@ describe("GitHub review checks", () => {
 				"head-sha",
 			),
 		).rejects.toThrow("postReview failed: 503 server error");
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("retries a primary rate-limited review after GitHub's reset time", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-09-16T12:00:00.000Z"));
+		const resetAt = Math.floor((Date.now() + 30_000) / 1000);
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(
+				new Response("API rate limit exceeded", {
+					status: 403,
+					headers: {
+						"x-ratelimit-remaining": "0",
+						"x-ratelimit-reset": String(resetAt),
+					},
+				}),
+			)
+			.mockResolvedValueOnce(new Response(null, { status: 200 }));
+		vi.stubGlobal("fetch", fetchMock);
+		const beforeRetry = vi.fn().mockResolvedValue("refreshed-installation-token");
+
+		const review = postReview(
+			TOKEN,
+			"emdash-cms",
+			"emdash",
+			42,
+			{ verdict: "approve", summary: "Looks good", findings: [] },
+			"head-sha",
+			undefined,
+			{ beforeRetry },
+		);
+		await vi.advanceTimersByTimeAsync(30_999);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(review).resolves.toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(beforeRetry).toHaveBeenCalledWith({ retry: 1, maxRetries: 3, delayMs: 31_000 });
+		expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+			authorization: "Bearer refreshed-installation-token",
+		});
+	});
+
+	it("prefers GitHub's Retry-After header", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-09-16T12:00:00.000Z"));
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(
+				new Response("secondary rate limit", {
+					status: 429,
+					headers: {
+						"retry-after": "2",
+						"x-ratelimit-reset": String(Math.floor((Date.now() + 60_000) / 1000)),
+					},
+				}),
+			)
+			.mockResolvedValueOnce(new Response(null, { status: 200 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const review = postReview(
+			TOKEN,
+			"emdash-cms",
+			"emdash",
+			42,
+			{ verdict: "approve", summary: "Looks good", findings: [] },
+			"head-sha",
+		);
+		await vi.advanceTimersByTimeAsync(1_999);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(review).resolves.toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("uses exponential backoff when a rate-limit response has no retry diagnostics", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(new Response("secondary rate limit", { status: 429 }))
+			.mockResolvedValueOnce(new Response("secondary rate limit", { status: 429 }))
+			.mockResolvedValueOnce(new Response(null, { status: 200 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const review = postReview(
+			TOKEN,
+			"emdash-cms",
+			"emdash",
+			42,
+			{ verdict: "approve", summary: "Looks good", findings: [] },
+			"head-sha",
+		);
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(120_000);
+		await expect(review).resolves.toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+	});
+
+	it("stops after three rate-limit retries", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockImplementation(async () => new Response("secondary rate limit", { status: 429 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const reviewError = postReview(
+			TOKEN,
+			"emdash-cms",
+			"emdash",
+			42,
+			{ verdict: "approve", summary: "Looks good", findings: [] },
+			"head-sha",
+		).catch((error: unknown) => error);
+		await vi.advanceTimersByTimeAsync(60_000 + 120_000 + 240_000);
+		await expect(reviewError).resolves.toMatchObject({
+			message: "postReview failed: 429 secondary rate limit",
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(4);
+	});
+
+	it("does not retry an ordinary GitHub permission failure", async () => {
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(new Response("resource not accessible", { status: 403 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		await expect(
+			postReview(
+				TOKEN,
+				"emdash-cms",
+				"emdash",
+				42,
+				{ verdict: "approve", summary: "Looks good", findings: [] },
+				"head-sha",
+			),
+		).rejects.toThrow("postReview failed: 403 resource not accessible");
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 

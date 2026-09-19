@@ -16,7 +16,7 @@ import { imageSize } from "image-size";
 import { packTar } from "modern-tar/fs";
 import { z } from "zod";
 
-import { capabilitiesToDeclaredAccess } from "./types.js";
+import { capabilitiesToDeclaredAccess, declaredAccessToCapabilities } from "./types.js";
 import type {
 	ManifestHookEntry,
 	ManifestMcpTool,
@@ -131,13 +131,17 @@ export function readImageDimensions(buf: Uint8Array): [number, number] | null {
  * publish-relevant fields.
  */
 export function extractManifest(plugin: ResolvedPlugin): PluginManifest {
+	const declaredAccess = capabilitiesToDeclaredAccess(plugin.capabilities, plugin.allowedHosts);
+	const enforcedAccess = declaredAccessToCapabilities(declaredAccess);
 	const hooks: Array<ManifestHookEntry | string> = [];
 	for (const [name, resolved] of Object.entries(plugin.hooks)) {
 		if (!resolved) continue;
 		const hasMetadata =
 			resolved.exclusive ||
 			(resolved.priority !== undefined && resolved.priority !== 100) ||
-			(resolved.timeout !== undefined && resolved.timeout !== 5000);
+			(resolved.timeout !== undefined && resolved.timeout !== 5000) ||
+			(resolved.dependencies !== undefined && resolved.dependencies.length > 0) ||
+			resolved.errorPolicy === "continue";
 		if (hasMetadata) {
 			const entry: ManifestHookEntry = { name };
 			if (resolved.exclusive) entry.exclusive = true;
@@ -147,6 +151,10 @@ export function extractManifest(plugin: ResolvedPlugin): PluginManifest {
 			if (resolved.timeout !== undefined && resolved.timeout !== 5000) {
 				entry.timeout = resolved.timeout;
 			}
+			if (resolved.dependencies !== undefined && resolved.dependencies.length > 0) {
+				entry.dependencies = resolved.dependencies;
+			}
+			if (resolved.errorPolicy === "continue") entry.errorPolicy = "continue";
 			hooks.push(entry);
 		} else {
 			hooks.push(name);
@@ -155,8 +163,15 @@ export function extractManifest(plugin: ResolvedPlugin): PluginManifest {
 
 	const routes: Array<ManifestRouteEntry | string> = Object.entries(plugin.routes).map(
 		([name, route]) =>
-			route.public !== undefined || route.permission !== undefined
-				? { name, public: route.public, permission: route.permission }
+			route.public !== undefined ||
+			route.permission !== undefined ||
+			route.cacheControl !== undefined
+				? {
+						name,
+						public: route.public,
+						permission: route.permission,
+						cacheControl: route.cacheControl,
+					}
 				: name,
 	);
 	const tools: ManifestMcpTool[] = Object.entries(plugin.mcp?.tools ?? {}).map(([name, tool]) => {
@@ -185,8 +200,8 @@ export function extractManifest(plugin: ResolvedPlugin): PluginManifest {
 	return {
 		id: plugin.id,
 		version: plugin.version,
-		declaredAccess: capabilitiesToDeclaredAccess(plugin.capabilities, plugin.allowedHosts),
-		capabilities: plugin.capabilities,
+		declaredAccess,
+		capabilities: enforcedAccess.capabilities,
 		allowedHosts: plugin.allowedHosts,
 		storage: plugin.storage,
 		hooks,
@@ -197,6 +212,7 @@ export function extractManifest(plugin: ResolvedPlugin): PluginManifest {
 			settingsSchema: plugin.admin.settingsSchema,
 			pages: plugin.admin.pages,
 			widgets: plugin.admin.widgets,
+			fieldWidgets: plugin.admin.fieldWidgets,
 		},
 	};
 }

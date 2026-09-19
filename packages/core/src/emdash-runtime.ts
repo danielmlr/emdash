@@ -15,6 +15,10 @@ import { z } from "zod";
 
 import { ErrorCode } from "./api/errors.js";
 import { buildManifestCollections } from "./api/handlers/manifest.js";
+import {
+	handleMediaUpload as uploadMedia,
+	type MediaUploadInput,
+} from "./api/handlers/media-upload.js";
 import { assertMediaUsageActivationWriteAllowed } from "./api/media-usage-write-fence.js";
 import { validateRev } from "./api/rev.js";
 import type {
@@ -46,7 +50,7 @@ import type {
 	ContentDateField,
 } from "./database/repositories/types.js";
 import type { ImageValue } from "./fields/types.js";
-import { getI18nConfig } from "./i18n/config.js";
+import { getI18nConfig, resolveContentCreateLocale } from "./i18n/config.js";
 import { repairLocaleCasing } from "./i18n/repair-locale-casing.js";
 import { warnAboutUnconfiguredTaxonomyLocales } from "./i18n/taxonomy-locale-diagnostic.js";
 import { normalizeMediaValue } from "./media/normalize.js";
@@ -59,7 +63,10 @@ import {
 	refreshContentMediaUsageAfterWrite,
 } from "./media/usage/content-refresh.js";
 import { processMediaUsageWorkAfterWrite } from "./media/usage/work-processor.js";
-import { inspectSandboxHookResult } from "./plugins/sandbox/hook-result.js";
+import {
+	createSandboxedPluginProxy,
+	getSandboxSaveRejectionDetails,
+} from "./plugins/sandbox/proxy.js";
 import { createSandboxRunnerOptions } from "./plugins/sandbox/runner-options.js";
 import { getSandboxRouteErrorDetails } from "./plugins/sandbox/types.js";
 import type {
@@ -69,7 +76,6 @@ import type {
 } from "./plugins/sandbox/types.js";
 import type {
 	ActorInfo,
-	ContentHookEvent,
 	ResolvedPlugin,
 	MediaItem,
 	PluginManifest,
@@ -83,6 +89,10 @@ import type {
 	FieldWidgetConfig,
 	SettingField,
 	UserInfo,
+	CollectionCommentSettings,
+	ModerationDecision,
+	ContentWriteInput,
+	PluginContentCreateCallback,
 } from "./plugins/types.js";
 import { recordSchedulerHeartbeatSafely } from "./scheduler-health.js";
 import { primeRegisteredCollections } from "./schema/collection-slugs-cache.js";
@@ -114,48 +124,18 @@ function parseStringArray(raw: string | null | undefined): string[] {
 	return parsed.filter((v): v is string => typeof v === "string");
 }
 
+function isModerationDecision(value: unknown): value is ModerationDecision {
+	if (typeof value !== "object" || value === null || !("status" in value)) return false;
+	if (value.status !== "pending" && value.status !== "approved" && value.status !== "spam") {
+		return false;
+	}
+	return !("reason" in value) || value.reason === undefined || typeof value.reason === "string";
+}
+
 /** Combined result from a single-pass page contribution collection */
 interface PageContributions {
 	metadata: PageMetadataContribution[];
 	fragments: PageFragmentContribution[];
-}
-
-const VALID_METADATA_KINDS = new Set(["meta", "property", "link", "jsonld"]);
-
-/** Security-critical allowlist for link rel values from sandboxed plugins */
-const VALID_LINK_REL = new Set([
-	"canonical",
-	"alternate",
-	"author",
-	"license",
-	"nlweb",
-	"site.standard.document",
-]);
-
-/**
- * Runtime validation for sandboxed plugin metadata contributions.
- * Sandboxed plugins return `unknown` across the RPC boundary — we must
- * verify the shape before passing to the metadata collector.
- */
-function isValidMetadataContribution(c: unknown): c is PageMetadataContribution {
-	if (!c || typeof c !== "object" || !("kind" in c)) return false;
-	const obj = c as Record<string, unknown>;
-	if (typeof obj.kind !== "string" || !VALID_METADATA_KINDS.has(obj.kind)) return false;
-
-	switch (obj.kind) {
-		case "meta":
-			return typeof obj.name === "string" && typeof obj.content === "string";
-		case "property":
-			return typeof obj.property === "string" && typeof obj.content === "string";
-		case "link":
-			return (
-				typeof obj.href === "string" && typeof obj.rel === "string" && VALID_LINK_REL.has(obj.rel)
-			);
-		case "jsonld":
-			return obj.graph != null && typeof obj.graph === "object";
-		default:
-			return false;
-	}
 }
 
 import { after } from "./after.js";
@@ -166,7 +146,16 @@ import {
 	DEFAULT_COMMENT_MODERATOR_PLUGIN_ID,
 	defaultCommentModerate,
 } from "./comments/moderator.js";
+import { submitPublicComment } from "./comments/public-submission.js";
+import {
+	createComment,
+	moderateComment,
+	type CommentCreateInput,
+	type CommentCreateResult,
+	type CommentHookRunner,
+} from "./comments/service.js";
 import { validateEncryptionKeyAtStartup } from "./config/secrets.js";
+import type { Comment, CommentStatus } from "./database/repositories/comment.js";
 import { OptionsRepository } from "./database/repositories/options.js";
 import {
 	handleContentList,
@@ -210,10 +199,12 @@ import { DEV_CONSOLE_EMAIL_PLUGIN_ID, devConsoleEmailDeliver } from "./plugins/e
 import { EmailPipeline } from "./plugins/email.js";
 import {
 	createHookPipeline,
+	getActiveContentSaveHookName,
 	resolveExclusiveHooks as resolveExclusiveHooksShared,
 	type HookPipeline,
 } from "./plugins/hooks.js";
-import { normalizeManifestRoute } from "./plugins/manifest-schema.js";
+import { disableRuntimePlugin, enableRuntimePlugin } from "./plugins/lifecycle.js";
+import { HOOK_NAMES, normalizeManifestRoute } from "./plugins/manifest-schema.js";
 import { extractRequestMeta, sanitizeHeadersForSandbox } from "./plugins/request-meta.js";
 import {
 	buildRouteMeta,
@@ -227,7 +218,11 @@ import { isContentSaveRejection } from "./plugins/save-rejection.js";
 import type { CronScheduler } from "./plugins/scheduler/types.js";
 import { PluginStateRepository } from "./plugins/state.js";
 import { syncDeclaredStorageIndexes } from "./plugins/storage-indexes.js";
-import { resolveManifestRegistryConfig } from "./registry/config.js";
+import {
+	getRegistryConfigInput,
+	resolveManifestRegistryConfig,
+	resolveRegistryConfigForSandbox,
+} from "./registry/config.js";
 import { requestCached } from "./request-cache.js";
 import { getRequestContext } from "./request-context.js";
 import { publishDueContent, type PublishedRef } from "./scheduled-publish.js";
@@ -352,6 +347,15 @@ export interface RuntimeDependencies {
 	sandboxedPluginEntries: SandboxedPluginEntry[];
 	/** Factory function supplied by the active platform adapter. */
 	createSandboxRunner: SandboxRunnerFactory | null;
+	/** Clock used by cron scheduling, task execution, and scheduled publishing. */
+	now?: () => Date;
+	/** Site values supplied by hosts that do not load Astro's virtual config. */
+	siteInfo?: {
+		name?: string;
+		url?: string;
+		locale?: string;
+		trailingSlash?: "always" | "never" | "ignore";
+	};
 }
 
 /**
@@ -387,6 +391,8 @@ export interface EmDashRuntimeParts {
 		db: Kysely<Database>;
 		getDb?: () => Kysely<Database>;
 		beforeContentWrite?: () => Promise<void>;
+		contentCreate?: PluginContentCreateCallback;
+		now?: () => Date;
 		storage?: Storage;
 		siteInfo?: {
 			siteName?: string;
@@ -406,6 +412,17 @@ export interface EmDashRuntimeParts {
  */
 function beforeSaveFailure(error: unknown) {
 	if (isContentSaveRejection(error)) {
+		const sandbox = getSandboxSaveRejectionDetails(error);
+		if (sandbox) {
+			return {
+				success: false as const,
+				error: {
+					code: ErrorCode.SAVE_REJECTED,
+					message: error.message,
+					details: sandbox,
+				},
+			};
+		}
 		return {
 			success: false as const,
 			error: { code: ErrorCode.SAVE_REJECTED, message: error.message },
@@ -509,6 +526,7 @@ function getSeedHolder(): SeedHolder {
 }
 const storageCache = new Map<string, Storage>();
 const sandboxedPluginCache = new Map<string, SandboxedPluginInstance>();
+const sandboxedManifestCache = new Map<string, PluginManifest>();
 /**
  * Per-tier sets of `${pluginId}:${version}` keys present in
  * `sandboxedPluginCache`. Used during sync to know which entries belong
@@ -602,6 +620,8 @@ export class EmDashRuntime {
 		db: Kysely<Database>;
 		getDb?: () => Kysely<Database>;
 		beforeContentWrite?: () => Promise<void>;
+		contentCreate?: PluginContentCreateCallback;
+		now?: () => Date;
 		storage?: Storage;
 		siteInfo?: {
 			siteName?: string;
@@ -681,9 +701,11 @@ export class EmDashRuntime {
 		onPublished?: (refs: PublishedRef[]) => Promise<void>,
 	): Promise<PublishedRef[]> {
 		await assertMediaUsageActivationWriteAllowed(this.db);
+		const currentTime = this.runtimeDeps.now?.() ?? new Date();
 		return publishDueContent(this.db, {
 			publish: (collection, id, options) => this.handleContentPublish(collection, id, options),
 			onPublished,
+			currentTime,
 		});
 	}
 
@@ -706,9 +728,19 @@ export class EmDashRuntime {
 			onPublished?: (refs: PublishedRef[]) => Promise<void>;
 		} = {},
 	): Promise<{ published: PublishedRef[] }> {
+		const { published } = await this.runScheduledTasksWithStats(options);
+		return { published };
+	}
+
+	async runScheduledTasksWithStats(
+		options: {
+			onPublished?: (refs: PublishedRef[]) => Promise<void>;
+		} = {},
+	): Promise<{ processed: number; published: PublishedRef[] }> {
+		let processed = 0;
 		if (this.cronExecutor) {
 			try {
-				await this.cronExecutor.tick();
+				processed = await this.cronExecutor.tick();
 			} catch (error) {
 				console.error("[cron] Tick failed:", error);
 			}
@@ -742,7 +774,7 @@ export class EmDashRuntime {
 		await maybeRunScheduledBackup(this.db, this.storage ?? undefined);
 		await recordSchedulerHeartbeatSafely(this.db);
 
-		return { published };
+		return { processed, published };
 	}
 
 	/**
@@ -773,6 +805,19 @@ export class EmDashRuntime {
 		}
 	}
 
+	/** Stop background work and discard loaded sandbox isolates. */
+	async shutdown(): Promise<void> {
+		await this.stopCron();
+		await sandboxRunner?.terminateAll();
+		sandboxRunner = null;
+		sandboxedPluginCache.clear();
+		sandboxedManifestCache.clear();
+		sandboxedRouteMetaCache.clear();
+		marketplaceManifestCache.clear();
+		marketplacePluginKeys.clear();
+		registryPluginKeys.clear();
+	}
+
 	/**
 	 * Update in-memory plugin status and rebuild the hook pipeline.
 	 *
@@ -792,6 +837,43 @@ export class EmDashRuntime {
 			this.enabledPlugins.delete(pluginId);
 			await this.rebuildHookPipeline();
 		}
+	}
+
+	async handlePluginEnable(pluginId: string) {
+		return enableRuntimePlugin(this, pluginId);
+	}
+
+	async handlePluginDisable(pluginId: string) {
+		return disableRuntimePlugin(this, pluginId);
+	}
+
+	/** Dispatch teardown lifecycle while the runtime-installed isolate is still loaded. */
+	async runPluginUninstallLifecycle(pluginId: string, deleteData: boolean): Promise<void> {
+		const active = this.isPluginEnabled(pluginId);
+		if (active) {
+			try {
+				await this._hooks.runPluginDeactivate(pluginId);
+			} catch (error) {
+				console.error(`EmDash: Plugin ${pluginId} deactivate hook failed during uninstall:`, error);
+			}
+		}
+
+		try {
+			const results = await this._hooks.runPluginUninstall(pluginId, deleteData);
+			if (results.length > 0) return;
+			await this.findSandboxedPlugin(pluginId)?.invokeHook("plugin:uninstall", { deleteData });
+		} catch (error) {
+			console.error(`EmDash: Plugin ${pluginId} uninstall hook failed:`, error);
+		}
+	}
+
+	async runPluginInstallLifecycle(pluginId: string): Promise<void> {
+		await this._hooks.runPluginInstall(pluginId);
+		await this._hooks.runPluginActivate(pluginId);
+	}
+
+	async runPluginActivateLifecycle(pluginId: string): Promise<void> {
+		await this._hooks.runPluginActivate(pluginId);
 	}
 
 	/**
@@ -866,7 +948,7 @@ export class EmDashRuntime {
 	 * update, and uninstall handlers complete.
 	 */
 	async syncRegistryPlugins(): Promise<void> {
-		if (!this.config.experimental?.registry) return;
+		if (!getRegistryConfigInput(this.config.registry, this.config.experimental?.registry)) return;
 		await this.syncSandboxedSourcePlugins("registry");
 	}
 
@@ -884,6 +966,7 @@ export class EmDashRuntime {
 		if (!sandboxRunner || !sandboxRunner.isAvailable()) return;
 
 		const keySet = source === "marketplace" ? marketplacePluginKeys : registryPluginKeys;
+		let pipelineChanged = false;
 
 		try {
 			const stateRepo = new PluginStateRepository(this.db);
@@ -937,8 +1020,11 @@ export class EmDashRuntime {
 				}
 
 				sandboxedPluginCache.delete(key);
+				sandboxedManifestCache.delete(key);
 				this.sandboxedPlugins.delete(key);
+				this.removePluginFromLists(pluginId);
 				keySet.delete(key);
+				pipelineChanged = true;
 				if (pluginId) {
 					sandboxedRouteMetaCache.delete(pluginId);
 					marketplaceManifestCache.delete(pluginId);
@@ -961,8 +1047,11 @@ export class EmDashRuntime {
 
 				const loaded = await sandboxRunner.load(bundle.manifest, bundle.backendCode);
 				sandboxedPluginCache.set(key, loaded);
+				sandboxedManifestCache.set(key, bundle.manifest);
 				this.sandboxedPlugins.set(key, loaded);
+				this.allPipelinePlugins.push(createSandboxedPluginProxy(bundle.manifest, loaded));
 				keySet.add(key);
+				pipelineChanged = true;
 
 				// Cache manifest admin config for getManifest()
 				marketplaceManifestCache.set(pluginId, {
@@ -984,6 +1073,10 @@ export class EmDashRuntime {
 				} else {
 					sandboxedRouteMetaCache.delete(pluginId);
 				}
+			}
+
+			if (pipelineChanged) {
+				await this.rebuildHookPipeline();
 			}
 		} catch (error) {
 			console.error(`EmDash: Failed to sync ${source} plugins:`, error);
@@ -1285,13 +1378,13 @@ export class EmDashRuntime {
 			]);
 			storedLocaleCasingRepairVersion = siteOpts.get(LOCALE_CASING_REPAIR_OPTION);
 			return {
-				siteName: siteOpts.get("emdash:site_title") ?? undefined,
-				siteUrl: siteOpts.get("emdash:site_url") ?? undefined,
-				locale: siteOpts.get("emdash:locale") ?? undefined,
+				siteName: deps.siteInfo?.name ?? siteOpts.get("emdash:site_title") ?? undefined,
+				siteUrl: deps.siteInfo?.url ?? siteOpts.get("emdash:site_url") ?? undefined,
+				locale: deps.siteInfo?.locale ?? siteOpts.get("emdash:locale") ?? undefined,
 				// trailingSlash is a build-time Astro routing decision, not a
 				// user-editable setting, so it comes from the Astro config
 				// (virtual:emdash/config), not the options table.
-				trailingSlash: virtualConfig?.trailingSlash,
+				trailingSlash: deps.siteInfo?.trailingSlash ?? virtualConfig?.trailingSlash,
 			};
 		};
 
@@ -1535,26 +1628,8 @@ export class EmDashRuntime {
 			}
 		}
 
-		// Filter to currently enabled plugins for the initial pipeline
-		const enabledPluginList = allPipelinePlugins.filter((p) => enabledPlugins.has(p.id));
-
-		// Create hook pipeline. getDb travels here (not just via the email
-		// setContextFactory call below) so it survives rebuildHookPipeline(),
-		// which reconstructs the factory from pipelineFactoryOptions. Without it,
-		// toggling a plugin on an email-less deployment would silently revert
-		// plugin contexts to the singleton db — re-breaking connection-backed
-		// adapters. See #1622.
-		const pipelineFactoryOptions = {
-			db,
-			getDb: resolveDb,
-			beforeContentWrite: () => assertMediaUsageActivationWriteAllowed(resolveDb()),
-			storage: storage ?? undefined,
-			siteInfo,
-		};
-		const pipeline = createHookPipeline(enabledPluginList, pipelineFactoryOptions);
-
 		// Load sandboxed plugins (build-time, sandbox runner path)
-		const sandboxedPlugins = await phase("rt.sandbox", "Sandboxed plugins", () =>
+		const sandboxedPluginPool = await phase("rt.sandbox", "Sandboxed plugins", () =>
 			EmDashRuntime.loadSandboxedPlugins(deps, db, storage, siteInfo),
 		);
 
@@ -1572,7 +1647,7 @@ export class EmDashRuntime {
 						db,
 						storage,
 						deps,
-						sandboxedPlugins,
+						sandboxedPluginPool,
 						siteInfo,
 					),
 				),
@@ -1580,7 +1655,10 @@ export class EmDashRuntime {
 		}
 
 		// Cold-start: load registry-installed plugins from site R2
-		if (deps.config.experimental?.registry && storage) {
+		if (
+			getRegistryConfigInput(deps.config.registry, deps.config.experimental?.registry) &&
+			storage
+		) {
 			installedTierPhases.push(
 				phase("rt.registry", "Registry plugins", () =>
 					EmDashRuntime.loadInstalledSandboxedPlugins(
@@ -1588,7 +1666,7 @@ export class EmDashRuntime {
 						db,
 						storage,
 						deps,
-						sandboxedPlugins,
+						sandboxedPluginPool,
 						siteInfo,
 					),
 				),
@@ -1597,6 +1675,42 @@ export class EmDashRuntime {
 		if (installedTierPhases.length > 0) {
 			await Promise.all(installedTierPhases);
 		}
+
+		const configuredSandboxIds = new Set(deps.sandboxedPluginEntries.map((entry) => entry.id));
+		const sandboxedPlugins = new Map(
+			[...sandboxedPluginPool].filter(([pluginKey]) => {
+				const pluginId = pluginKey.slice(0, pluginKey.lastIndexOf(":"));
+				return configuredSandboxIds.has(pluginId) || pluginStates.get(pluginId) === "active";
+			}),
+		);
+
+		// Add isolate-backed proxies to the same host pipeline as trusted
+		// plugins. The proxy carries only manifest metadata and RPC handlers;
+		// plugin code remains inside the configured runner.
+		for (const [pluginKey, instance] of sandboxedPlugins) {
+			const manifest = sandboxedManifestCache.get(pluginKey);
+			if (!manifest) continue;
+			allPipelinePlugins.push(createSandboxedPluginProxy(manifest, instance));
+			const status = pluginStates.get(manifest.id);
+			if (status === undefined || status === "active") enabledPlugins.add(manifest.id);
+		}
+
+		// Create hook pipeline. getDb travels here (not just via the email
+		// setContextFactory call below) so it survives rebuildHookPipeline(),
+		// which reconstructs the factory from pipelineFactoryOptions. Without it,
+		// toggling a plugin on an email-less deployment would silently revert
+		// plugin contexts to the singleton db — re-breaking connection-backed
+		// adapters. See #1622.
+		const pipelineFactoryOptions = {
+			db,
+			getDb: resolveDb,
+			beforeContentWrite: () => assertMediaUsageActivationWriteAllowed(resolveDb()),
+			now: deps.now,
+			storage: storage ?? undefined,
+			siteInfo,
+		};
+		const enabledPluginList = allPipelinePlugins.filter((p) => enabledPlugins.has(p.id));
+		const pipeline = createHookPipeline(enabledPluginList, pipelineFactoryOptions);
 
 		// Initialize media providers
 		const mediaProviders = new Map<string, MediaProvider>();
@@ -1657,7 +1771,7 @@ export class EmDashRuntime {
 
 		await phase("rt.cron", "Cron init (recovery deferred post-response)", async () => {
 			try {
-				cronExecutor = new CronExecutor(resolveDb, invokeCronHook);
+				cronExecutor = new CronExecutor(resolveDb, invokeCronHook, deps.now);
 				// Plugin schedules are always database-backed. On long-lived runtimes this
 				// callback also wakes the timer; on Cloudflare the external Cron Trigger
 				// drives execution, so rescheduling is intentionally a no-op.
@@ -1736,6 +1850,7 @@ export class EmDashRuntime {
 				// Non-fatal — CMS works without cron
 			}
 		});
+		sandboxRunner?.setCronReschedule?.(() => cronScheduler?.reschedule());
 
 		const runtime = new EmDashRuntime({
 			db,
@@ -1760,6 +1875,39 @@ export class EmDashRuntime {
 			runtimeDeps: deps,
 			pipelineRef,
 		});
+		const contentCreate: PluginContentCreateCallback = async (
+			_pluginId,
+			collection,
+			input,
+			options,
+		) => {
+			const { seo, ...data } = input;
+			const result = await runtime.handleContentCreate(
+				collection,
+				{
+					data,
+					seo,
+					locale: resolveContentCreateLocale(options?.locale),
+					translationOf: options?.translationOf,
+				},
+				{
+					skipSaveHooks: options?.sandboxOrigin
+						? options.originHook !== undefined
+						: getActiveContentSaveHookName() != null,
+					excludeAfterSavePluginId: _pluginId,
+				},
+			);
+			if (!result.success) {
+				throw Object.assign(new Error(result.error.message), {
+					name: result.error.code,
+					code: result.error.code,
+				});
+			}
+			return result.data.item;
+		};
+		runtime.pipelineFactoryOptions.contentCreate = contentCreate;
+		pipeline.setContextFactory({ contentCreate });
+		sandboxRunner?.setContentCreate?.(contentCreate);
 		// Hand the constructed instance to the scheduler-cleanup closure so the
 		// timer-driven sweep can fire publish hooks (see runtimeRef above).
 		runtimeRef.current = runtime;
@@ -2016,11 +2164,6 @@ export class EmDashRuntime {
 			trailingSlash?: "always" | "never" | "ignore";
 		},
 	): Promise<Map<string, SandboxedPluginInstance>> {
-		// Return cached plugins if already loaded
-		if (sandboxedPluginCache.size > 0) {
-			return sandboxedPluginCache;
-		}
-
 		// Check if sandboxing is enabled
 		if (!deps.sandboxEnabled) {
 			return sandboxedPluginCache;
@@ -2033,6 +2176,7 @@ export class EmDashRuntime {
 					{
 						db,
 						beforeContentWrite: () => assertMediaUsageActivationWriteAllowed(db),
+						now: deps.now,
 						mediaStorage: mediaStorage
 							? {
 									upload: (opts) =>
@@ -2089,6 +2233,21 @@ export class EmDashRuntime {
 			}
 
 			try {
+				const adminPages = entry.adminPages?.map((page) => ({
+					path: page.path,
+					label: page.label ?? page.path,
+					icon: page.icon,
+				}));
+				const adminWidgets: PluginDashboardWidget[] | undefined = entry.adminWidgets?.map(
+					(widget) => ({
+						id: widget.id,
+						title: widget.title,
+						size:
+							widget.size === "full" || widget.size === "half" || widget.size === "third"
+								? widget.size
+								: undefined,
+					}),
+				);
 				// Build manifest from entry's declared config
 				const manifest: PluginManifest = {
 					id: entry.id,
@@ -2096,14 +2255,23 @@ export class EmDashRuntime {
 					capabilities: entry.capabilities ?? [],
 					allowedHosts: entry.allowedHosts ?? [],
 					storage: entry.storage ?? {},
-					hooks: entry.hooks ?? [],
+					// Descriptors built before hook metadata was emitted must keep
+					// working. Invoking an absent hook is a no-op in both runners.
+					hooks: entry.hooks ?? [...HOOK_NAMES],
 					routes: entry.routes ?? [],
-					admin: {},
+					admin: {
+						pages: adminPages,
+						widgets: adminWidgets,
+						settingsSchema: entry.settingsSchema,
+						portableTextBlocks: entry.portableTextBlocks,
+						fieldWidgets: entry.fieldWidgets,
+					},
 					mcp: entry.mcp,
 				};
 
 				const plugin = await sandboxRunner.load(manifest, entry.code);
 				sandboxedPluginCache.set(pluginKey, plugin);
+				sandboxedManifestCache.set(pluginKey, manifest);
 				console.log(
 					`EmDash: Loaded sandboxed plugin ${pluginKey} with capabilities: [${manifest.capabilities.join(", ")}]`,
 				);
@@ -2161,6 +2329,7 @@ export class EmDashRuntime {
 					{
 						db,
 						beforeContentWrite: () => assertMediaUsageActivationWriteAllowed(db),
+						now: deps.now,
 						mediaStorage: {
 							upload: (opts) =>
 								storage.upload({
@@ -2213,6 +2382,7 @@ export class EmDashRuntime {
 
 					const loaded = await sandboxRunner.load(bundle.manifest, bundle.backendCode);
 					cache.set(pluginKey, loaded);
+					sandboxedManifestCache.set(pluginKey, bundle.manifest);
 					keySet.add(pluginKey);
 
 					// Cache manifest admin config for getManifest()
@@ -2606,8 +2776,13 @@ export class EmDashRuntime {
 					}
 				: undefined;
 
+		const registryConfig = resolveRegistryConfigForSandbox({
+			registry: this.config.registry,
+			experimentalRegistry: this.config.experimental?.registry,
+		});
 		const { registry, error: registryConfigurationError } = resolveManifestRegistryConfig(
-			this.config.experimental?.registry,
+			registryConfig.input,
+			{ fieldPrefix: registryConfig.fieldPrefix },
 		);
 		if (registryConfigurationError) {
 			console.error(
@@ -2796,6 +2971,7 @@ export class EmDashRuntime {
 		collection: string,
 		body: {
 			data: Record<string, unknown>;
+			seo?: ContentWriteInput["seo"];
 			slug?: string | null;
 			status?: string;
 			authorId?: string;
@@ -2805,12 +2981,61 @@ export class EmDashRuntime {
 			taxonomies?: Record<string, string[]>;
 			actor?: ActorInfo;
 		},
+		options: { skipSaveHooks?: boolean; excludeAfterSavePluginId?: string } = {},
 	) {
 		const actor = body.actor ? { ...body.actor } : undefined;
+		let locale: string;
+		try {
+			locale = resolveContentCreateLocale(body.locale);
+		} catch (error) {
+			return {
+				success: false as const,
+				error: {
+					code: "VALIDATION_ERROR",
+					message: error instanceof Error ? error.message : "Invalid locale",
+				},
+			};
+		}
+
+		let translationSource: ContentItemInternal | null = null;
+		let sharedFieldSlugs: string[] = [];
+		if (body.translationOf) {
+			const repo = new ContentRepository(this.db);
+			const source = await repo.findById(collection, body.translationOf);
+			if (!source) {
+				return {
+					success: false as const,
+					error: { code: "NOT_FOUND", message: "Translation source content not found" },
+				};
+			}
+			translationSource = source;
+			sharedFieldSlugs = (
+				await this.db
+					.selectFrom("_emdash_fields as field")
+					.innerJoin("_emdash_collections as collection", "collection.id", "field.collection_id")
+					.select("field.slug")
+					.where("collection.slug", "=", collection)
+					.where("field.translatable", "=", 0)
+					.execute()
+			).map((field) => field.slug);
+			const siblings = await repo.findTranslations(
+				collection,
+				source.translationGroup ?? source.id,
+			);
+			if (siblings.some((sibling) => sibling.locale?.toLowerCase() === locale.toLowerCase())) {
+				return {
+					success: false as const,
+					error: {
+						code: "CONFLICT",
+						message: `Translation already exists in locale "${locale}" for this content item`,
+					},
+				};
+			}
+		}
 
 		// Run beforeSave hooks (trusted plugins)
 		let processedData = body.data;
-		if (this.hooks.hasHooks("content:beforeSave")) {
+		if (!options.skipSaveHooks && this.hooks.hasHooks("content:beforeSave")) {
 			try {
 				const hookResult = await this.hooks.runContentBeforeSave(
 					body.data,
@@ -2825,16 +3050,16 @@ export class EmDashRuntime {
 			}
 		}
 
-		// Run beforeSave hooks (sandboxed plugins)
-		const sandboxResult = await this.runSandboxedBeforeSave(
-			processedData,
-			collection,
-			true,
-			undefined,
-			actor,
-		);
-		if (!sandboxResult.success) return sandboxResult;
-		processedData = sandboxResult.data;
+		if (translationSource) {
+			processedData = { ...processedData };
+			for (const slug of sharedFieldSlugs) {
+				if (Object.hasOwn(translationSource.data, slug)) {
+					processedData[slug] = translationSource.data[slug];
+				} else {
+					delete processedData[slug];
+				}
+			}
+		}
 
 		// Normalize media fields (fill dimensions, storageKey, etc.)
 		processedData = await this.normalizeMediaFields(collection, processedData);
@@ -2857,6 +3082,7 @@ export class EmDashRuntime {
 		const result = await handleContentCreate(this.db, collection, {
 			...body,
 			data: processedData,
+			locale,
 			authorId: body.authorId,
 			bylines: body.bylines,
 		});
@@ -2865,8 +3091,14 @@ export class EmDashRuntime {
 		}
 
 		// Run afterSave hooks (fire-and-forget)
-		if (result.success && result.data) {
-			this.runAfterSaveHooks(contentItemToRecord(result.data.item), collection, true, actor);
+		if (!options.skipSaveHooks && result.success && result.data) {
+			this.runAfterSaveHooks(
+				contentItemToRecord(result.data.item),
+				collection,
+				true,
+				actor,
+				options.excludeAfterSavePluginId,
+			);
 		}
 
 		return result;
@@ -2946,19 +3178,8 @@ export class EmDashRuntime {
 				}
 			}
 
-			// Run sandboxed beforeSave hooks
-			const sandboxResult = await this.runSandboxedBeforeSave(
-				processedData!,
-				collection,
-				false,
-				resolvedItem?.id,
-				actor,
-			);
-			if (!sandboxResult.success) return sandboxResult;
-			processedData = sandboxResult.data;
-
 			// Normalize media fields (fill dimensions, storageKey, etc.)
-			processedData = await this.normalizeMediaFields(collection, processedData);
+			processedData = await this.normalizeMediaFields(collection, processedData!);
 
 			// Validate field-level shape BEFORE the draft-revision write so
 			// invalid updates can't silently land in revision history.
@@ -3149,18 +3370,6 @@ export class EmDashRuntime {
 			}
 		}
 
-		// Run sandboxed beforeDelete hooks
-		const sandboxAllowed = await this.runSandboxedBeforeDelete(id, collection);
-		if (!sandboxAllowed) {
-			return {
-				success: false,
-				error: {
-					code: "DELETE_BLOCKED",
-					message: "Delete blocked by sandboxed plugin hook",
-				},
-			};
-		}
-
 		// Delete the content
 		const result = await handleContentDelete(this.db, collection, id);
 		if (result.success) {
@@ -3278,7 +3487,13 @@ export class EmDashRuntime {
 	}
 
 	async handleContentSchedule(collection: string, id: string, scheduledAt: string) {
-		const result = await handleContentSchedule(this.db, collection, id, scheduledAt);
+		const result = await handleContentSchedule(
+			this.db,
+			collection,
+			id,
+			scheduledAt,
+			this.runtimeDeps.now?.() ?? new Date(),
+		);
 		if (result.success && result.data) {
 			await this.refreshContentUsageAfterSuccessfulWrite(collection, [result.data.item.id]);
 		}
@@ -3342,6 +3557,33 @@ export class EmDashRuntime {
 
 	async handleMediaGet(id: string) {
 		return handleMediaGet(this.db, id);
+	}
+
+	async handleMediaUpload(input: MediaUploadInput) {
+		if (!this.storage) {
+			return {
+				success: false as const,
+				error: { code: "NO_STORAGE", message: "Storage not configured" },
+			};
+		}
+		const result = await uploadMedia(this.db, this.storage, input, {
+			beforeUpload: async (file) => {
+				if (!this.hooks.hasHooks("media:beforeUpload")) return file;
+				return (await this.hooks.runMediaBeforeUpload(file)).file;
+			},
+		});
+		if (result.success && !result.data.deduplicated && this.hooks.hasHooks("media:afterUpload")) {
+			const item = result.data.item;
+			await this.hooks.runMediaAfterUpload({
+				id: item.id,
+				filename: item.filename,
+				mimeType: item.mimeType,
+				size: item.size,
+				url: item.url,
+				createdAt: item.createdAt,
+			});
+		}
+		return result;
 	}
 
 	async handleMediaCreate(input: {
@@ -3442,6 +3684,69 @@ export class EmDashRuntime {
 			invalidateSiteSettingsCache();
 		}
 		return result;
+	}
+
+	private commentHooks(): CommentHookRunner {
+		return {
+			runBeforeCreate: (event) => this.hooks.runCommentBeforeCreate(event),
+			runModerate: async (event) => {
+				const result = await this.hooks.invokeExclusiveHook("comment:moderate", event);
+				if (!result) return { status: "pending", reason: "No moderator configured" };
+				if (result.error) {
+					console.error(`[comments] Moderation error (${result.pluginId}):`, result.error.message);
+					return { status: "pending", reason: "Moderation error" };
+				}
+				if (!isModerationDecision(result.result)) {
+					return { status: "pending", reason: "Invalid moderation result" };
+				}
+				return result.result;
+			},
+			fireAfterCreate: (event) => {
+				void this.hooks
+					.runCommentAfterCreate(event)
+					.catch((error) =>
+						console.error(
+							"[comments] afterCreate error:",
+							error instanceof Error ? error.message : error,
+						),
+					);
+			},
+			fireAfterModerate: (event) => {
+				void this.hooks
+					.runCommentAfterModerate(event)
+					.catch((error) =>
+						console.error(
+							"[comments] afterModerate error:",
+							error instanceof Error ? error.message : error,
+						),
+					);
+			},
+		};
+	}
+
+	async handleCommentCreate(
+		input: CommentCreateInput,
+		settings: CollectionCommentSettings,
+		contentInfo?: Parameters<typeof createComment>[4],
+	): Promise<CommentCreateResult | null> {
+		return createComment(this.db, input, settings, this.commentHooks(), contentInfo);
+	}
+
+	async handlePublicCommentSubmission(
+		collection: string,
+		contentId: string,
+		request: Request,
+		user?: UserInfo,
+	): Promise<Response> {
+		return submitPublicComment(this, collection, contentId, request, user);
+	}
+
+	async handleCommentModerate(
+		id: string,
+		status: CommentStatus,
+		moderator: { id: string; name: string | null },
+	): Promise<Comment | null> {
+		return moderateComment(this.db, id, status, moderator, this.commentHooks());
 	}
 
 	// =========================================================================
@@ -4035,124 +4340,22 @@ export class EmDashRuntime {
 		return result;
 	}
 
-	private async runSandboxedBeforeSave(
-		content: Record<string, unknown>,
-		collection: string,
-		isNew: boolean,
-		contentId?: string,
-		actor?: ActorInfo,
-	) {
-		let result = content;
-
-		for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-			const [id] = pluginKey.split(":");
-			if (!id || !this.isPluginEnabled(id)) continue;
-
-			try {
-				const event: ContentHookEvent = { content: result, collection, isNew };
-				if (contentId !== undefined) event.id = contentId;
-				if (actor !== undefined) event.actor = { ...actor };
-				const hookResult = await plugin.invokeHook("content:beforeSave", event);
-				const inspection = inspectSandboxHookResult(hookResult);
-				if (inspection.kind === "error") {
-					return {
-						success: false as const,
-						error: {
-							code: ErrorCode.SAVE_REJECTED,
-							message: "Save rejected by a sandboxed plugin",
-							details: { pluginId: id, reason: inspection.error.reason },
-						},
-					};
-				}
-				if (inspection.kind === "malformed") {
-					console.error(`EmDash: Sandboxed plugin ${id} returned an invalid hook result`);
-					return {
-						success: false as const,
-						error: {
-							code: ErrorCode.CONTENT_HOOK_ERROR,
-							message: "A plugin hook failed while saving content",
-						},
-					};
-				}
-				if (hookResult && typeof hookResult === "object" && !Array.isArray(hookResult)) {
-					// Sandbox returns unknown; convert to record by iterating own properties
-					const record: Record<string, unknown> = {};
-					for (const [k, v] of Object.entries(hookResult)) {
-						record[k] = v;
-					}
-					result = record;
-				}
-			} catch (error) {
-				console.error(`EmDash: Sandboxed plugin ${id} beforeSave hook failed:`, error);
-				return {
-					success: false as const,
-					error: {
-						code: ErrorCode.CONTENT_HOOK_ERROR,
-						message: "A plugin hook failed while saving content",
-					},
-				};
-			}
-		}
-
-		return { success: true as const, data: result };
-	}
-
-	private async runSandboxedBeforeDelete(id: string, collection: string): Promise<boolean> {
-		for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-			const [pluginId] = pluginKey.split(":");
-			if (!pluginId || !this.isPluginEnabled(pluginId)) continue;
-
-			try {
-				const result = await plugin.invokeHook("content:beforeDelete", {
-					id,
-					collection,
-				});
-				if (result === false) {
-					return false;
-				}
-			} catch (error) {
-				console.error(`EmDash: Sandboxed plugin ${pluginId} beforeDelete hook error:`, error);
-			}
-		}
-
-		return true;
-	}
-
 	private runAfterSaveHooks(
 		content: Record<string, unknown>,
 		collection: string,
 		isNew: boolean,
 		actor?: ActorInfo,
+		excludePluginId?: string,
 	): void {
 		after(async () => {
 			// Trusted plugins
 			if (this.hooks.hasHooks("content:afterSave")) {
 				try {
-					await this.hooks.runContentAfterSave(content, collection, isNew, actor);
+					await this.hooks.runContentAfterSave(content, collection, isNew, actor, excludePluginId);
 				} catch (err) {
 					console.error("EmDash afterSave hook error:", err);
 				}
 			}
-
-			// Sandboxed plugins
-			const tasks: Promise<void>[] = [];
-			for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-				const [id] = pluginKey.split(":");
-				if (!id || !this.isPluginEnabled(id)) continue;
-
-				tasks.push(
-					(async () => {
-						try {
-							const event: ContentHookEvent = { content, collection, isNew };
-							if (actor !== undefined) event.actor = { ...actor };
-							await plugin.invokeHook("content:afterSave", event);
-						} catch (err) {
-							console.error(`EmDash: Sandboxed plugin ${id} afterSave error:`, err);
-						}
-					})(),
-				);
-			}
-			await Promise.allSettled(tasks);
 		});
 	}
 
@@ -4166,24 +4369,6 @@ export class EmDashRuntime {
 					console.error("EmDash afterDelete hook error:", err);
 				}
 			}
-
-			// Sandboxed plugins
-			const tasks: Promise<void>[] = [];
-			for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-				const [pluginId] = pluginKey.split(":");
-				if (!pluginId || !this.isPluginEnabled(pluginId)) continue;
-
-				tasks.push(
-					(async () => {
-						try {
-							await plugin.invokeHook("content:afterDelete", { id, collection, permanent });
-						} catch (err) {
-							console.error(`EmDash: Sandboxed plugin ${pluginId} afterDelete error:`, err);
-						}
-					})(),
-				);
-			}
-			await Promise.allSettled(tasks);
 		});
 	}
 
@@ -4224,24 +4409,6 @@ export class EmDashRuntime {
 					console.error(`EmDash ${label} hook error:`, err);
 				}
 			}
-
-			// Sandboxed plugins
-			const tasks: Promise<void>[] = [];
-			for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-				const [pluginId] = pluginKey.split(":");
-				if (!pluginId || !this.isPluginEnabled(pluginId)) continue;
-
-				tasks.push(
-					(async () => {
-						try {
-							await plugin.invokeHook(name, { content, collection });
-						} catch (err) {
-							console.error(`EmDash: Sandboxed plugin ${pluginId} ${label} error:`, err);
-						}
-					})(),
-				);
-			}
-			await Promise.allSettled(tasks);
 		});
 	}
 
@@ -4356,26 +4523,6 @@ export class EmDashRuntime {
 			const results = await this.hooks.runPageFragments({ page });
 			for (const r of results) {
 				fragments.push(...r.contributions);
-			}
-		}
-
-		// Sandboxed plugins — metadata only, never fragments
-		for (const [pluginKey, plugin] of this.sandboxedPlugins) {
-			const [id] = pluginKey.split(":");
-			if (!id || !this.isPluginEnabled(id)) continue;
-
-			try {
-				const result = await plugin.invokeHook("page:metadata", { page });
-				if (result != null) {
-					const items = Array.isArray(result) ? result : [result];
-					for (const item of items) {
-						if (isValidMetadataContribution(item)) {
-							metadata.push(item);
-						}
-					}
-				}
-			} catch (error) {
-				console.error(`EmDash: Sandboxed plugin ${id} page:metadata error:`, error);
 			}
 		}
 

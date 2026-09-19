@@ -20,6 +20,7 @@ import type {
 	SandboxRunner,
 	SandboxedPluginInstance,
 	SandboxEmailSendCallback,
+	SandboxContentCreateCallback,
 	SandboxOptions,
 	SerializedRequest,
 } from "emdash";
@@ -59,6 +60,8 @@ export class MiniflareDevRunner implements SandboxRunner {
 		trailingSlash?: "always" | "never" | "ignore";
 	};
 	private emailSendCallback: SandboxEmailSendCallback | null = null;
+	private contentCreateCallback: SandboxContentCreateCallback | null = null;
+	private cronRescheduleCallback: (() => void) | null = null;
 
 	/** Miniflare instance (lazily created) */
 	private mf: InstanceType<typeof import("miniflare").Miniflare> | null = null;
@@ -110,6 +113,14 @@ export class MiniflareDevRunner implements SandboxRunner {
 
 	setEmailSend(callback: SandboxEmailSendCallback | null): void {
 		this.emailSendCallback = callback;
+	}
+
+	setContentCreate(callback: SandboxContentCreateCallback | null): void {
+		this.contentCreateCallback = callback;
+	}
+
+	setCronReschedule(callback: (() => void) | null): void {
+		this.cronRescheduleCallback = callback;
 	}
 
 	async load(manifest: PluginManifest, code: string): Promise<SandboxedPluginInstance> {
@@ -175,9 +186,13 @@ export class MiniflareDevRunner implements SandboxRunner {
 				storageCollections: Object.keys(manifest.storage || {}),
 				storageConfig: manifest.storage,
 				i18nConfig: getI18nConfig(),
+				siteInfo: this.siteInfo,
 				db: this.options.db,
 				beforeContentWrite: this.options.beforeContentWrite,
+				contentCreateProvider: () => this.contentCreateCallback,
 				emailSend: () => this.emailSendCallback,
+				cronReschedule: () => this.cronRescheduleCallback?.(),
+				now: this.options.now,
 				storage: this.options.mediaStorage,
 			});
 

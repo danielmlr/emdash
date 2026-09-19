@@ -31,6 +31,22 @@ const minimalResolved = (overrides: Partial<ResolvedPlugin> = {}): ResolvedPlugi
 });
 
 describe("extractManifest", () => {
+	it("closes redirect write authority under its read implication", () => {
+		const manifest = extractManifest(minimalResolved({ capabilities: ["redirects:write"] }));
+		expect(manifest.capabilities).toEqual(["redirects:read", "redirects:write"]);
+		expect(manifest.declaredAccess).toEqual({
+			redirects: { read: {}, write: {} },
+		});
+	});
+
+	it("preserves legacy allowed hosts without changing capability authority", () => {
+		const manifest = extractManifest(
+			minimalResolved({ capabilities: ["content:read"], allowedHosts: ["api.example.com"] }),
+		);
+		expect(manifest.capabilities).toEqual(["content:read"]);
+		expect(manifest.allowedHosts).toEqual(["api.example.com"]);
+	});
+
 	it("emits plain hook names when metadata is at defaults", () => {
 		const manifest = extractManifest(
 			minimalResolved({
@@ -71,6 +87,30 @@ describe("extractManifest", () => {
 			}),
 		);
 		expect(manifest.routes.toSorted((a, b) => a.localeCompare(b))).toEqual(["admin", "api"]);
+	});
+
+	it("preserves public route authorization and cache metadata", () => {
+		const manifest = extractManifest(
+			minimalResolved({
+				routes: {
+					feed: {
+						handler: () => {},
+						public: true,
+						permission: "content:read",
+						cacheControl: "public, max-age=300",
+					},
+				},
+			}),
+		);
+
+		expect(manifest.routes).toEqual([
+			{
+				name: "feed",
+				public: true,
+				permission: "content:read",
+				cacheControl: "public, max-age=300",
+			},
+		]);
 	});
 
 	it("serializes explicitly declared MCP tools", () => {
@@ -115,6 +155,29 @@ describe("extractManifest", () => {
 		);
 		expect(manifest.admin).not.toHaveProperty("entry");
 		expect(manifest.admin.pages).toEqual([{ path: "/x" }]);
+	});
+
+	it("preserves settings and field widgets in the wire manifest", () => {
+		const manifest = extractManifest(
+			minimalResolved({
+				admin: {
+					settingsSchema: {
+						enabled: { type: "boolean", label: "Enabled", default: true },
+					},
+					fieldWidgets: [
+						{
+							name: "event-picker",
+							label: "Event",
+							fieldTypes: ["string"],
+							elements: [{ type: "input", action_id: "event" }],
+						},
+					],
+				},
+			}),
+		);
+
+		expect(manifest.admin.settingsSchema).toHaveProperty("enabled");
+		expect(manifest.admin.fieldWidgets?.[0]).toMatchObject({ name: "event-picker" });
 	});
 });
 

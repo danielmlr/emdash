@@ -14,6 +14,11 @@ import type { ReviewResult } from "./review-schema.js";
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "emdash-flue-review";
 const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
+const REVIEW_RATE_LIMIT_RETRIES = 3;
+const REVIEW_RATE_LIMIT_FALLBACK_MS = 60_000;
+const REVIEW_RATE_LIMIT_MAX_DELAY_MS = 60 * 60_000;
+const REVIEW_RATE_LIMIT_RESET_BUFFER_MS = 1_000;
+const RATE_LIMIT_ERROR = /\brate limit\b/i;
 const GITHUB_HEADERS = {
 	accept: "application/vnd.github+json",
 	"content-type": "application/json",
@@ -26,6 +31,93 @@ function githubFetch(input: string, init: RequestInit = {}): Promise<Response> {
 		...init,
 		signal: init.signal ?? AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
 	});
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryAfterMs(value: string | null, now: number): number | undefined {
+	if (value === null) return undefined;
+	const seconds = Number(value);
+	if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1_000;
+	const retryAt = Date.parse(value);
+	if (Number.isNaN(retryAt)) return undefined;
+	return Math.max(0, retryAt - now);
+}
+
+function rateLimitRetryDelayMs(
+	response: Response,
+	errorBody: string,
+	retryCount: number,
+	now = Date.now(),
+): number | undefined {
+	const retryAfter = response.headers.get("retry-after");
+	const remaining = response.headers.get("x-ratelimit-remaining");
+	const rateLimited =
+		response.status === 429 ||
+		(response.status === 403 &&
+			(retryAfter !== null || remaining === "0" || RATE_LIMIT_ERROR.test(errorBody)));
+	if (!rateLimited) return undefined;
+
+	const retryAfterDelay = retryAfterMs(retryAfter, now);
+	if (retryAfterDelay !== undefined) {
+		return Math.min(REVIEW_RATE_LIMIT_MAX_DELAY_MS, Math.max(1_000, retryAfterDelay));
+	}
+	const resetSeconds = Number(response.headers.get("x-ratelimit-reset"));
+	if (Number.isFinite(resetSeconds) && resetSeconds > 0) {
+		const resetDelay = resetSeconds * 1_000 - now + REVIEW_RATE_LIMIT_RESET_BUFFER_MS;
+		return Math.min(REVIEW_RATE_LIMIT_MAX_DELAY_MS, Math.max(1_000, resetDelay));
+	}
+	return Math.min(REVIEW_RATE_LIMIT_MAX_DELAY_MS, REVIEW_RATE_LIMIT_FALLBACK_MS * 2 ** retryCount);
+}
+
+export class GitHubRateLimitError extends Error {
+	constructor(
+		message: string,
+		readonly retryDelayMs: number,
+		readonly hasRetryHint = true,
+	) {
+		super(message);
+		this.name = "GitHubRateLimitError";
+	}
+}
+
+interface ReviewRetryOptions {
+	beforeRetry?: (input: {
+		retry: number;
+		maxRetries: number;
+		delayMs: number;
+	}) => Promise<string | undefined>;
+}
+
+async function postReviewRequest(
+	url: string,
+	token: string,
+	body: unknown,
+	options?: ReviewRetryOptions,
+): Promise<{ response: Response; errorBody: string }> {
+	let currentToken = token;
+	for (let retryCount = 0; ; retryCount++) {
+		const response = await githubFetch(url, {
+			method: "POST",
+			headers: { ...GITHUB_HEADERS, authorization: `Bearer ${currentToken}` },
+			body: JSON.stringify(body),
+		});
+		if (response.ok) return { response, errorBody: "" };
+		const errorBody = await response.text();
+		const delayMs = rateLimitRetryDelayMs(response, errorBody, retryCount);
+		if (delayMs === undefined || retryCount >= REVIEW_RATE_LIMIT_RETRIES) {
+			return { response, errorBody };
+		}
+		await sleep(delayMs);
+		const refreshedToken = await options?.beforeRetry?.({
+			retry: retryCount + 1,
+			maxRetries: REVIEW_RATE_LIMIT_RETRIES,
+			delayMs,
+		});
+		if (refreshedToken) currentToken = refreshedToken;
+	}
 }
 
 export interface GitHubAppCreds {
@@ -109,7 +201,7 @@ export async function mintInstallationToken(creds: GitHubAppCreds): Promise<stri
 		},
 	);
 	if (!res.ok) {
-		throw new Error(`installation token mint failed: ${res.status} ${await res.text()}`);
+		await requireGitHubResponse(res, "installation token mint");
 	}
 	const json = await res.json<{ token?: string }>();
 	if (!json.token) throw new Error("installation token response had no token");
@@ -125,7 +217,31 @@ function pullRequestUrl(owner: string, repo: string, prNumber: number, files = f
 }
 
 async function requireGitHubResponse(res: Response, operation: string): Promise<void> {
-	if (!res.ok) throw new Error(`${operation} failed: ${res.status} ${await res.text()}`);
+	if (res.ok) return;
+	const errorBody = await res.text();
+	const retryDelay = rateLimitRetryDelayMs(res, errorBody, 0);
+	const message = `${operation} failed: ${res.status} ${errorBody}`;
+	if (retryDelay !== undefined) {
+		const hasRetryHint =
+			res.headers.get("retry-after") !== null || res.headers.get("x-ratelimit-reset") !== null;
+		throw new GitHubRateLimitError(message, retryDelay, hasRetryHint);
+	}
+	throw new Error(message);
+}
+
+export async function getPullRequestHeadSha(
+	token: string,
+	owner: string,
+	repo: string,
+	prNumber: number,
+): Promise<string> {
+	const res = await githubFetch(`${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}`, {
+		headers: installationHeaders(token),
+	});
+	await requireGitHubResponse(res, "read pull request head");
+	const body = await res.json<{ head?: { sha?: string } }>();
+	if (!body.head?.sha) throw new Error("read pull request head response had no SHA");
+	return body.head.sha;
 }
 
 export async function createReviewCheck(
@@ -572,6 +688,7 @@ export async function postReview(
 	result: ReviewResult,
 	commitId?: string,
 	attemptId?: string,
+	retryOptions?: ReviewRetryOptions,
 ): Promise<void> {
 	const url = `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}/reviews`;
 	const event = verdictToEvent(result.verdict);
@@ -582,14 +699,6 @@ export async function postReview(
 		if (lookup.status === "present") return;
 		if (lookup.status === "unavailable") throw lookup.error;
 	}
-	const headers = {
-		authorization: `Bearer ${token}`,
-		accept: "application/vnd.github+json",
-		"content-type": "application/json",
-		"user-agent": USER_AGENT,
-		"x-github-api-version": "2022-11-28",
-	};
-
 	const withComments = {
 		body: summary,
 		event,
@@ -597,8 +706,14 @@ export async function postReview(
 		comments: result.findings.map(findingToComment),
 	};
 	let res: Response;
+	let firstError: string;
 	try {
-		res = await githubFetch(url, { method: "POST", headers, body: JSON.stringify(withComments) });
+		({ response: res, errorBody: firstError } = await postReviewRequest(
+			url,
+			token,
+			withComments,
+			retryOptions,
+		));
 	} catch (error) {
 		if (commitId && marker) {
 			const lookup = await reviewWasPosted(token, owner, repo, prNumber, commitId, marker);
@@ -611,7 +726,6 @@ export async function postReview(
 	// Most likely cause: a comment anchors to a line outside the diff
 	// ("Path could not be resolved"). Fall back to a body-only review that
 	// carries the summary AND the findings inline, so the review still lands.
-	const firstError = await res.text();
 	if (res.status !== 422) {
 		if (commitId && marker) {
 			const lookup = await reviewWasPosted(token, owner, repo, prNumber, commitId, marker);
@@ -624,8 +738,14 @@ export async function postReview(
 		event,
 		...(commitId ? { commit_id: commitId } : {}),
 	};
+	let bodyOnlyError: string;
 	try {
-		res = await githubFetch(url, { method: "POST", headers, body: JSON.stringify(bodyOnly) });
+		({ response: res, errorBody: bodyOnlyError } = await postReviewRequest(
+			url,
+			token,
+			bodyOnly,
+			retryOptions,
+		));
 	} catch (error) {
 		if (commitId && marker) {
 			const lookup = await reviewWasPosted(token, owner, repo, prNumber, commitId, marker);
@@ -639,7 +759,7 @@ export async function postReview(
 			if (lookup.status === "present") return;
 		}
 		throw new Error(
-			`postReview failed (with comments: ${firstError}); body-only retry: ${res.status} ${await res.text()}`,
+			`postReview failed (with comments: ${firstError}); body-only retry: ${res.status} ${bodyOnlyError}`,
 		);
 	}
 }

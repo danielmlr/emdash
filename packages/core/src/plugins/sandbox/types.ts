@@ -10,7 +10,14 @@
 import type { Kysely } from "kysely";
 
 import type { Database } from "../../database/types.js";
-import type { PluginManifest, RequestMeta, UserInfo } from "../types.js";
+import type {
+	ContentCreateOptions,
+	ContentItem,
+	ContentWriteInput,
+	PluginManifest,
+	RequestMeta,
+	UserInfo,
+} from "../types.js";
 
 /**
  * Resource limits for sandboxed plugins.
@@ -61,6 +68,16 @@ export type SandboxEmailSendCallback = (
 	pluginId: string,
 ) => Promise<void>;
 
+export type SandboxContentCreateCallback = (
+	pluginId: string,
+	collection: string,
+	data: ContentWriteInput,
+	options?: ContentCreateOptions & {
+		originHook?: "content:beforeSave" | "content:afterSave";
+		sandboxOrigin?: true;
+	},
+) => Promise<ContentItem>;
+
 /**
  * Options for creating a sandbox runner
  */
@@ -71,6 +88,8 @@ export interface SandboxOptions {
 	db: Kysely<Database>;
 	/** Called immediately before a sandboxed plugin content mutation. */
 	beforeContentWrite?: () => Promise<void>;
+	/** Clock used to calculate recurring plugin task schedules. */
+	now?: () => Date;
 	/** Default resource limits */
 	limits?: ResourceLimits;
 	/** Site info for plugin context (injected into wrapper at generation time) */
@@ -91,6 +110,8 @@ export interface SandboxOptions {
 		upload(options: { key: string; body: Uint8Array; contentType: string }): Promise<unknown>;
 		delete(key: string): Promise<unknown>;
 	};
+	/** Worker Loader name suffix. The plugin's logical ID remains unchanged. */
+	isolateKey?: string;
 }
 
 /**
@@ -261,6 +282,10 @@ export interface SandboxRunner {
 	 * doesn't exist when the sandbox runner is constructed.
 	 */
 	setEmailSend(callback: SandboxEmailSendCallback | null): void;
+	setContentCreate?(callback: SandboxContentCreateCallback | null): void;
+
+	/** Wake a long-lived scheduler after a sandboxed plugin changes its tasks. */
+	setCronReschedule?(callback: (() => void) | null): void;
 
 	/**
 	 * Terminate all loaded sandboxed plugins.

@@ -123,6 +123,20 @@ describe("Microsoft provider", () => {
 		expect((await profileFor(token)).emailVerified).toBe(true);
 	});
 
+	it("accepts xms_edov as a string or number", async () => {
+		for (const xms_edov of ["true", 1, "1"]) {
+			const token = await sign(claims({ email: "ada@fabrikam.com", xms_edov }));
+			expect((await profileFor(token)).emailVerified).toBe(true);
+		}
+	});
+
+	it("does not count an email in another domain as verified when xms_edov is false", async () => {
+		for (const xms_edov of [false, "false", 0, "0"]) {
+			const token = await sign(claims({ email: "ada@fabrikam.com", xms_edov }));
+			expect((await profileFor(token)).emailVerified).toBe(false);
+		}
+	});
+
 	it("does not count addresses as verified through a multi-tenant segment", async () => {
 		const token = await sign(claims());
 		for (const tenant of ["common", "organizations"]) {

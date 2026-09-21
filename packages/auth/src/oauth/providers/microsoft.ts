@@ -16,6 +16,12 @@ const MULTI_TENANT_SEGMENTS = new Set(["common", "organizations", "consumers"]);
 
 const TENANT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Microsoft documents `xms_edov` as a boolean, but its encoding in tokens is
+ * reported inconsistently, so the string and number forms of true count too.
+ */
+const XMS_EDOV_TRUE = new Set<unknown>([true, "true", 1, "1"]);
+
 const idTokenClaimsSchema = z.object({
 	sub: z.string(),
 	iss: z.string(),
@@ -136,7 +142,7 @@ export function createMicrosoftProvider(
 			const domainOwned =
 				claims.email === undefined ||
 				domainOf(claims.email) === domainOf(claims.preferred_username) ||
-				claims.xms_edov === true;
+				XMS_EDOV_TRUE.has(claims.xms_edov);
 			return {
 				id: claims.sub,
 				email,

@@ -291,6 +291,9 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 				case "profile_fetch_failed":
 					message = "Failed to retrieve your profile. Please try again.";
 					break;
+				case "id_token_invalid":
+					message = "Could not verify your sign-in with the provider. Please try again.";
+					break;
 				default:
 					message = "Authentication failed. Please try again.";
 					break;

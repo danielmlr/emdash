@@ -614,6 +614,7 @@ function reportStreamEnd(snapshots) {
 }
 
 async function main() {
+	await waitForPortFree(HOST, PORT);
 	const events = [];
 	const streamEndSnapshots = [];
 	if (target === "sqlite") await runSqlite(events, streamEndSnapshots);

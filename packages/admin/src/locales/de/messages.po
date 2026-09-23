@@ -165,7 +165,7 @@ msgstr "{0, plural, one {# Menü wird importiert} other {# Menüs werden importi
 #. placeholder {0}: capabilities.length
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:226
 msgid "{0, plural, one {# permission requested} other {# permissions requested}}"
-msgstr ""
+msgstr "{0, plural, one {# Berechtigung angefragt} other {# Berechtigungen angefragt}}"
 
 #. placeholder {0}: plugin.capabilities.length
 #: packages/admin/src/components/MarketplaceBrowse.tsx:290
@@ -468,7 +468,7 @@ msgstr "{label} an Position {0} verschoben."
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:532
 msgid "{label} options"
-msgstr ""
+msgstr "Optionen für {label}"
 
 #: packages/admin/src/components/ContentList.tsx:1197
 msgid "{matchCount, plural, one {# item matching \"{searchQuery}\"} other {# items matching \"{searchQuery}\"}}"
@@ -484,55 +484,55 @@ msgstr "{matchedCount} von {totalCount} Autoren erkannt durch E-Mail"
 
 #: packages/admin/src/lib/content-validation-errors.ts:100
 msgid "{maximum, plural, one {{name} can have at most # character.} other {{name} can have at most # characters.}}"
-msgstr ""
+msgstr "{maximum, plural, one {„{name}“ darf höchstens # Zeichen lang sein.} other {„{name}“ darf höchstens # Zeichen lang sein.}}"
 
 #: packages/admin/src/lib/content-validation-errors.ts:106
 msgid "{maximum, plural, one {{name} can have at most # item.} other {{name} can have at most # items.}}"
-msgstr ""
+msgstr "{maximum, plural, one {„{name}“ darf höchstens # Element enthalten.} other {„{name}“ darf höchstens # Elemente enthalten.}}"
 
 #: packages/admin/src/lib/content-validation-errors.ts:81
 msgid "{minimum, plural, one {{name} needs at least # character.} other {{name} needs at least # characters.}}"
-msgstr ""
+msgstr "{minimum, plural, one {„{name}“ muss mindestens # Zeichen lang sein.} other {„{name}“ muss mindestens # Zeichen lang sein.}}"
 
 #: packages/admin/src/lib/content-validation-errors.ts:87
 msgid "{minimum, plural, one {{name} needs at least # item.} other {{name} needs at least # items.}}"
-msgstr ""
+msgstr "{minimum, plural, one {„{name}“ muss mindestens # Element enthalten.} other {„{name}“ muss mindestens # Elemente enthalten.}}"
 
 #: packages/admin/src/lib/content-validation-errors.ts:76
 msgid "{name} does not match the required format."
-msgstr ""
+msgstr "„{name}“ entspricht nicht dem erforderlichen Format."
 
 #: packages/admin/src/lib/content-validation-errors.ts:73
 msgid "{name} has a value that is not one of its options."
-msgstr ""
+msgstr "„{name}“ enthält einen Wert, der nicht zu den verfügbaren Optionen gehört."
 
 #: packages/admin/src/lib/content-validation-errors.ts:117
 msgid "{name} has an invalid value."
-msgstr ""
+msgstr "„{name}“ hat einen ungültigen Wert."
 
 #: packages/admin/src/lib/content-validation-errors.ts:69
 msgid "{name} is not a field in this collection."
-msgstr ""
+msgstr "„{name}“ ist kein Feld in dieser Kollektion."
 
 #: packages/admin/src/lib/content-validation-errors.ts:67
 msgid "{name} is required."
-msgstr ""
+msgstr "„{name}“ ist ein Pflichtfeld."
 
 #: packages/admin/src/lib/content-validation-errors.ts:71
 msgid "{name} links to an entry that does not exist or is in the trash."
-msgstr ""
+msgstr "„{name}“ verweist auf einen Eintrag, der nicht existiert oder im Papierkorb liegt."
 
 #: packages/admin/src/lib/content-validation-errors.ts:75
 msgid "{name} must be a valid URL."
-msgstr ""
+msgstr "„{name}“ muss eine gültige URL sein."
 
 #: packages/admin/src/lib/content-validation-errors.ts:94
 msgid "{name} must be at least {bound}."
-msgstr ""
+msgstr "„{name}“ muss mindestens {bound} sein."
 
 #: packages/admin/src/lib/content-validation-errors.ts:113
 msgid "{name} must be at most {bound}."
-msgstr ""
+msgstr "„{name}“ darf höchstens {bound} sein."
 
 #: packages/admin/src/components/WordPressImport.tsx:1895
 msgid "{needsNewCollections, plural, one {# new collection will be created} other {# new collections will be created}}"
@@ -614,7 +614,7 @@ msgstr "{selectedCount, plural, one {# Element in den Papierkorb verschieben? Ei
 
 #: packages/admin/src/lib/content-validation-errors.ts:57
 msgid "{subLabel} ({label}, item {position})"
-msgstr ""
+msgstr "{subLabel} ({label}, Element {position})"
 
 #: packages/admin/src/components/ContentList.tsx:1203
 msgid "{total, plural, one {# item} other {# items}}"
@@ -1075,7 +1075,7 @@ msgstr "Erweitert"
 
 #: packages/admin/src/components/EditorDraftPatchPreview.tsx:67
 msgid "After"
-msgstr ""
+msgstr "Nachher"
 
 #: packages/admin/src/components/settings/EmailSettings.tsx:191
 msgid "After send:"
@@ -1083,12 +1083,12 @@ msgstr "Nach dem Senden:"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:136
 msgid "After you explicitly invoke this plugin, it can send selected unsaved editor content to external websites without a host restriction."
-msgstr ""
+msgstr "Erst wenn du diese Erweiterung selbst ausführst, kann sie ausgewählte ungespeicherte Inhalte aus dem Editor an externe Webseiten senden, ohne auf bestimmte Hosts beschränkt zu sein."
 
 #. placeholder {0}: allowedHosts.join(", ")
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:135
 msgid "After you explicitly invoke this plugin, it can send selected unsaved editor content to: {0}"
-msgstr ""
+msgstr "Erst wenn du diese Erweiterung selbst ausführst, kann sie ausgewählte ungespeicherte Inhalte aus dem Editor an folgende Hosts senden: {0}"
 
 #: packages/admin/src/components/PluginManager.tsx:587
 msgid "Agent access"
@@ -1348,7 +1348,7 @@ msgstr "Anwenden"
 
 #: packages/admin/src/components/EditorDraftPatchPreview.tsx:81
 msgid "Apply changes"
-msgstr ""
+msgstr "Änderungen übernehmen"
 
 #: packages/admin/src/components/PortableTextEditor.tsx:3949
 #: packages/admin/src/components/PortableTextEditor.tsx:3950
@@ -1652,7 +1652,7 @@ msgstr "Bash"
 
 #: packages/admin/src/components/EditorDraftPatchPreview.tsx:61
 msgid "Before"
-msgstr ""
+msgstr "Vorher"
 
 #: packages/admin/src/components/settings/EmailSettings.tsx:186
 msgid "Before send:"
@@ -1725,7 +1725,7 @@ msgstr "Durchsuche Designs und erhalte eine Vorschau mit deinen eigenen Inhalten
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:159
 msgid "Build provenance verified"
-msgstr ""
+msgstr "Herkunftsnachweis des Builds verifiziert"
 
 #: packages/admin/src/components/editor/BlockMenu.tsx:127
 #: packages/admin/src/components/PortableTextEditor.tsx:1613
@@ -2037,7 +2037,7 @@ msgstr "Passkey-Unterstützung dieses Geräts wird geprüft..."
 #: packages/admin/src/components/TaxonomySidebar.tsx:395
 #: packages/admin/src/components/TaxonomySidebar.tsx:488
 msgid "Choose {label}"
-msgstr ""
+msgstr "{label} wählen"
 
 #: packages/admin/src/components/auth/PasskeyRegistration.tsx:577
 msgid "Choose a credential manager on this device, another device, or a security key."
@@ -2437,7 +2437,7 @@ msgstr "Inhalt ist jetzt öffentlich einsehbar"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:1038
 msgid "Content language"
-msgstr ""
+msgstr "Inhaltssprache"
 
 #: packages/admin/src/components/settings/ApiTokenSettings.tsx:47
 msgid "Content Read"
@@ -2453,7 +2453,7 @@ msgstr "Inhalt zu Entwurf zurückgesetzt"
 
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:260
 msgid "Content search results"
-msgstr ""
+msgstr "Suchergebnisse für Inhalte"
 
 #: packages/admin/src/components/RevisionHistory.tsx:318
 msgid "Content snapshot:"
@@ -2677,7 +2677,7 @@ msgstr "{0} erstellen"
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:583
 msgid "Create a new {singularLabel}"
-msgstr ""
+msgstr "{singularLabel} erstellen"
 
 #: packages/admin/src/components/PortableTextEditor.tsx:1624
 msgid "Create a numbered list"
@@ -3188,11 +3188,11 @@ msgstr "Tabelle entfernen"
 
 #: packages/admin/src/components/TaxonomyManager.tsx:1102
 msgid "Delete taxonomy"
-msgstr ""
+msgstr "Taxonomie entfernen"
 
 #: packages/admin/src/components/TaxonomyManager.tsx:1189
 msgid "Delete Taxonomy"
-msgstr ""
+msgstr "Taxonomie entfernen"
 
 #: packages/admin/src/components/Widgets.tsx:714
 msgid "Delete Widget Area?"
@@ -3205,7 +3205,7 @@ msgstr "Entfernt"
 #. placeholder {0}: taxonomyDef.label
 #: packages/admin/src/components/TaxonomyManager.tsx:1190
 msgid "Deleting \"{0}\" also deletes every term in it, in all languages, and removes those terms from the content filed under them. The entries themselves are kept. This cannot be undone."
-msgstr ""
+msgstr "Beim Entfernen von „{0}“ werden auch alle darin enthaltenen Begriffe in allen Sprachen entfernt und von den Inhalten gelöst, denen sie zugeordnet sind. Die Einträge selbst bleiben erhalten. Dies kann nicht rückgängig gemacht werden."
 
 #. placeholder {0}: deletingField.label
 #. placeholder {1}: deleteUsageQuery.data.totalAffectedRows
@@ -3689,7 +3689,7 @@ msgstr "{itemLabel} bearbeiten"
 #: packages/admin/src/components/TaxonomySidebar.tsx:414
 #: packages/admin/src/components/TaxonomySidebar.tsx:423
 msgid "Edit {label}"
-msgstr ""
+msgstr "{label} bearbeiten"
 
 #: packages/admin/src/components/ContentList.tsx:1343
 msgid "Edit {title}"
@@ -3947,7 +3947,7 @@ msgstr "Aktiviert"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:1043
 msgid "English is used because no content language is configured. Content language is stored with the entry and is separate from your admin language."
-msgstr ""
+msgstr "Es wird Englisch verwendet, weil keine Inhaltssprache konfiguriert ist. Die Inhaltssprache wird mit dem Eintrag gespeichert und ist unabhängig von der Sprache deines Adminbereichs."
 
 #: packages/admin/src/components/BylineCreditsEditor.tsx:312
 msgid "Enter a name."
@@ -4035,7 +4035,7 @@ msgstr "Aktualisieren des Widgets fehlgeschlagen"
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:603
 msgid "Esc"
-msgstr ""
+msgstr "Esc"
 
 #: packages/admin/src/components/MediaDetailPanel.tsx:1974
 msgid "Every place using this image will update to the cropped version."
@@ -4094,7 +4094,7 @@ msgstr "Exportiere deine Inhalte aus WordPress, um alles einschließlich der Ent
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:35
 msgid "F#"
-msgstr ""
+msgstr "F#"
 
 #: packages/admin/src/components/settings/SocialSettings.tsx:155
 msgid "Facebook"
@@ -4135,7 +4135,7 @@ msgstr "Bestätigen des Uploads fehlgeschlagen"
 #. placeholder {0}: failedLabels.join(", ")
 #: packages/admin/src/components/TaxonomySidebar.tsx:749
 msgid "Failed to create {0}"
-msgstr ""
+msgstr "Erstellen fehlgeschlagen: {0}"
 
 #: packages/admin/src/components/SetupWizard.tsx:486
 msgid "Failed to create admin"
@@ -4250,7 +4250,7 @@ msgstr "Entfernen des Abschnitts fehlgeschlagen"
 
 #: packages/admin/src/lib/api/taxonomies.ts:145
 msgid "Failed to delete taxonomy"
-msgstr ""
+msgstr "Entfernen der Taxonomie fehlgeschlagen"
 
 #: packages/admin/src/lib/api/taxonomies.ts:231
 msgid "Failed to delete term"
@@ -5864,7 +5864,7 @@ msgstr "Limit"
 
 #: packages/admin/src/components/PortableTextEditor.tsx:4660
 msgid "Link"
-msgstr ""
+msgstr "Link"
 
 #: packages/admin/src/components/SignupPage.tsx:274
 msgid "Link expired"
@@ -6654,7 +6654,7 @@ msgstr "Der Name muss mit einem Buchstaben beginnen und darf nur Kleinbuchstaben
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:593
 msgid "Navigate"
-msgstr ""
+msgstr "Navigieren"
 
 #: packages/admin/src/components/AdminCommandPalette.tsx:342
 #: packages/admin/src/components/ContentTypeEditor.tsx:480
@@ -6806,7 +6806,7 @@ msgstr "Noch keine {0} vorhanden. Erstelle einen Begriff, um loszulegen."
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:567
 msgid "No {label} found."
-msgstr ""
+msgstr "Keine {label} gefunden."
 
 #: packages/admin/src/components/Redirects.tsx:218
 msgid "No 404 errors recorded yet."
@@ -6958,7 +6958,7 @@ msgstr "Keine Treffer"
 
 #: packages/admin/src/components/editor/CodeBlockNode.tsx:313
 msgid "No matches. Press Enter to use “{freeFormLanguage}”."
-msgstr ""
+msgstr "Keine Treffer. Drücke Enter, um „{freeFormLanguage}“ zu verwenden."
 
 #: packages/admin/src/components/BylineCreditsEditor.tsx:549
 msgid "No matching bylines."
@@ -6966,7 +6966,7 @@ msgstr "Keine passenden Autorenzeilen."
 
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:310
 msgid "No matching content found."
-msgstr ""
+msgstr "Keine passenden Inhalte gefunden."
 
 #: packages/admin/src/components/MediaLibrary.tsx:1076
 #: packages/admin/src/components/MediaLibrary.tsx:1115
@@ -7584,7 +7584,7 @@ msgstr "Erweiterungsaktionen"
 
 #: packages/admin/src/components/ContentEditor.tsx:1332
 msgid "Plugin changes were not applied"
-msgstr ""
+msgstr "Die von der Erweiterung vorgeschlagenen Änderungen wurden nicht übernommen"
 
 #: packages/admin/src/lib/content-list-columns.tsx:236
 msgid "Plugin column unavailable"
@@ -7793,7 +7793,7 @@ msgstr "Profil-CID"
 
 #: packages/admin/src/lib/api/marketplace.ts:426
 msgid "Propose unsaved changes to selected editor fields for your review"
-msgstr ""
+msgstr "Ungespeicherte Änderungen an ausgewählten Feldern im Editor zur Prüfung vorschlagen"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:199
 msgid "Provenance optional"
@@ -7839,7 +7839,7 @@ msgstr "Änderungen publizieren"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:464
 msgid "Publish changes?"
-msgstr ""
+msgstr "Änderungen publizieren?"
 
 #. js-lingui-explicit-id
 #: packages/admin/src/locales/server.ts:26
@@ -7852,7 +7852,7 @@ msgstr "Jetzt publizieren"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:464
 msgid "Publish now?"
-msgstr ""
+msgstr "Jetzt publizieren?"
 
 #: packages/admin/src/lib/api/marketplace.ts:420
 msgid "Publish, unpublish, schedule, and unschedule content"
@@ -7969,7 +7969,7 @@ msgstr "Aufbewahrte Revisionen von Inhalten lesen"
 
 #: packages/admin/src/lib/api/marketplace.ts:425
 msgid "Read selected unsaved editor content after you explicitly invoke the plugin"
-msgstr ""
+msgstr "Ausgewählte ungespeicherte Inhalte aus dem Editor lesen, wenn du die Erweiterung selbst ausführst"
 
 #: packages/admin/src/components/settings/ApiTokenSettings.tsx:88
 msgid "Read site settings"
@@ -8532,7 +8532,7 @@ msgstr "Neue Berechtigungen überprüfen"
 
 #: packages/admin/src/components/EditorDraftPatchPreview.tsx:51
 msgid "Review proposed changes"
-msgstr ""
+msgstr "Vorgeschlagene Änderungen prüfen"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:113
 msgid "Review the independently verified release evidence and permissions for {pluginName} before continuing."
@@ -8855,7 +8855,7 @@ msgstr "Bildschirmfotos"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:234
 msgid "Scroll to review all"
-msgstr ""
+msgstr "Scrolle, um alle zu prüfen"
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:51
 msgid "SCSS"
@@ -8880,11 +8880,11 @@ msgstr "{0} durchsuchen..."
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:499
 msgid "Search {label}"
-msgstr ""
+msgstr "{label} durchsuchen"
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:519
 msgid "Search {label}…"
-msgstr ""
+msgstr "{label} durchsuchen…"
 
 #: packages/admin/src/components/MediaLibrary.tsx:966
 #: packages/admin/src/components/MediaPickerModal.tsx:1255
@@ -8932,11 +8932,11 @@ msgstr "Suchmaschinenoptimierung und Verifizierung"
 
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:60
 msgid "Search failed"
-msgstr ""
+msgstr "Suche fehlgeschlagen"
 
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:306
 msgid "Search failed. Check your connection and try again."
-msgstr ""
+msgstr "Suche fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut."
 
 #: packages/admin/src/components/MediaDetailPanel.tsx:1482
 #: packages/admin/src/components/MediaDetailPanel.tsx:1483
@@ -8945,7 +8945,7 @@ msgstr "Ordner durchsuchen"
 
 #: packages/admin/src/components/editor/CodeBlockNode.tsx:290
 msgid "Search for a language…"
-msgstr ""
+msgstr "Sprache suchen…"
 
 #: packages/admin/src/components/Widgets.tsx:152
 msgid "Search form"
@@ -8959,7 +8959,7 @@ msgstr "Medien durchsuchen"
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:243
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:244
 msgid "Search or type a URL"
-msgstr ""
+msgstr "Suchen oder URL eingeben"
 
 #: packages/admin/src/components/AdminCommandPalette.tsx:440
 msgid "Search pages and content..."
@@ -9234,7 +9234,7 @@ msgstr "Wähle..."
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:428
 msgid "Selected {label}"
-msgstr ""
+msgstr "Ausgewählte {label}"
 
 #: packages/admin/src/components/PortableTextEditor.tsx:1936
 msgid "Selected {selectedItemTitle}"
@@ -9330,11 +9330,11 @@ msgstr "Lege eine benutzerdefinierte Breite und Höhe für dieses Bild im Dokume
 
 #: packages/admin/src/components/editor/CodeBlockNode.tsx:237
 msgid "Set language"
-msgstr "Sprache speichern"
+msgstr "Sprache festlegen"
 
 #: packages/admin/src/components/editor/CodeBlockNode.tsx:234
 msgid "Set language (current: {label})"
-msgstr "Sprache speichern (aktuell: {label})"
+msgstr "Sprache festlegen (aktuell: {label})"
 
 #: packages/admin/src/components/BylineCreditsEditor.tsx:873
 msgid "Set role"
@@ -9504,7 +9504,7 @@ msgstr "Angemeldet als {0}"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:160
 msgid "Signed release verified"
-msgstr ""
+msgstr "Signiertes Release verifiziert"
 
 #: packages/admin/src/components/FieldEditor.tsx:219
 msgid "Single choice from options"
@@ -9880,7 +9880,7 @@ msgstr "Taxonomie erstellt"
 
 #: packages/admin/src/components/TaxonomyManager.tsx:969
 msgid "Taxonomy deleted"
-msgstr ""
+msgstr "Taxonomie entfernt"
 
 #: packages/admin/src/components/TaxonomyManager.tsx:45
 msgid "Taxonomy not found: {taxonomyName}"
@@ -9892,7 +9892,7 @@ msgstr "Taxonomie: {taxonomyName}"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:172
 msgid "Technical verification details"
-msgstr ""
+msgstr "Technische Details zur Verifizierung"
 
 #: packages/admin/src/components/SetupWizard.tsx:155
 msgid "Template:"
@@ -9936,7 +9936,7 @@ msgstr "Der Browser zeigt in der Regel einen QR-Code an."
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:164
 msgid "The build provenance matches this release and its package."
-msgstr ""
+msgstr "Der Herkunftsnachweis des Builds stimmt mit diesem Release und seinem Paket überein."
 
 #: packages/admin/src/components/auth/PasskeyRegistration.tsx:639
 msgid "The credential manager on the phone or tablet you choose saves it. EmDash does not receive the passkey."
@@ -10005,12 +10005,12 @@ msgstr "Das Feld-Widget der Erweiterung konnte nicht dargestellt werden."
 
 #: packages/admin/src/components/EditorDraftPatchPreview.tsx:53
 msgid "The plugin has not saved these changes. Review them before updating the editor."
-msgstr ""
+msgstr "Die Erweiterung hat diese Änderungen nicht gespeichert. Prüfe sie, bevor du sie in den Editor übernimmst."
 
 #: packages/admin/src/components/ContentEditor.tsx:678
 #: packages/admin/src/components/ContentEditor.tsx:694
 msgid "The plugin result is stale because the editor changed while it was working."
-msgstr ""
+msgstr "Das Ergebnis der Erweiterung ist veraltet, weil sich der Inhalt im Editor geändert hat, während sie lief."
 
 #: packages/admin/src/components/settings/GeneralSettings.tsx:186
 msgid "The public URL of your site (used for canonical links and sitemaps)"
@@ -10039,7 +10039,7 @@ msgstr "Das gewählte Bild konnte nicht gelesen werden."
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:165
 msgid "The signed publisher records and package are valid. Build provenance was not provided."
-msgstr ""
+msgstr "Die signierten Datensätze des Herausgebers und das Paket sind gültig. Ein Herkunftsnachweis des Builds wurde nicht bereitgestellt."
 
 #: packages/admin/src/components/ThemeMarketplaceBrowse.tsx:153
 msgid "The theme marketplace is empty. Check back later."
@@ -10094,7 +10094,7 @@ msgstr "Dieser Inhalt kann nicht sicher bearbeitet werden"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:469
 msgid "This content will be visible on the site immediately."
-msgstr ""
+msgstr "Dieser Inhalt ist sofort auf der Webseite sichtbar."
 
 #: packages/admin/src/components/WordPressImport.tsx:1077
 msgid "This doesn't look like a valid migration key. Generate a new one in the plugin and paste the full string starting with \"em1.\"."
@@ -10107,11 +10107,11 @@ msgstr "Dieser Eintrag wurde an anderer Stelle geändert, nachdem du ihn geöffn
 #: packages/admin/src/components/ContentEditor.tsx:915
 #: packages/admin/src/router.tsx:905
 msgid "This entry changed somewhere else. Save anyway, or reload to get the newer version."
-msgstr ""
+msgstr "Dieser Eintrag wurde an anderer Stelle geändert. Speichere trotzdem oder lade die Seite neu, um die neuere Version zu erhalten."
 
 #: packages/admin/src/components/editor/LinkDestinationInput.tsx:198
 msgid "This entry has no URL until it is published. Paste a URL instead."
-msgstr ""
+msgstr "Dieser Eintrag hat erst eine URL, wenn er publiziert ist. Füge stattdessen eine URL ein."
 
 #: packages/admin/src/components/EntryLockNotice.tsx:41
 msgid "This entry is open somewhere else"
@@ -10203,15 +10203,15 @@ msgstr "Dies löscht {0} dauerhaft aus dem Storage."
 
 #: packages/admin/src/lib/api/registry.ts:784
 msgid "This plugin cannot be installed because its publisher profile is missing valid verification metadata. Ask the publisher to republish it with the latest EmDash plugin CLI."
-msgstr ""
+msgstr "Diese Erweiterung kann nicht installiert werden, weil im Profil ihres Herausgebers gültige Verifizierungsmetadaten fehlen. Bitte den Herausgeber, sie mit der aktuellen EmDash-CLI für Erweiterungen erneut zu veröffentlichen."
 
 #: packages/admin/src/lib/api/registry.ts:792
 msgid "This plugin cannot be installed because its release provenance could not be verified. Ask the publisher to publish a new verified release."
-msgstr ""
+msgstr "Diese Erweiterung kann nicht installiert werden, weil der Herkunftsnachweis für ihr Release nicht verifiziert werden konnte. Bitte den Herausgeber, ein neues verifiziertes Release zu veröffentlichen."
 
 #: packages/admin/src/lib/api/registry.ts:796
 msgid "This plugin cannot be installed because its signed publisher records failed verification. Ask the publisher to publish a corrected release."
-msgstr ""
+msgstr "Diese Erweiterung kann nicht installiert werden, weil die Verifizierung der signierten Datensätze ihres Herausgebers fehlgeschlagen ist. Bitte den Herausgeber, ein korrigiertes Release zu veröffentlichen."
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:281
 msgid "This plugin exposes the following routes without authentication:"
@@ -10251,7 +10251,7 @@ msgstr "Hierdurch wird das Autorenprofil entfernt. Links zu Autorenbeiträgen un
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:466
 msgid "This removes the schedule and publishes immediately."
-msgstr ""
+msgstr "Dadurch wird die Planung aufgehoben und der Inhalt sofort publiziert."
 
 #: packages/admin/src/components/PortableTextEditor.tsx:3703
 msgid "This section contains table content that the editor cannot preserve. Update the section before inserting it."
@@ -10367,7 +10367,7 @@ msgstr "zum Auswählen"
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:599
 msgid "Toggle"
-msgstr ""
+msgstr "Umschalten"
 
 #: packages/admin/src/components/editor/TableControls.tsx:31
 msgid "Toggle header column"
@@ -10648,7 +10648,7 @@ msgstr "Ungeklärte Zuweisung"
 
 #: packages/admin/src/components/CapabilityConsentDialog.tsx:131
 msgid "Unsaved content may leave your site"
-msgstr ""
+msgstr "Ungespeicherte Inhalte können nach außen gelangen"
 
 #: packages/admin/src/router.tsx:1328
 msgid "Unscheduled"
@@ -10836,7 +10836,7 @@ msgstr "URL"
 #: packages/admin/src/components/ContentSettingsPanel.tsx:1023
 #: packages/admin/src/components/ContentSettingsPanel.tsx:1026
 msgid "URL & language"
-msgstr ""
+msgstr "URL & Sprache"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:463
 msgid "URL Pattern"
@@ -11090,7 +11090,7 @@ msgstr "Besucher sehen weiterhin die publizierte Version"
 
 #: packages/admin/src/components/ContentSettingsPanel.tsx:468
 msgid "Visitors will see these changes immediately."
-msgstr ""
+msgstr "Besucher sehen diese Änderungen sofort."
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:58
 msgid "Vue"

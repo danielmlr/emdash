@@ -321,10 +321,12 @@ describe("replay idempotence on D1", () => {
 		const failed: string[] = [];
 
 		for (const name of remaining) {
-			await migrateThrough(name);
-			if (!guarded.has(name)) continue;
 			const migration = migrations.get(name);
 			if (!migration) throw new Error(`no migration is registered as ${name}`);
+			// The migrator costs two D1 queries per table on every step, and without
+			// transactional DDL it runs this same `up` unwrapped.
+			await migration.up(db);
+			if (!guarded.has(name)) continue;
 			try {
 				await migration.up(db);
 			} catch (error) {

@@ -323,8 +323,8 @@ describe("replay idempotence on D1", () => {
 		for (const name of remaining) {
 			const migration = migrations.get(name);
 			if (!migration) throw new Error(`no migration is registered as ${name}`);
-			// The migrator costs two D1 queries per table on every step, and without
-			// transactional DDL it runs this same `up` unwrapped.
+			// Stepping through the migrator here times the test out: it queries every
+			// table twice per step, and on D1 it runs this same `up` without a transaction.
 			await migration.up(db);
 			if (!guarded.has(name)) continue;
 			try {

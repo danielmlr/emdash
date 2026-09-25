@@ -12,16 +12,21 @@ import type { Kysely } from "kysely";
 import { sql } from "kysely";
 
 import { createDatabase } from "../../database/connection.js";
-import { runMigrations } from "../../database/migrations/runner.js";
+import { getExactMigrationStatus } from "../../database/migrations/runner.js";
 import { BylineRepository } from "../../database/repositories/byline.js";
 import { ContentRepository } from "../../database/repositories/content.js";
 import { MediaRepository } from "../../database/repositories/media.js";
 import { OptionsRepository } from "../../database/repositories/options.js";
+import {
+	parseTaxonomyCollections,
+	selectTaxonomyDefs,
+} from "../../database/repositories/taxonomy-def.js";
 import { TaxonomyRepository } from "../../database/repositories/taxonomy.js";
 import type { ContentItem } from "../../database/repositories/types.js";
 import type { Database } from "../../database/types.js";
 import { validateIdentifier } from "../../database/validate.js";
 import { getI18nConfig, isI18nEnabled } from "../../i18n/config.js";
+import { BlockTypeRegistry } from "../../schema/block-type-registry.js";
 import { SchemaRegistry } from "../../schema/registry.js";
 import type { FieldType } from "../../schema/types.js";
 import type {
@@ -37,6 +42,7 @@ import type {
 	SeedContentEntry,
 	SeedByline,
 	SeedBylineCredit,
+	SeedBlockType,
 } from "../../seed/types.js";
 import { isMissingTableError } from "../../utils/db-errors.js";
 import { slugify } from "../../utils/slugify.js";
@@ -81,13 +87,22 @@ export const exportSeedCommand = defineCommand({
 		// go to stderr, where a redirect leaves them visible.
 		process.stderr.write(`Database: ${dbPath}\n`);
 
-		const db = createDatabase({ url: `file:${dbPath}` });
+		const db = createDatabase({ url: `file:${dbPath}`, readOnly: true });
 
-		// Run migrations to ensure tables exist
 		try {
-			await runMigrations(db);
+			const { pending, unknownApplied } = await getExactMigrationStatus(db);
+			if (unknownApplied.length > 0) {
+				throw new Error(
+					"The database was migrated by a newer EmDash version. Upgrade EmDash before exporting it.",
+				);
+			}
+			if (pending.length > 0) {
+				throw new Error(
+					`The database has ${pending.length} pending migration${pending.length === 1 ? "" : "s"}. Run \`emdash migrate\` before exporting it.`,
+				);
+			}
 		} catch (error) {
-			consola.error("Migration failed:", error);
+			consola.error("Export requires a current database schema:", error);
 			await db.destroy();
 			process.exit(1);
 		}
@@ -125,7 +140,10 @@ export async function exportSeed(db: Kysely<Database>, withContent?: string): Pr
 	// 1. Export settings
 	seed.settings = await exportSettings(db);
 
-	// 2. Export collections and fields
+	// 2. Export block types before collections that reference them
+	seed.blockTypes = await exportBlockTypes(db);
+
+	// 3. Export collections and fields
 	seed.collections = await exportCollections(db);
 
 	// Decide locale-awareness from the data. The runtime sets the i18n config via
@@ -301,6 +319,22 @@ async function exportSettings(db: Kysely<Database>): Promise<SeedFile["settings"
 	return Object.keys(settings).length > 0 ? settings : undefined;
 }
 
+async function exportBlockTypes(db: Kysely<Database>): Promise<SeedBlockType[]> {
+	const blockTypes = await new BlockTypeRegistry(db).listBlockTypes();
+	return blockTypes.map((blockType) => ({
+		slug: blockType.slug,
+		label: blockType.label,
+		description: blockType.description,
+		icon: blockType.icon,
+		category: blockType.category,
+		currentVersion: blockType.currentVersion,
+		versions: blockType.versions.map((version) => ({
+			version: version.version,
+			fields: version.fields,
+		})),
+	}));
+}
+
 /**
  * Export collections and their fields
  */
@@ -358,21 +392,20 @@ async function exportTaxonomies(
 ): Promise<SeedTaxonomy[]> {
 	// Mirrors the content export pattern: one entry per (name, locale), stable
 	// seed-local id, translations linked via `translationOf` to the anchor's id.
-	const defs = await db
-		.selectFrom("_emdash_taxonomy_defs")
-		.selectAll()
+	const defs = await selectTaxonomyDefs(db)
 		// Chained, not `orderBy(["name", "locale"])`: kysely deprecated the array
 		// form and announces it with `console.log`, which lands in the seed
 		// document this command writes to stdout.
-		.orderBy("name")
-		.orderBy("locale")
+		.orderBy("d.name")
+		.orderBy("d.locale")
 		.execute();
 
 	const result: SeedTaxonomy[] = [];
 	const termRepo = new TaxonomyRepository(db);
 
-	// translation_group -> seed-local id of first def we emitted in that group.
-	const defGroupToSeedId = new Map<string, string>();
+	// Taxonomy name -> seed-local id of the first def emitted for it. Every locale
+	// of a name is one taxonomy, whatever translation_group its rows carry.
+	const anchorByName = new Map<string, string>();
 
 	for (const def of defs) {
 		const defSeedId =
@@ -425,17 +458,19 @@ async function exportTaxonomies(
 			name: def.name,
 			label: def.label,
 			labelSingular: def.label_singular || undefined,
-			hierarchical: def.hierarchical === 1,
-			collections: def.collections ? JSON.parse(def.collections) : [],
 		};
 
 		if (i18nEnabled && def.locale) {
 			taxonomy.locale = def.locale;
-			if (def.translation_group) {
-				const anchor = defGroupToSeedId.get(def.translation_group);
-				if (anchor) taxonomy.translationOf = anchor;
-				else defGroupToSeedId.set(def.translation_group, defSeedId);
-			}
+			const anchor = anchorByName.get(def.name);
+			if (anchor) taxonomy.translationOf = anchor;
+			else anchorByName.set(def.name, defSeedId);
+		}
+
+		// The structure is the taxonomy's, so only the entry translations point at carries it.
+		if (!taxonomy.translationOf) {
+			taxonomy.hierarchical = def.hierarchical === 1;
+			taxonomy.collections = parseTaxonomyCollections(def.collections);
 		}
 
 		if (seedTerms.length > 0) taxonomy.terms = seedTerms;

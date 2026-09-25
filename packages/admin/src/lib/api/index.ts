@@ -70,6 +70,7 @@ export {
 	type MediaUsageOccurrenceDetail,
 	type MediaUsageSourceDetail,
 	type MediaUsageEntryDetail,
+	type MediaUsageSiteSettingDetail,
 	type MediaUsageDetailsResponse,
 	type MediaProviderCapabilities,
 	type MediaProviderInfo,
@@ -105,6 +106,7 @@ export {
 	type UpdateCollectionInput,
 	type CreateFieldInput,
 	type UpdateFieldInput,
+	type BlockType,
 	type OrphanedTable,
 	fetchCollections,
 	fetchCollection,
@@ -119,6 +121,7 @@ export {
 	reorderCollections,
 	fetchOrphanedTables,
 	registerOrphanedTable,
+	fetchBlockTypes,
 } from "./schema.js";
 
 // Plugins
@@ -135,7 +138,12 @@ export {
 } from "./plugins.js";
 
 // Settings
-export { type SiteSettings, fetchSettings, updateSettings } from "./settings.js";
+export {
+	type SiteSettings,
+	type SiteSettingsUpdate,
+	fetchSettings,
+	updateSettings,
+} from "./settings.js";
 
 // Users, passkeys, allowed domains
 export {

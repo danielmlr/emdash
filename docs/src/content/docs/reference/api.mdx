@@ -552,7 +552,7 @@ const postCategories = await getEntryTerms("posts", "post-123", "category");
 const newsPosts = await getEntriesByTerm("posts", "category", "news");
 ```
 
-`getTaxonomyDefs({ locale? })` lists taxonomy definitions, while `getTaxonomyDef(name, { locale? })` returns one definition or `null`. Locale-aware definition and term lookups follow the configured fallback chain.
+`getTaxonomyDefs({ locale? })` lists one definition per taxonomy, and `getTaxonomyDef(name, { locale? })` returns one definition, or `null` when no locale defines the taxonomy. Both resolve a taxonomy in every locale; [Translate taxonomies and terms](/guides/taxonomies/#translate-taxonomies-and-terms) explains which locale's label they use. Term lookups follow the configured fallback chain.
 
 `getTaxonomyTerms(name, { locale?, includeCounts? })` returns a tree for hierarchical taxonomies and includes visible-entry counts by default. Pass `includeCounts: false` when the template does not render counts. Content queries also hydrate assigned terms into each entry's `data.terms`; use `getEntryTerms()` when you only have a collection name and entry ID.
 
@@ -630,6 +630,7 @@ interface SearchOptions {
 	locale?: string; // Default: all locales
 	limit?: number; // Default: 20
 	cursor?: string;
+	scope?: "all" | "title"; // Default: "all"
 }
 
 interface SearchResponse {
@@ -664,6 +665,8 @@ if (results.nextCursor) {
 	});
 }
 ```
+
+With `scope: "title"` the query matches only each collection's title field instead of the full indexed text -- useful for pickers and autocomplete where body-text matches would surprise. Collections whose title field is not indexed for search return no results under this scope.
 
 ## Error handling
 

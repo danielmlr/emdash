@@ -136,9 +136,24 @@ const contentFieldFiltersQuery = z
 	})
 	.pipe(contentFieldFiltersSchema);
 
+/** Statuses the content list can filter by. */
+const CONTENT_STATUSES = [
+	"draft",
+	"published",
+	"scheduled",
+	"archived",
+	"pending",
+	"private",
+	"future",
+] as const;
+
 export const contentListQuery = cursorPaginationQuery
 	.extend({
-		status: z.string().optional(),
+		/** Filter by status; `all` (like omitting it) lists every status. */
+		status: z
+			.enum([...CONTENT_STATUSES, "all"])
+			.optional()
+			.transform((status) => (status === "all" ? undefined : status)),
 		orderBy: z.string().optional(),
 		order: z.enum(["asc", "desc"]).optional(),
 		locale: localeCode.optional(),
@@ -196,6 +211,8 @@ export const contentCreateBody = z
 		}),
 		publishedAt: contentDateOverride,
 		createdAt: contentDateOverride,
+		migrateBlocks: z.boolean().optional(),
+		replaceBlocks: z.boolean().optional(),
 	})
 	.meta({ id: "ContentCreateBody" });
 
@@ -218,6 +235,8 @@ export const contentUpdateBody = z
 				"Replace taxonomy assignments as { taxonomyName: [termSlug, ...] }. Only named taxonomies are touched; pass an empty array to clear a taxonomy.",
 		}),
 		publishedAt: contentDateOverride,
+		migrateBlocks: z.boolean().optional(),
+		replaceBlocks: z.boolean().optional(),
 	})
 	.meta({ id: "ContentUpdateBody" });
 
@@ -228,16 +247,22 @@ export const contentScheduleBody = z
 			examples: ["2025-06-15T09:00:00Z"],
 		}),
 		overrideLock: overrideLockFlag,
+		_rev: z
+			.string()
+			.optional()
+			.meta({ description: "Opaque revision token for optimistic concurrency" }),
 	})
 	.meta({ id: "ContentScheduleBody" });
 
-export const contentRevisionConditionBody = z.object({
-	_rev: z
-		.string()
-		.optional()
-		.meta({ description: "Opaque revision token for optimistic concurrency" }),
-	overrideLock: overrideLockFlag,
-});
+export const contentRevisionConditionBody = z
+	.object({
+		_rev: z
+			.string()
+			.optional()
+			.meta({ description: "Opaque revision token for optimistic concurrency" }),
+		overrideLock: overrideLockFlag,
+	})
+	.meta({ id: "ContentRevisionConditionBody" });
 
 export const revisionRestoreBody = z.object({
 	overrideLock: overrideLockFlag,
@@ -366,6 +391,15 @@ export const contentResponseSchema = z
 			.meta({ description: "Opaque revision token for optimistic concurrency" }),
 	})
 	.meta({ id: "ContentResponse" });
+
+/** Response for restoring an item from trash */
+export const contentRestoreResponseSchema = z
+	.object({
+		restored: z.literal(true),
+		item: contentItemSchema,
+		_rev: z.string().meta({ description: "Opaque revision token for optimistic concurrency" }),
+	})
+	.meta({ id: "ContentRestoreResponse" });
 
 /** Response for content list endpoints */
 export const contentListResponseSchema = z

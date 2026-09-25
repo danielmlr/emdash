@@ -151,7 +151,7 @@ describe("MCP content writes against an entry edit lock", () => {
 			label: "content_schedule",
 			tool: "content_schedule",
 			prepare: draft,
-			args: async (id) => ({ id, scheduledAt: inAnHour() }),
+			args: async (id) => ({ id, scheduledAt: inAnHour(), _rev: await rev(id) }),
 			unchanged: (item) => expect(item.scheduledAt).toBeFalsy(),
 		},
 		{
@@ -159,7 +159,7 @@ describe("MCP content writes against an entry edit lock", () => {
 			tool: "content_unschedule",
 			prepare: async () => {
 				const id = await draft();
-				await succeed("content_schedule", { id, scheduledAt: inAnHour() });
+				await succeed("content_schedule", { id, scheduledAt: inAnHour(), _rev: await rev(id) });
 				return id;
 			},
 			args: async (id) => ({ id }),

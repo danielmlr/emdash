@@ -31,6 +31,11 @@ function normalizeMimeFilter(input?: string | readonly string[]): string[] {
 		);
 }
 
+function normalizeListLimit(limit: unknown): number {
+	const integer = typeof limit === "number" && !Number.isNaN(limit) ? Math.trunc(limit) : 50;
+	return Math.min(Math.max(integer, 1), 100);
+}
+
 /**
  * Build a WHERE clause that matches `mime_type` against any of the given
  * filter entries — exact equality for full MIMEs, LIKE prefix for entries
@@ -99,8 +104,8 @@ export interface FindManyMediaOptions {
 }
 
 export interface UpdateMediaInput extends FocalPointUpdate {
-	alt?: string;
-	caption?: string;
+	alt?: string | null;
+	caption?: string | null;
 	width?: number;
 	height?: number;
 	folderId?: string | null;
@@ -196,6 +201,28 @@ export class MediaRepository {
 			.execute();
 	}
 
+	/**
+	 * Register a stored object for cleanup before its media row is removed,
+	 * so a failed storage delete is retried by the cleanup sweep instead of
+	 * leaving the object unreferenced and unreachable.
+	 */
+	async trackStorageKeyForCleanup(mediaId: string, storageKey: string): Promise<void> {
+		const now = new Date().toISOString();
+		await this.db
+			.insertInto("_emdash_media_upload_attempts")
+			.values({
+				media_id: mediaId,
+				storage_key: storageKey,
+				status: "cleanup",
+				created_at: now,
+				updated_at: now,
+			})
+			.onConflict((oc) =>
+				oc.column("storage_key").doUpdateSet({ status: "cleanup", updated_at: now }),
+			)
+			.execute();
+	}
+
 	async hasUploadAttempt(storageKey: string): Promise<boolean> {
 		const row = await this.db
 			.selectFrom("_emdash_media_upload_attempts")
@@ -232,9 +259,18 @@ export class MediaRepository {
 			.execute();
 	}
 
+	async deferUploadAttemptCleanup(storageKey: string): Promise<void> {
+		await this.db
+			.updateTable("_emdash_media_upload_attempts")
+			.set({ updated_at: new Date().toISOString() })
+			.where("storage_key", "=", storageKey)
+			.execute();
+	}
+
 	async deleteCompletedUploadAttempts(): Promise<number> {
 		const result = await this.db
 			.deleteFrom("_emdash_media_upload_attempts")
+			.where("status", "=", "active")
 			.where((eb) =>
 				eb.exists(
 					eb
@@ -268,7 +304,7 @@ export class MediaRepository {
 					),
 				),
 			)
-			.orderBy("created_at", "asc")
+			.orderBy("updated_at", "asc")
 			.limit(limit)
 			.execute();
 
@@ -430,7 +466,7 @@ export class MediaRepository {
 	 * The cursor encodes the created_at and id of the last item.
 	 */
 	async findMany(options: FindManyMediaOptions = {}): Promise<FindManyResult<MediaItem>> {
-		const limit = Math.min(options.limit || 50, 100);
+		const limit = normalizeListLimit(options.limit);
 
 		let query = this.applyListFilters(this.db.selectFrom("media"), options)
 			.selectAll()
@@ -466,7 +502,7 @@ export class MediaRepository {
 	}
 
 	async findPage(options: FindMediaPageOptions): Promise<MediaPageResult> {
-		const limit = Math.min(options.limit || 50, 100);
+		const limit = normalizeListLimit(options.limit);
 		const offset = (options.page - 1) * limit;
 		const filtered = this.applyListFilters(this.db.selectFrom("media"), options);
 		const rows = await filtered
@@ -511,6 +547,32 @@ export class MediaRepository {
 		}
 
 		return this.findById(id);
+	}
+
+	async updateReadyMetadata(
+		id: string,
+		input: Pick<UpdateMediaInput, "alt" | "caption" | "focalX" | "focalY">,
+	): Promise<MediaItem | null> {
+		const updates: Partial<MediaRow> = {};
+		if (input.alt !== undefined) updates.alt = input.alt;
+		if (input.caption !== undefined) updates.caption = input.caption;
+		if (input.focalX !== undefined && input.focalY !== undefined) {
+			updates.focal_x = input.focalX;
+			updates.focal_y = input.focalY;
+		}
+
+		if (Object.keys(updates).length === 0) {
+			throw new TypeError("Media metadata update requires at least one field");
+		}
+
+		const row = await this.db
+			.updateTable("media")
+			.set(updates)
+			.where("id", "=", id)
+			.where("status", "=", "ready")
+			.returningAll()
+			.executeTakeFirst();
+		return row ? this.rowToItem(row) : null;
 	}
 
 	async replaceReadyFile(

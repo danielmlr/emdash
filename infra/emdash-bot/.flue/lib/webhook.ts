@@ -239,6 +239,10 @@ export function normalizeWebhook(ctx: NormalizeContext): NormalizeResult {
 			return normalizePullRequestReview(asRecord(ctx.payload), ctx.deliveryId);
 		case "pull_request_review_comment":
 			return normalizePullRequestReviewComment(asRecord(ctx.payload), ctx.deliveryId);
+		case "check_run":
+		case "check_suite":
+		case "status":
+			return normalizePullRequestReadiness(asRecord(ctx.payload), ctx.eventType, ctx.deliveryId);
 		default:
 			return { kind: "skip", reason: `event "${ctx.eventType}" is not handled` };
 	}
@@ -248,6 +252,8 @@ export function normalizeWebhook(ctx: NormalizeContext): NormalizeResult {
  * Issues events. New and reopened issues enter the bounded triage run
  * automatically. Triage can ask for missing information, await approval, or
  * start low-risk work without requiring the reporter to know command syntax.
+ * Issues opened by maintainers skip the automatic run and wait for
+ * `@emdashbot triage`.
  * `labeled` / `unlabeled` are skipped because the DO is the source of truth
  * for state; label drift is reconciled by the Orchestrator DO's periodic alarm
  * tick (`reconcileLabels`), not by webhooks.
@@ -278,6 +284,10 @@ function normalizeIssues(
 	const number = readNumber(issue?.number);
 	if (!number) return { kind: "skip", reason: "issues event missing issue.number" };
 	if (issue?.pull_request) return { kind: "skip", reason: "issues event is for a pull request" };
+	const authorAssociation = readString(issue?.author_association);
+	if (authorAssociation && MAINTAINER_ASSOCIATIONS.has(authorAssociation)) {
+		return { kind: "skip", reason: `issues.${action} by a maintainer waits for a command` };
+	}
 	return dispatchFor(number, {
 		event: "triage",
 		arg: action === "reopened" ? "Re-triage this reopened issue." : null,
@@ -451,6 +461,8 @@ function normalizePullRequest(
 			machineEvent = "pr.opened";
 			break;
 		case "synchronize":
+		case "ready_for_review":
+		case "converted_to_draft":
 			machineEvent = "pr.updated";
 			break;
 		case "closed":
@@ -481,6 +493,19 @@ function normalizePullRequestReview(
 	const pr = asRecord(event?.pull_request);
 	const issueNumber = botFixIssueNumber(pr);
 	if (issueNumber === null) return normalizeReviewState(action, pr);
+	if (action === "dismissed") {
+		const pullRequestNumber = readNumber(pr?.number);
+		if (!pullRequestNumber) return { kind: "skip", reason: "dismissed review missing PR number" };
+		return dispatchFor(issueNumber, {
+			event: "pr.updated",
+			arg: null,
+			actor: "system",
+			pullRequestNumber,
+			labels: collectLabels(pr?.labels),
+			needsClassify: false,
+			...(deliveryId ? { deliveryId } : {}),
+		});
+	}
 	if (action !== "submitted")
 		return { kind: "skip", reason: `pull_request_review.${action} not handled` };
 	const pullRequestNumber = readNumber(pr?.number);
@@ -521,6 +546,47 @@ function normalizePullRequestReview(
 		triggeringComment: { body, authorLogin, authorAssociation, actor },
 		...(deliveryId ? { deliveryId } : {}),
 	});
+}
+
+function normalizePullRequestReadiness(
+	event: Record<string, unknown> | undefined,
+	eventType: string,
+	deliveryId?: string,
+): NormalizeResult {
+	let branch: string | undefined;
+	let pullRequestNumber: number | undefined;
+	if (eventType === "check_run") {
+		const suite = asRecord(asRecord(event?.check_run)?.check_suite);
+		branch = readString(suite?.head_branch);
+		pullRequestNumber = readNumber(firstRecord(suite?.pull_requests)?.number);
+	} else if (eventType === "check_suite") {
+		const suite = asRecord(event?.check_suite);
+		branch = readString(suite?.head_branch);
+		pullRequestNumber = readNumber(firstRecord(suite?.pull_requests)?.number);
+	} else {
+		const branches = Array.isArray(event?.branches) ? event.branches : [];
+		branch = branches
+			.map((candidate) => readString(asRecord(candidate)?.name))
+			.find((name) => name?.startsWith("bot/fix-"));
+	}
+	const match = branch?.match(BOT_FIX_BRANCH);
+	const issueNumber = match?.[1] ? Number(match[1]) : null;
+	if (!issueNumber || !Number.isSafeInteger(issueNumber)) {
+		return { kind: "skip", reason: `${eventType} is not for an emdashbot fix PR` };
+	}
+	return dispatchFor(issueNumber, {
+		event: "pr.updated",
+		arg: null,
+		actor: "system",
+		...(pullRequestNumber ? { pullRequestNumber } : {}),
+		labels: [],
+		needsClassify: false,
+		...(deliveryId ? { deliveryId } : {}),
+	});
+}
+
+function firstRecord(value: unknown): Record<string, unknown> | undefined {
+	return Array.isArray(value) ? asRecord(value[0]) : undefined;
 }
 
 /**

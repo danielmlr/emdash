@@ -10,11 +10,18 @@ import type { Kysely } from "kysely";
 import mime from "mime/lite";
 import { ulid } from "ulidx";
 
+import { sanitizeGalleryImages } from "../content/converters/gallery.js";
+import type { DatetimeContextCache } from "../database/content-datetime.js";
 import { BylineRepository } from "../database/repositories/byline.js";
 import { ContentRepository } from "../database/repositories/content.js";
 import { MediaRepository } from "../database/repositories/media.js";
+import { OptionsRepository } from "../database/repositories/options.js";
 import { RedirectRepository } from "../database/repositories/redirect.js";
 import { RevisionRepository } from "../database/repositories/revision.js";
+import {
+	findTaxonomyStructure,
+	saveTaxonomyStructure,
+} from "../database/repositories/taxonomy-def.js";
 import { TaxonomyRepository } from "../database/repositories/taxonomy.js";
 import { withTransaction } from "../database/transaction.js";
 import type { Database } from "../database/types.js";
@@ -22,21 +29,59 @@ import type { MediaValue } from "../fields/types.js";
 import { getI18nConfig, resolveConfiguredLocale } from "../i18n/config.js";
 import { ssrfSafeFetch, validateExternalUrl } from "../import/ssrf.js";
 import { markContentMediaUsageCollectionStaleSafely } from "../media/usage/content-refresh.js";
+import { coalesceObjectCacheWrites } from "../object-cache/index.js";
+import { BlockTypeRegistry } from "../schema/block-type-registry.js";
+import { normalizeBlocksData, resolveBlockTypes } from "../schema/block-values.js";
 import { SchemaRegistry } from "../schema/registry.js";
 import { FTSManager } from "../search/fts-manager.js";
-import { setSiteSettings } from "../settings/index.js";
+import { invalidateSiteSettingsCache, setSiteSettings } from "../settings/index.js";
+import type { SiteSettings } from "../settings/types.js";
 import type { Storage } from "../storage/types.js";
 import type {
 	SeedFile,
 	SeedApplyOptions,
 	SeedApplyResult,
 	SeedCollection,
+	SeedTaxonomy,
 	SeedTaxonomyTerm,
 	SeedMenuItem,
 	SeedWidget,
 	SeedMediaReference,
 	SeedBylineAvatar,
 } from "./types.js";
+
+async function applySiteSettings(
+	db: Kysely<Database>,
+	settings: Partial<SiteSettings>,
+	onConflict: Exclude<SeedApplyOptions["onConflict"], undefined>,
+	result: SeedApplyResult,
+): Promise<void> {
+	const entries = Object.entries(settings).filter(([, value]) => value !== undefined);
+	if (entries.length === 0) return;
+
+	if (onConflict === "update") {
+		await setSiteSettings(settings, db);
+		result.settings.applied += entries.length;
+		return;
+	}
+
+	const options = new OptionsRepository(db);
+	let applied = 0;
+	try {
+		for (const [key, value] of entries) {
+			const write = await options.compareAndSet(`site:${key}`, null, value);
+			if (!write.applied && onConflict === "error") {
+				throw new Error(`Conflict: site setting "site:${key}" already exists`);
+			}
+			if (write.applied) applied++;
+		}
+	} finally {
+		if (applied > 0) {
+			result.settings.applied += applied;
+			invalidateSiteSettingsCache();
+		}
+	}
+}
 
 /**
  * Set a collection's `titleField`/`dateField`: a separate write run after the
@@ -54,7 +99,7 @@ async function applyDisplayDateFields(
 }
 
 const FILE_EXTENSION_PATTERN = /\.([a-z0-9]+)(?:\?|$)/i;
-import { validateSeed } from "./validate.js";
+import { findTaxonomyStructureSource, validateSeed } from "./validate.js";
 
 /** Pattern to remove file extensions */
 const EXTENSION_PATTERN = /\.[^.]+$/;
@@ -67,6 +112,36 @@ const SANITIZE_PATTERN = /[^a-zA-Z0-9_-]/g;
 
 /** Pattern to collapse multiple hyphens */
 const MULTIPLE_HYPHENS_PATTERN = /-+/g;
+
+/** The `category` and `tag` defs that migrations insert on every new database. */
+const BUILT_IN_TAXONOMY_DEFS = new Map([
+	[
+		"taxdef_category",
+		{ label: "Categories", label_singular: "Category", hierarchical: 1, collections: '["posts"]' },
+	],
+	[
+		"taxdef_tag",
+		{ label: "Tags", label_singular: "Tag", hierarchical: 0, collections: '["posts"]' },
+	],
+]);
+
+/** Whether `def` is a built-in `category`/`tag` definition still holding its migration defaults. */
+function isUntouchedBuiltInTaxonomyDef(def: {
+	id: string;
+	label: string;
+	label_singular: string | null;
+	hierarchical: number | null;
+	collections: string | null;
+}): boolean {
+	const builtIn = BUILT_IN_TAXONOMY_DEFS.get(def.id);
+	return (
+		builtIn !== undefined &&
+		def.label === builtIn.label &&
+		def.label_singular === builtIn.label_singular &&
+		def.hierarchical === builtIn.hierarchical &&
+		def.collections === builtIn.collections
+	);
+}
 
 /**
  * Apply a seed file to the database
@@ -83,6 +158,14 @@ export async function applySeed(
 	seed: SeedFile,
 	options: SeedApplyOptions = {},
 ): Promise<SeedApplyResult> {
+	return coalesceObjectCacheWrites(() => applySeedWrites(db, seed, options));
+}
+
+async function applySeedWrites(
+	db: Kysely<Database>,
+	seed: SeedFile,
+	options: SeedApplyOptions,
+): Promise<SeedApplyResult> {
 	// Validate seed first
 	const validation = validateSeed(seed);
 	if (!validation.valid) {
@@ -98,9 +181,10 @@ export async function applySeed(
 
 	// Result counters
 	const result: SeedApplyResult = {
+		blockTypes: { created: 0, skipped: 0, updated: 0 },
 		collections: { created: 0, skipped: 0, updated: 0 },
 		fields: { created: 0, skipped: 0, updated: 0 },
-		taxonomies: { created: 0, terms: 0 },
+		taxonomies: { created: 0, skipped: 0, terms: 0 },
 		bylines: { created: 0, skipped: 0, updated: 0 },
 		menus: { created: 0, items: 0 },
 		redirects: { created: 0, skipped: 0, updated: 0 },
@@ -170,8 +254,18 @@ export async function applySeed(
 
 	// 1. Site settings
 	if (seed.settings) {
-		await setSiteSettings(seed.settings, db);
-		result.settings.applied = Object.keys(seed.settings).length;
+		await applySiteSettings(db, seed.settings, onConflict, result);
+	}
+
+	if (seed.blockTypes) {
+		const registry = new BlockTypeRegistry(db);
+		for (const blockType of seed.blockTypes) {
+			const existing = await registry.getBlockType(blockType.slug);
+			await registry.applySeedBlockType(blockType, onConflict);
+			if (!existing) result.blockTypes.created++;
+			else if (onConflict === "update") result.blockTypes.updated++;
+			else result.blockTypes.skipped++;
+		}
 	}
 
 	// 2-3. Collections and Fields
@@ -295,53 +389,80 @@ export async function applySeed(
 
 	// 4-5. Taxonomies
 	if (seed.taxonomies) {
-		// seed-local id -> resolved info, used to wire `translationOf` refs.
-		const defSeedIdMap = new Map<string, { id: string; translationGroup: string }>();
 		const termSeedIdMap = new Map<string, string>();
-
+		const taxonomiesBySeedId = new Map<string, SeedTaxonomy>();
 		for (const taxonomy of seed.taxonomies) {
+			if (taxonomy.id) taxonomiesBySeedId.set(taxonomy.id, taxonomy);
+		}
+		// Read before any entry applies: a structure write rewrites every locale's
+		// definition, which would make a built-in look edited to later entries.
+		const untouchedBuiltInDefIds = new Set(
+			(
+				await db
+					.selectFrom("_emdash_taxonomy_defs")
+					.select(["id", "label", "label_singular", "hierarchical", "collections"])
+					.where("id", "in", [...BUILT_IN_TAXONOMY_DEFS.keys()])
+					.execute()
+			)
+				.filter(isUntouchedBuiltInTaxonomyDef)
+				.map((def) => def.id),
+		);
+		// Entries that declare their taxonomy's structure apply first: a translation's
+		// terms need the structure its source entry may still replace.
+		const declaresOwnStructure = (taxonomy: SeedTaxonomy) =>
+			findTaxonomyStructureSource(taxonomy, taxonomiesBySeedId) === taxonomy;
+		const orderedTaxonomies = [
+			...seed.taxonomies.filter(declaresOwnStructure),
+			...seed.taxonomies.filter((taxonomy) => !declaresOwnStructure(taxonomy)),
+		];
+
+		for (const taxonomy of orderedTaxonomies) {
 			const defLocale = resolveConfiguredLocale(taxonomy.locale ?? defaultLocale);
 
-			// (name, locale) is the UNIQUE key after migration 036.
-			const existingDef = await db
+			const defsOfName = await db
 				.selectFrom("_emdash_taxonomy_defs")
-				.selectAll()
+				.select(["id", "locale"])
 				.where("name", "=", taxonomy.name)
-				.where("locale", "=", defLocale)
-				.executeTakeFirst();
+				.execute();
+			// (name, locale) is the UNIQUE key after migration 036.
+			const existingDef = defsOfName.find((def) => def.locale === defLocale);
+			const unclaimed = existingDef !== undefined && untouchedBuiltInDefIds.has(existingDef.id);
+			if (existingDef && onConflict === "error" && !unclaimed) {
+				throw new Error(`Conflict: taxonomy "${taxonomy.name}" (${defLocale}) already exists`);
+			}
+			const replacesDef = onConflict === "update" || unclaimed;
 
-			let defId: string;
-			let defTranslationGroup: string;
+			// The structure belongs to the taxonomy, not the locale: a translation takes
+			// the one its source entry left, and an existing taxonomy's is rewritten only
+			// by a source entry that replaces its definition or finds nothing but untouched
+			// built-in definitions of it, in any locale.
+			const existingStructure = await findTaxonomyStructure(db, taxonomy.name);
+			const replacesStructure =
+				replacesDef || defsOfName.every((def) => untouchedBuiltInDefIds.has(def.id));
+			const writesStructure = !existingStructure || (replacesStructure && !taxonomy.translationOf);
+			const structure =
+				existingStructure && !writesStructure
+					? existingStructure
+					: {
+							hierarchical: taxonomy.hierarchical ?? existingStructure?.hierarchical ?? false,
+							collections: taxonomy.collections ?? existingStructure?.collections ?? [],
+						};
+			const defId = existingDef?.id ?? ulid();
+			const translationGroup = writesStructure
+				? await saveTaxonomyStructure(db, taxonomy.name, existingStructure?.id ?? defId, structure)
+				: existingStructure.id;
 
 			if (existingDef) {
-				defId = existingDef.id;
-				defTranslationGroup = existingDef.translation_group ?? existingDef.id;
-				if (onConflict === "error") {
-					throw new Error(`Conflict: taxonomy "${taxonomy.name}" (${defLocale}) already exists`);
-				}
-				if (onConflict === "update") {
+				if (replacesDef) {
 					await db
 						.updateTable("_emdash_taxonomy_defs")
-						.set({
-							label: taxonomy.label,
-							label_singular: taxonomy.labelSingular ?? null,
-							hierarchical: taxonomy.hierarchical ? 1 : 0,
-							collections: JSON.stringify(taxonomy.collections),
-						})
+						.set({ label: taxonomy.label, label_singular: taxonomy.labelSingular ?? null })
 						.where("id", "=", existingDef.id)
 						.execute();
+				} else {
+					result.taxonomies.skipped++;
 				}
 			} else {
-				defId = ulid();
-				defTranslationGroup = defId;
-				if (taxonomy.translationOf) {
-					const source = defSeedIdMap.get(taxonomy.translationOf);
-					if (source) defTranslationGroup = source.translationGroup;
-					else
-						console.warn(
-							`taxonomy "${taxonomy.name}" (${defLocale}): translationOf "${taxonomy.translationOf}" not found yet; minting a fresh group.`,
-						);
-				}
 				await db
 					.insertInto("_emdash_taxonomy_defs")
 					.values({
@@ -349,23 +470,20 @@ export async function applySeed(
 						name: taxonomy.name,
 						label: taxonomy.label,
 						label_singular: taxonomy.labelSingular ?? null,
-						hierarchical: taxonomy.hierarchical ? 1 : 0,
-						collections: JSON.stringify(taxonomy.collections),
+						hierarchical: structure.hierarchical ? 1 : 0,
+						collections: JSON.stringify(structure.collections),
 						locale: defLocale,
-						translation_group: defTranslationGroup,
+						translation_group: translationGroup,
 					})
 					.execute();
 				result.taxonomies.created++;
 			}
 
-			if (taxonomy.id)
-				defSeedIdMap.set(taxonomy.id, { id: defId, translationGroup: defTranslationGroup });
-
 			// Create terms (if provided)
 			if (includeContent && taxonomy.terms && taxonomy.terms.length > 0) {
 				const termRepo = new TaxonomyRepository(db);
 
-				if (taxonomy.hierarchical) {
+				if (structure.hierarchical) {
 					await applyHierarchicalTerms(
 						termRepo,
 						taxonomy.name,
@@ -494,12 +612,18 @@ export async function applySeed(
 	if (includeContent && seed.content) {
 		const contentRepo = new ContentRepository(db);
 		const schemaRegistry = new SchemaRegistry(db);
+		// Settings and fields are all written above, so every entry can share the
+		// timezone and datetime fields read for its collection.
+		const datetimeContexts: DatetimeContextCache = new Map();
 
 		try {
 			// Create content entries
 			for (const [collectionSlug, entries] of Object.entries(seed.content)) {
-				const collectionRoutable =
-					(await schemaRegistry.getCollection(collectionSlug))?.routable !== false;
+				const collectionInfo = await schemaRegistry.getCollectionWithFields(collectionSlug);
+				const collectionRoutable = collectionInfo?.routable !== false;
+				const resolvedBlockTypes = collectionInfo?.fields.some((field) => field.type === "blocks")
+					? await resolveBlockTypes(db)
+					: undefined;
 				for (const entry of entries) {
 					const entrySlug =
 						typeof entry.slug === "string" && entry.slug.trim().length > 0 ? entry.slug : null;
@@ -523,21 +647,32 @@ export async function applySeed(
 
 						if (onConflict === "update") {
 							// Resolve $ref and $media in data
-							const resolvedData = await resolveReferences(
+							let resolvedData = await resolveReferences(
 								entry.data,
 								seedIdMap,
 								mediaContext,
 								result,
 							);
+							if (collectionInfo) {
+								resolvedData = await normalizeBlocksData(
+									db,
+									collectionInfo,
+									resolvedData,
+									existing.data,
+									{ restoreBlocks: true },
+									false,
+									resolvedBlockTypes,
+								);
+							}
 
 							// Update content + bylines + taxonomies atomically
 							const status = entry.status || "published";
 							let contentMutated = false;
 							try {
 								await withTransaction(db, async (trx) => {
-									const trxContentRepo = new ContentRepository(trx);
+									const trxContentRepo = new ContentRepository(trx, datetimeContexts);
 									const trxBylineRepo = new BylineRepository(trx);
-									const trxRevisionRepo = new RevisionRepository(trx);
+									const trxRevisionRepo = new RevisionRepository(trx, datetimeContexts);
 
 									await trxContentRepo.update(collectionSlug, existing.id, {
 										status,
@@ -614,7 +749,18 @@ export async function applySeed(
 					}
 
 					// Resolve $ref and $media in data
-					const resolvedData = await resolveReferences(entry.data, seedIdMap, mediaContext, result);
+					let resolvedData = await resolveReferences(entry.data, seedIdMap, mediaContext, result);
+					if (collectionInfo) {
+						resolvedData = await normalizeBlocksData(
+							db,
+							collectionInfo,
+							resolvedData,
+							{},
+							{ restoreBlocks: true },
+							false,
+							resolvedBlockTypes,
+						);
+					}
 
 					// Resolve translationOf: map from seed-local ID to real EmDash ID
 					let translationOf: string | undefined;
@@ -635,7 +781,7 @@ export async function applySeed(
 					let created: Awaited<ReturnType<ContentRepository["create"]>>;
 					try {
 						created = await withTransaction(db, async (trx) => {
-							const trxContentRepo = new ContentRepository(trx);
+							const trxContentRepo = new ContentRepository(trx, datetimeContexts);
 							const trxBylineRepo = new BylineRepository(trx);
 
 							const item = await trxContentRepo.create({
@@ -1297,6 +1443,18 @@ async function resolveValue(
 		const resolved: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
 			resolved[k] = await resolveValue(v, seedIdMap, mediaContext, result);
+		}
+		// Site components and other readers of saved blocks expect `asset._ref`/`asset.url`, not the MediaValue that `$media` yields.
+		if (resolved._type === "gallery" && Array.isArray(resolved.images)) {
+			resolved.images = sanitizeGalleryImages(resolved.images, ulid);
+		} else if (
+			resolved._type === "image" &&
+			"asset" in value &&
+			isSeedMediaReference(value.asset)
+		) {
+			// Merged over the block because the gallery image shape drops image-block fields such as `alignment`.
+			const [image] = sanitizeGalleryImages([resolved], ulid);
+			if (image) Object.assign(resolved, image);
 		}
 		return resolved;
 	}

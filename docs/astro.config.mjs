@@ -7,8 +7,10 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
 	site: "https://docs.emdashcms.com",
 	redirects: {
+		"/": "/getting-started/",
 		"/introduction": "/why-emdash",
 	},
+	session: false,
 	integrations: [
 		starlight({
 			title: "EmDash",
@@ -74,14 +76,17 @@ export default defineConfig({
 						{ label: "Navigation Menus", slug: "guides/menus" },
 						{ label: "Widget Areas", slug: "guides/widgets" },
 						{ label: "Page Layouts", slug: "guides/page-layouts" },
+						{ label: "Blocks", slug: "guides/blocks" },
 						{ label: "Sections", slug: "guides/sections" },
 						{ label: "Site Settings", slug: "guides/site-settings" },
 						{ label: "Authentication", slug: "guides/authentication" },
+						{ label: "Email Setup", slug: "guides/email" },
 						{ label: "Atmosphere Login", slug: "guides/atmosphere-auth" },
 						{ label: "AI Tools", slug: "guides/ai-tools" },
 						{ label: "x402 Payments", slug: "guides/x402-payments" },
 						{ label: "Preview Mode", slug: "guides/preview" },
 						{ label: "Backups", slug: "guides/backups" },
+						{ label: "Site Transfer", slug: "guides/site-transfer" },
 						{
 							label: "Internationalization (i18n)",
 							slug: "guides/internationalization",
@@ -255,6 +260,7 @@ export default defineConfig({
 					items: [
 						{ label: "Configuration", slug: "reference/configuration" },
 						{ label: "CLI Commands", slug: "reference/cli" },
+						{ label: "Content Lifecycle", slug: "reference/content-lifecycle" },
 						{ label: "API Reference", slug: "reference/api" },
 						{ label: "Field Types", slug: "reference/field-types" },
 						{ label: "Hook Reference", slug: "reference/hooks" },

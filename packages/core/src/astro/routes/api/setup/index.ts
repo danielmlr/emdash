@@ -14,9 +14,20 @@ import { getPublicOrigin } from "#api/public-url.js";
 import { setupBody } from "#api/schemas.js";
 import { getAuthMode } from "#auth/mode.js";
 import { OptionsRepository } from "#db/repositories/options.js";
-import { applySeed } from "#seed/apply.js";
+import { applySeedWithinBudget, type SeedApplyBudget } from "#seed/apply.js";
 import { loadSeed } from "#seed/load.js";
 import { validateSeed } from "#seed/validate.js";
+
+/**
+ * What one setup request may spend on the seed before the rest continues in
+ * the next request. Cloudflare Workers Free allows 1,000 calls to D1, KV and R2
+ * and 50 external fetches per request. A `$media` download takes at least three
+ * fetches (two DNS-over-HTTPS lookups in `ssrfSafeFetch`, then the file) and
+ * three more per redirect. The margin covers a redirect per download, the entry
+ * that crosses the budget with its images, the phases after content and the
+ * object-cache writes at the end.
+ */
+const SEED_BUDGET_PER_REQUEST: SeedApplyBudget = { queries: 500, mediaDownloads: 5 };
 
 export const POST: APIRoute = async ({ request, url, locals }) => {
 	const { emdash } = locals;
@@ -60,16 +71,22 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 			return apiError("INVALID_SEED", `Invalid seed file: ${validation.errors.join(", ")}`, 400);
 		}
 
-		let result;
+		let seeded;
 		try {
-			result = await applySeed(emdash.db, seed, {
-				includeContent: body.includeContent,
-				onConflict: "skip",
-				storage: emdash.storage ?? undefined,
-			});
+			seeded = await applySeedWithinBudget(
+				emdash.db,
+				seed,
+				{
+					includeContent: body.includeContent,
+					onConflict: "skip",
+					storage: emdash.storage ?? undefined,
+				},
+				SEED_BUDGET_PER_REQUEST,
+			);
 		} catch (error) {
 			return handleError(error, "Failed to apply seed", "SEED_ERROR");
 		}
+		const { result, complete: seedComplete, progress: seedProgress } = seeded;
 
 		// Store setup state
 		// In external auth mode, mark setup complete immediately (first user to login becomes admin)
@@ -88,25 +105,38 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 			const siteUrl = getPublicOrigin(url, emdash.config);
 			await options.setIfAbsent("emdash:site_url", siteUrl);
 
-			if (useExternalAuth) {
-				// External auth mode: mark setup complete now
-				// First user to log in via external provider will become admin
-				await options.set("emdash:setup_complete", true);
-				await options.set("emdash:site_title", body.title);
-				if (body.tagline) {
-					await options.set("emdash:site_tagline", body.tagline);
+			if (seedComplete) {
+				if (useExternalAuth) {
+					// External auth mode: mark setup complete now
+					// First user to log in via external provider will become admin
+					await options.set("emdash:setup_complete", true);
+					await options.set("emdash:site_title", body.title);
+					if (body.tagline) {
+						await options.set("emdash:site_tagline", body.tagline);
+					}
+				} else {
+					// Passkey/provider mode: store state for next step (admin creation)
+					await options.set("emdash:setup_state", {
+						step: "site_complete",
+						title: body.title,
+						tagline: body.tagline,
+					});
 				}
-			} else {
-				// Passkey/provider mode: store state for next step (admin creation)
-				await options.set("emdash:setup_state", {
-					step: "site_complete",
-					title: body.title,
-					tagline: body.tagline,
-				});
 			}
 		} catch (error) {
 			console.error("Failed to save setup state:", error);
 			// Non-fatal - continue anyway
+		}
+
+		if (!seedComplete) {
+			// The wizard posts again; items already created are skipped.
+			return apiSuccess({
+				success: true,
+				setupComplete: false,
+				seedComplete: false,
+				seedProgress,
+				result,
+			});
 		}
 
 		// Return success with result
@@ -114,6 +144,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 			success: true,
 			// In external auth mode, setup is complete - redirect to admin
 			setupComplete: useExternalAuth,
+			seedComplete: true,
 			result,
 		});
 	} catch (error) {

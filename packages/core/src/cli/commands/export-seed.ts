@@ -38,6 +38,8 @@ import type {
 	SeedTaxonomyTerm,
 	SeedMenu,
 	SeedMenuItem,
+	SeedRedirect,
+	SeedSection,
 	SeedWidgetArea,
 	SeedWidget,
 	SeedContentEntry,
@@ -49,6 +51,8 @@ import { isMissingTableError } from "../../utils/db-errors.js";
 import { slugify } from "../../utils/slugify.js";
 
 const SETTINGS_PREFIX = "site:";
+
+const TRAILING_SLASHES = /\/+$/;
 
 export const exportSeedCommand = defineCommand({
 	meta: {
@@ -76,6 +80,11 @@ export const exportSeedCommand = defineCommand({
 			type: "boolean",
 			description: "Pretty print JSON output",
 			default: true,
+		},
+		"media-base-url": {
+			type: "string",
+			description: "Public URL of the site, used to write absolute media URLs",
+			required: false,
 		},
 	},
 	async run({ args }) {
@@ -109,7 +118,10 @@ export const exportSeedCommand = defineCommand({
 		}
 
 		try {
-			const seed = await exportSeed(db, args["with-content"]);
+			const seed = await exportSeed(db, args["with-content"], {
+				mediaBaseUrl: args["media-base-url"],
+				warn: (message) => process.stderr.write(`Warning: ${message}\n`),
+			});
 
 			// Output to stdout
 			const output = args.pretty ? JSON.stringify(seed, null, "\t") : JSON.stringify(seed);
@@ -125,10 +137,28 @@ export const exportSeedCommand = defineCommand({
 	},
 });
 
+export interface ExportSeedOptions {
+	/**
+	 * Public origin (optionally with a base path) of the site the database
+	 * belongs to. `$media` URLs are written relative to it; without it they are
+	 * site-relative paths, which `applySeed` cannot download.
+	 */
+	mediaBaseUrl?: string;
+	/** Receives messages about data the seed cannot carry. */
+	warn?: (message: string) => void;
+}
+
 /**
  * Export database to seed file format
  */
-export async function exportSeed(db: Kysely<Database>, withContent?: string): Promise<SeedFile> {
+export async function exportSeed(
+	db: Kysely<Database>,
+	withContent?: string,
+	options: ExportSeedOptions = {},
+): Promise<SeedFile> {
+	const warn = options.warn ?? (() => {});
+	const mediaUrlPrefix = mediaFileUrlPrefix(options.mediaBaseUrl);
+
 	const seed: SeedFile = {
 		$schema: "https://emdashcms.com/seed.schema.json",
 		version: "1",
@@ -156,36 +186,29 @@ export async function exportSeed(db: Kysely<Database>, withContent?: string): Pr
 
 	// Decide locale-awareness from the data. The runtime sets the i18n config via
 	// middleware, but the CLI never does, so `isI18nEnabled()` is always false
-	// under `emdash export-seed` (#1330). Detecting multiple locales in the data
+	// under `emdash export-seed`. Detecting multiple locales in the data
 	// keeps the export locale-aware without the runtime flag.
 	const { i18nEnabled, defaultLocale } = await detectLocaleInfo(db, seed.collections);
 
 	// Self-describe the default locale so a non-`en` single-locale project
 	// survives the round-trip: `emdash seed` runs outside the runtime and would
-	// otherwise backfill omitted locales as `en` (#1421).
+	// otherwise backfill omitted locales as `en`.
 	if (defaultLocale) seed.defaultLocale = defaultLocale;
 
 	// 4. Export taxonomy definitions and terms
 	seed.taxonomies = await exportTaxonomies(db, i18nEnabled);
 
-	// 5. Export menus
-	seed.menus = await exportMenus(db, i18nEnabled);
-
-	// 6. Export widget areas
-	seed.widgetAreas = await exportWidgetAreas(db);
-
-	// 7. Export byline profiles. The returned map (translation_group -> seed-local
-	// id) lets content credits below reference the same ids the root list emits.
+	// Byline profiles. The returned map (translation_group -> seed-local id)
+	// lets content credits reference the same ids the root list emits.
 	const { bylines, groupToSeedId } = await exportBylines(db);
-	if (bylines.length > 0) {
-		seed.bylines = bylines;
-	}
 
-	// 8. Export content (if requested)
+	// Content is read before menus so menu items can name their targets by
+	// seed id.
+	let exportedContent: ExportedContent | undefined;
 	if (withContent !== undefined) {
 		// Treat "all" as a synonym for the bare flag and "true". The args help
 		// text documents `all` as a valid value, but without this the literal
-		// string is read as a collection name and matches no collection (#1329).
+		// string is read as a collection name and matches no collection.
 		const includeAll = withContent === "" || withContent === "true" || withContent === "all";
 		const collections = includeAll
 			? null // all collections
@@ -194,16 +217,64 @@ export async function exportSeed(db: Kysely<Database>, withContent?: string): Pr
 					.map((s) => s.trim())
 					.filter(Boolean);
 
-		seed.content = await exportContent(
+		exportedContent = await exportContent(
 			db,
 			seed.collections || [],
 			collections,
 			groupToSeedId,
 			i18nEnabled,
+			mediaUrlPrefix,
 		);
 	}
 
+	seed.menus = await exportMenus(db, i18nEnabled, exportedContent?.groupSeedIds ?? new Map());
+
+	const redirects = await exportRedirects(db, warn);
+	if (redirects.length > 0) {
+		seed.redirects = redirects;
+	}
+
+	seed.widgetAreas = await exportWidgetAreas(db);
+
+	const sections = await exportSections(db, warn);
+	if (sections.length > 0) {
+		seed.sections = sections;
+	}
+
+	if (bylines.length > 0) {
+		seed.bylines = bylines;
+	}
+
+	if (exportedContent) {
+		seed.content = exportedContent.content;
+		if (exportedContent.mediaCount > 0 && !options.mediaBaseUrl) {
+			warn(
+				`${exportedContent.mediaCount} media reference(s) use site-relative URLs, which \`emdash seed\` cannot download. Pass --media-base-url with the site's public URL to make them importable.`,
+			);
+		}
+	}
+
 	return seed;
+}
+
+const MEDIA_FILE_PATH = "/_emdash/api/media/file/";
+
+/**
+ * Prefix for `$media` URLs: the site's base URL (without a trailing slash)
+ * plus the public media route, or the bare route when no base is given.
+ */
+function mediaFileUrlPrefix(mediaBaseUrl: string | undefined): string {
+	if (mediaBaseUrl === undefined) return MEDIA_FILE_PATH;
+	let base: URL;
+	try {
+		base = new URL(mediaBaseUrl);
+	} catch {
+		throw new Error(`Invalid media base URL: ${mediaBaseUrl}`);
+	}
+	if (base.protocol !== "http:" && base.protocol !== "https:") {
+		throw new Error(`Media base URL must use http or https: ${mediaBaseUrl}`);
+	}
+	return `${base.origin}${base.pathname.replace(TRAILING_SLASHES, "")}${MEDIA_FILE_PATH}`;
 }
 
 /**
@@ -257,7 +328,7 @@ async function exportBylines(
  * Determine locale-awareness and the data's default locale for the export.
  *
  * The runtime initializes the i18n config in middleware, but the CLI never does,
- * so `isI18nEnabled()` is always false under `emdash export-seed` (#1330). When
+ * so `isI18nEnabled()` is always false under `emdash export-seed`. When
  * the flag is unset, fall back to the data: a project is multi-locale when its
  * i18n-aware tables hold rows in more than one distinct locale. `locale` is
  * NOT NULL (defaulting to the site's default locale), so a per-row presence
@@ -267,7 +338,7 @@ async function exportBylines(
  * per-locale suffix they need to avoid duplicate seed ids.
  *
  * `defaultLocale` self-describes the single-locale case so a non-`en` default
- * survives the round-trip (#1421). When more than one locale is present every
+ * survives the round-trip. When more than one locale is present every
  * row already carries its own `locale`, so no fallback is needed and we leave it
  * undefined rather than guess which locale is the "default" without the runtime
  * config.
@@ -368,6 +439,9 @@ async function exportCollections(db: Kysely<Database>): Promise<SeedCollection[]
 			hidden: collection.hidden || undefined,
 			sortOrder: collection.sortOrder,
 			group: collection.group,
+			commentsEnabled: collection.commentsEnabled || undefined,
+			titleField: collection.titleField,
+			dateField: collection.dateField,
 			fields: fields.map(
 				(field): SeedField => ({
 					slug: field.slug,
@@ -377,6 +451,7 @@ async function exportCollections(db: Kysely<Database>): Promise<SeedCollection[]
 					unique: field.unique || undefined,
 					searchable: field.searchable || undefined,
 					indexed: field.indexed || undefined,
+					translatable: field.translatable === false ? false : undefined,
 					defaultValue: field.defaultValue,
 					validation: field.validation ? { ...field.validation } : undefined,
 					widget: field.widget || undefined,
@@ -532,7 +607,11 @@ async function exportTaxonomies(
 /**
  * Export menus with their items
  */
-async function exportMenus(db: Kysely<Database>, i18nEnabled: boolean): Promise<SeedMenu[]> {
+async function exportMenus(
+	db: Kysely<Database>,
+	i18nEnabled: boolean,
+	contentGroupSeedIds: ContentGroupSeedIds,
+): Promise<SeedMenu[]> {
 	const menus = await db
 		.selectFrom("_emdash_menus")
 		.selectAll()
@@ -567,6 +646,7 @@ async function exportMenus(db: Kysely<Database>, i18nEnabled: boolean): Promise<
 			menuLocale: menu.locale ?? null,
 			itemGroupToSeedId,
 			usedItemSeedIds,
+			contentGroupSeedIds,
 		});
 
 		const seedMenu: SeedMenu = {
@@ -624,6 +704,7 @@ function buildMenuItemTree(
 		// translation_group -> seed-local id of the anchor item in that group.
 		itemGroupToSeedId: Map<string, string>;
 		usedItemSeedIds: Set<string>;
+		contentGroupSeedIds: ContentGroupSeedIds;
 	},
 ): SeedMenuItem[] {
 	// Build parent -> children map
@@ -667,7 +748,14 @@ function buildMenuItemTree(
 			if (item.type === "custom") {
 				seedItem.url = item.custom_url || undefined;
 			} else {
-				seedItem.ref = item.reference_id || undefined;
+				// `reference_id` holds the target's translation_group. Content
+				// targets are named by the seed id `applySeed` maps back to a row;
+				// anything this export did not include keeps the stored value.
+				const contentSeedId =
+					item.type !== "taxonomy" && item.reference_id
+						? i18nCtx.contentGroupSeedIds.get(item.reference_id)
+						: undefined;
+				seedItem.ref = contentSeedId ?? (item.reference_id || undefined);
 				seedItem.collection = item.reference_collection || undefined;
 			}
 
@@ -764,6 +852,97 @@ async function exportWidgetAreas(db: Kysely<Database>): Promise<SeedWidgetArea[]
 		});
 	}
 
+	return result;
+}
+
+function isSeedRedirectType(type: number): type is NonNullable<SeedRedirect["type"]> {
+	return type === 301 || type === 302 || type === 307 || type === 308;
+}
+
+/**
+ * Export redirect rules. Terminal rules (410/451) have no seed representation
+ * and are reported through `warn` instead.
+ *
+ * Databases migrated from before the source guard can hold several rows for
+ * one source; only the guarded row is exported, since a seed rejects duplicate
+ * sources.
+ */
+async function exportRedirects(
+	db: Kysely<Database>,
+	warn: (message: string) => void,
+): Promise<SeedRedirect[]> {
+	const rows = await db
+		.selectFrom("_emdash_redirects")
+		.select(["source", "destination", "type", "enabled", "group_name", "source_guard"])
+		.orderBy("created_at")
+		.orderBy("id")
+		.execute();
+
+	const guardedRows = new Map<string, (typeof rows)[number]>();
+	for (const row of rows) {
+		const current = guardedRows.get(row.source);
+		if (!current || (row.source_guard === 1 && current.source_guard !== 1)) {
+			guardedRows.set(row.source, row);
+		}
+	}
+
+	const result: SeedRedirect[] = [];
+	for (const row of rows) {
+		if (guardedRows.get(row.source) !== row) {
+			warn(`Skipping duplicate rule for "${row.source}" -> "${row.destination}".`);
+			continue;
+		}
+		if (!isSeedRedirectType(row.type)) {
+			warn(`Skipping ${row.type} rule for "${row.source}": seeds only carry 301/302/307/308.`);
+			continue;
+		}
+		const redirect: SeedRedirect = {
+			source: row.source,
+			destination: row.destination,
+			type: row.type,
+		};
+		if (row.enabled === 0) redirect.enabled = false;
+		if (row.group_name) redirect.groupName = row.group_name;
+		result.push(redirect);
+	}
+	return result;
+}
+
+function isSeedSectionSource(source: string): source is NonNullable<SeedSection["source"]> {
+	return source === "theme" || source === "user" || source === "import";
+}
+
+/** Section slugs a seed accepts. The WordPress importer can store others. */
+const SEED_SECTION_SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+async function exportSections(
+	db: Kysely<Database>,
+	warn: (message: string) => void,
+): Promise<SeedSection[]> {
+	const rows = await db
+		.selectFrom("_emdash_sections")
+		.select(["slug", "title", "description", "keywords", "content", "source"])
+		.orderBy("slug")
+		.execute();
+
+	const result: SeedSection[] = [];
+	for (const row of rows) {
+		if (!SEED_SECTION_SLUG_PATTERN.test(row.slug)) {
+			warn(
+				`Skipping section "${row.slug}": seed section slugs may only contain lowercase letters, digits, and hyphens.`,
+			);
+			continue;
+		}
+		const section: SeedSection = {
+			slug: row.slug,
+			title: row.title,
+			content: JSON.parse(row.content),
+		};
+		if (row.description) section.description = row.description;
+		if (row.keywords) section.keywords = JSON.parse(row.keywords);
+		if (isSeedSectionSource(row.source)) section.source = row.source;
+		result.push(section);
+	}
 	return result;
 }
 
@@ -888,6 +1067,23 @@ function orderByReferenceTargets(slugs: string[], targets: Map<string, Set<strin
 	return ordered;
 }
 
+/** translation_group -> seed id of the entry anchoring that group */
+type ContentGroupSeedIds = Map<string, string>;
+
+interface MediaInfo {
+	url: string;
+	filename: string;
+	alt?: string;
+	caption?: string;
+}
+
+interface ExportedContent {
+	content: Record<string, SeedContentEntry[]>;
+	groupSeedIds: ContentGroupSeedIds;
+	/** Number of `$media` references written. */
+	mediaCount: number;
+}
+
 /**
  * Export content from collections
  */
@@ -897,17 +1093,16 @@ async function exportContent(
 	includeCollections: string[] | null,
 	bylineGroupToSeedId: Map<string, string>,
 	i18nEnabled: boolean,
-): Promise<Record<string, SeedContentEntry[]>> {
+	mediaUrlPrefix: string,
+): Promise<ExportedContent> {
 	const content: Record<string, SeedContentEntry[]> = {};
+	const mediaCounter = { count: 0 };
 	const contentRepo = new ContentRepository(db);
 	const taxonomyRepo = new TaxonomyRepository(db);
 	const mediaRepo = new MediaRepository(db);
 
 	// Build media id -> info map for $media conversion
-	const mediaMap = new Map<
-		string,
-		{ url: string; filename: string; alt?: string; caption?: string }
-	>();
+	const mediaMap = new Map<string, MediaInfo>();
 	try {
 		let cursor: string | undefined;
 		do {
@@ -918,7 +1113,7 @@ async function exportContent(
 			});
 			for (const media of result.items) {
 				mediaMap.set(media.id, {
-					url: `/_emdash/api/media/file/${media.storageKey}`,
+					url: `${mediaUrlPrefix}${media.storageKey}`,
 					filename: media.filename,
 					alt: media.alt || undefined,
 					caption: media.caption || undefined,
@@ -970,9 +1165,10 @@ async function exportContent(
 				items.push({ item, seedId });
 				entryIdToSeedId.set(item.id, seedId);
 				entryIdToCollection.set(item.id, collection.slug);
-				if (item.translationGroup && !groupToSeedId.has(item.translationGroup)) {
-					groupToSeedId.set(item.translationGroup, seedId);
-				}
+				// The first entry of a group is the one written without
+				// `translationOf`, so `applySeed` gives it the group's id.
+				const group = item.translationGroup ?? item.id;
+				if (!groupToSeedId.has(group)) groupToSeedId.set(group, seedId);
 			}
 
 			cursor = result.nextCursor;
@@ -1002,12 +1198,20 @@ async function exportContent(
 
 		for (const { item, seedId } of items) {
 			// Process data fields for $media conversion
-			const processedData = processDataForExport(item.data, collection.fields, mediaMap);
+			const processedData = processDataForExport(
+				item.data,
+				collection.fields,
+				mediaMap,
+				mediaCounter,
+			);
 
 			const entry: SeedContentEntry = {
 				id: seedId,
 				slug: item.slug?.trim() ? item.slug : collection.routable === false ? undefined : item.id,
-				status: item.status === "published" || item.status === "draft" ? item.status : undefined,
+				// Seeds carry no schedule, and `applySeed` publishes an entry with
+				// no status, so every unpublished state (including scheduled) is a
+				// draft.
+				status: item.status === "published" ? "published" : "draft",
 				data: processedData,
 			};
 
@@ -1070,7 +1274,7 @@ async function exportContent(
 
 	await addReferenceLinks(db, exported, relations, groupToSeedId, entryIdToSeedId);
 
-	return content;
+	return { content, groupSeedIds: groupToSeedId, mediaCount: mediaCounter.count };
 }
 
 interface ExportedEntry {
@@ -1159,43 +1363,83 @@ async function addReferenceLinks(
 }
 
 /**
- * Process content data for export, converting image fields to $media syntax
+ * Convert a stored media value (image or file) to `$media` syntax. Values that
+ * don't point at a known media row are kept as they are.
+ */
+function toSeedMedia(
+	value: unknown,
+	mediaMap: Map<string, MediaInfo>,
+	mediaCounter: { count: number },
+): unknown {
+	if (!value || typeof value !== "object") return value;
+	const mediaValue = value as { id?: unknown; alt?: unknown };
+	const mediaInfo = typeof mediaValue.id === "string" ? mediaMap.get(mediaValue.id) : undefined;
+	if (!mediaInfo) return value;
+
+	mediaCounter.count++;
+	return {
+		$media: {
+			url: mediaInfo.url,
+			filename: mediaInfo.filename,
+			alt: (typeof mediaValue.alt === "string" && mediaValue.alt) || mediaInfo.alt,
+			caption: mediaInfo.caption,
+		},
+	};
+}
+
+/** Slugs of a repeater field's `image` sub-fields. */
+function repeaterImageSubFields(field: SeedField): Set<string> {
+	const subFields = field.validation?.subFields;
+	const slugs = new Set<string>();
+	if (!Array.isArray(subFields)) return slugs;
+	for (const subField of subFields) {
+		if (
+			subField &&
+			typeof subField === "object" &&
+			subField.type === "image" &&
+			typeof subField.slug === "string"
+		) {
+			slugs.add(subField.slug);
+		}
+	}
+	return slugs;
+}
+
+/**
+ * Process content data for export: media values become `$media` references
+ * and reference values become `$ref:` seed ids.
  */
 function processDataForExport(
 	data: Record<string, unknown>,
 	fields: SeedField[],
-	mediaMap: Map<string, { url: string; filename: string; alt?: string; caption?: string }>,
+	mediaMap: Map<string, MediaInfo>,
+	mediaCounter: { count: number },
 ): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 
-	// Create field type lookup
-	const fieldTypes = new Map<string, FieldType>();
+	const fieldsBySlug = new Map<string, SeedField>();
 	for (const field of fields) {
-		fieldTypes.set(field.slug, field.type);
+		fieldsBySlug.set(field.slug, field);
 	}
 
 	for (const [key, value] of Object.entries(data)) {
-		const fieldType = fieldTypes.get(key);
+		const field = fieldsBySlug.get(key);
+		const fieldType: FieldType | undefined = field?.type;
 
-		if (fieldType === "image" && value && typeof value === "object") {
-			// Convert image field to $media syntax
-			const imageValue = value as { id?: string; src?: string; alt?: string };
-			if (imageValue.id) {
-				const mediaInfo = mediaMap.get(imageValue.id);
-				if (mediaInfo) {
-					result[key] = {
-						$media: {
-							url: mediaInfo.url,
-							filename: mediaInfo.filename,
-							alt: imageValue.alt || mediaInfo.alt,
-							caption: mediaInfo.caption,
-						},
-					};
-					continue;
+		if (fieldType === "image" || fieldType === "file") {
+			result[key] = toSeedMedia(value, mediaMap, mediaCounter);
+		} else if (field && fieldType === "repeater" && Array.isArray(value)) {
+			const imageSubFields = repeaterImageSubFields(field);
+			result[key] = value.map((row: unknown) => {
+				if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+				const exportedRow: Record<string, unknown> = {};
+				for (const [subKey, subValue] of Object.entries(row)) {
+					exportedRow[subKey] = imageSubFields.has(subKey)
+						? toSeedMedia(subValue, mediaMap, mediaCounter)
+						: subValue;
 				}
-			}
-			// Fallback: keep as-is if no media info found
-			result[key] = value;
+				return exportedRow;
+			});
 		} else if (fieldType === "reference") {
 			// Left for `addReferenceLinks`, which knows the seed id each entry was
 			// emitted under. A `$ref:` built here from a raw entry id resolves

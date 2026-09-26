@@ -503,6 +503,7 @@ async function applySeedWrites(
 					unique: field.unique || false,
 					searchable: field.searchable || false,
 					indexed: field.indexed || false,
+					translatable: field.translatable,
 					defaultValue: field.defaultValue,
 					validation: fieldValidation,
 					widget: field.widget,
@@ -1765,6 +1766,7 @@ async function upsertSeedField(
 			unique: field.unique || false,
 			searchable: field.searchable || false,
 			indexed: field.indexed || false,
+			translatable: field.translatable,
 			defaultValue: field.defaultValue,
 			widget: field.widget,
 			options: field.options,
@@ -1815,6 +1817,7 @@ async function upsertSeedField(
 		unique: field.unique || false,
 		searchable: field.searchable || false,
 		indexed: field.indexed || false,
+		translatable: field.translatable,
 		defaultValue: field.defaultValue,
 		validation: field.validation,
 		widget: field.widget,
@@ -2005,14 +2008,20 @@ async function applyMenuItems(
 		let referenceId: string | null = null;
 		let referenceCollection: string | null = null;
 
-		if (item.type === "page" || item.type === "post") {
-			// Try to resolve from seedIdMap
-			if (item.ref && seedIdMap.has(item.ref)) {
-				referenceId = seedIdMap.get(item.ref)!;
-				// Default to plural collection name (pages/posts) if not specified
-				referenceCollection = item.collection || `${item.type}s`;
+		if (item.type !== "custom" && item.type !== "taxonomy") {
+			const collection =
+				item.collection || (item.type === "page" || item.type === "post" ? `${item.type}s` : null);
+			if (item.ref) {
+				// An unresolved ref stays fully unset: a "collection" item that kept
+				// its collection would render as that collection's archive link.
+				const resolved = seedIdMap.get(item.ref);
+				if (resolved && collection) {
+					referenceId = resolved;
+					referenceCollection = collection;
+				}
+			} else {
+				referenceCollection = collection;
 			}
-			// If not in map, the content might not exist yet (will be broken link)
 		}
 
 		let translationGroup = itemId;

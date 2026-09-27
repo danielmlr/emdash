@@ -27,7 +27,11 @@ import {
 import { buildMigrationManifest } from "../../migrations/manifest-builder.js";
 import { writeMigrationManifest } from "../../migrations/manifest-writer.js";
 import type { ResolvedPlugin } from "../../plugins/types.js";
-import { normalizeRegistryConfig, resolveRegistryConfigForSandbox } from "../../registry/config.js";
+import {
+	normalizeRegistryConfig,
+	parseDurationSeconds,
+	resolveRegistryConfigForSandbox,
+} from "../../registry/config.js";
 import { VERSION } from "../../version.js";
 import { setDevTypegenRefresh } from "../dev-typegen.js";
 import { local } from "../storage/adapters.js";
@@ -153,6 +157,34 @@ export function buildImageRemotePatterns(
 	}
 
 	return patterns;
+}
+
+/**
+ * Build the config subset baked into `virtual:emdash/config` and exposed
+ * at runtime as `locals.emdash.config`. A config option that runtime code
+ * reads (routes, middleware) MUST be listed here — an option only on
+ * `EmDashConfig` is invisible at runtime and silently ignored.
+ *
+ * @internal Exported for unit testing.
+ */
+export function buildSerializableConfig(resolvedConfig: EmDashConfig): Record<string, unknown> {
+	return {
+		database: resolvedConfig.database,
+		migrations: resolvedConfig.migrations,
+		storage: resolvedConfig.storage,
+		auth: resolvedConfig.auth,
+		authProviders: resolvedConfig.authProviders,
+		marketplace: resolvedConfig.marketplace,
+		registry: resolvedConfig.registry,
+		experimental: resolvedConfig.experimental,
+		siteUrl: resolvedConfig.siteUrl,
+		trustedProxyHeaders: resolvedConfig.trustedProxyHeaders,
+		maxUploadSize: resolvedConfig.maxUploadSize,
+		admin: resolvedConfig.admin,
+		toolbar: resolvedConfig.toolbar,
+		updateCheck: resolvedConfig.updateCheck,
+		objectCacheEnabled: resolvedConfig.objectCache !== undefined,
+	};
 }
 
 /**
@@ -370,6 +402,20 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 		fieldPrefix: registry.fieldPrefix,
 	});
 
+	const updateCheckAge =
+		typeof resolvedConfig.updateCheck === "object"
+			? resolvedConfig.updateCheck?.minimumReleaseAge
+			: undefined;
+	if (updateCheckAge !== undefined) {
+		try {
+			parseDurationSeconds(updateCheckAge);
+		} catch (e) {
+			throw new Error(`Invalid updateCheck.minimumReleaseAge: ${String(updateCheckAge)}`, {
+				cause: e,
+			});
+		}
+	}
+
 	// Validate marketplace URL
 	if (resolvedConfig.marketplace) {
 		const url = resolvedConfig.marketplace;
@@ -468,22 +514,7 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 
 	// Serialize config for virtual module (database/storage/auth - plugins handled separately)
 	// i18n is populated in astro:config:setup from astroConfig.i18n
-	const serializableConfig: Record<string, unknown> = {
-		database: resolvedConfig.database,
-		migrations: resolvedConfig.migrations,
-		storage: resolvedConfig.storage,
-		auth: resolvedConfig.auth,
-		authProviders: resolvedConfig.authProviders,
-		marketplace: resolvedConfig.marketplace,
-		registry: resolvedConfig.registry,
-		experimental: resolvedConfig.experimental,
-		siteUrl: resolvedConfig.siteUrl,
-		trustedProxyHeaders: resolvedConfig.trustedProxyHeaders,
-		maxUploadSize: resolvedConfig.maxUploadSize,
-		admin: resolvedConfig.admin,
-		toolbar: resolvedConfig.toolbar,
-		objectCacheEnabled: resolvedConfig.objectCache !== undefined,
-	};
+	const serializableConfig = buildSerializableConfig(resolvedConfig);
 
 	// Determine auth mode for route injection
 	// Check if auth is an AuthDescriptor (has entrypoint) indicating external auth

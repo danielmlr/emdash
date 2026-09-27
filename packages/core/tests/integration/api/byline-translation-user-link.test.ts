@@ -63,7 +63,7 @@ describeEachDialect("byline translations keep the user link", (dialect) => {
 		setI18nConfig({ defaultLocale: "en", locales: ["en", "fr", "de"] });
 		const user = await new UserRepository(db).create({
 			email: "ada@example.com",
-			displayName: "Ada",
+			name: "Ada",
 			role: "author",
 		});
 		userId = user.id;

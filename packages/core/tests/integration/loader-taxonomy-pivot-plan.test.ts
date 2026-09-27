@@ -174,6 +174,23 @@ it("seeks a small term on the pivot for an updated_at sort", async () => {
 	expectPivotSeek(pivotQueryPlan());
 });
 
+it("seeks a term that is large only in another collection", async () => {
+	const news = await db
+		.selectFrom("taxonomies")
+		.select("translation_group")
+		.where("slug", "=", "news")
+		.executeTakeFirstOrThrow();
+	await sql`
+		WITH RECURSIVE seq(i) AS (
+			SELECT 1 UNION ALL SELECT i + 1 FROM seq WHERE i < ${LARGE_TERM_ASSIGNMENTS}
+		)
+		INSERT INTO content_taxonomies (collection, entry_id, taxonomy_id)
+		SELECT 'page', printf('page%04d', i), ${news.translation_group} FROM seq
+	`.execute(db);
+	await runLoad({ category: "news" }, { orderBy: { published_at: "desc" } });
+	expectPivotSeek(pivotQueryPlan());
+});
+
 describe("a large term", () => {
 	beforeEach(async () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema vs Database type

@@ -4422,7 +4422,7 @@ msgstr "Verweise je {linkingSideName}"
 #. placeholder {0}: "/{year}/{slug}"
 #: packages/admin/src/components/ContentTypeEditor.tsx:525
 msgid "Each path segment can contain at most one placeholder, e.g. {0}"
-msgstr ""
+msgstr "Jedes Pfadsegment darf höchstens einen Platzhalter enthalten, z. B. {0}"
 
 #: packages/admin/src/components/editor/PluginBlockNode.tsx:367
 #: packages/admin/src/components/editor/PluginBlockNode.tsx:368
@@ -4670,7 +4670,7 @@ msgstr "EmDash {0}"
 #. placeholder {0}: status.current
 #: packages/admin/src/components/CoreUpdateBanner.tsx:67
 msgid "EmDash {latest} is available (you're running {0})"
-msgstr ""
+msgstr "EmDash {latest} ist verfügbar (du verwendest {0})"
 
 #: packages/admin/src/components/MediaDetailPanel.tsx:1958
 msgid "EmDash does not keep the previous image."
@@ -5329,7 +5329,7 @@ msgstr "Abrufen der Begriffe fehlgeschlagen"
 
 #: packages/admin/src/lib/api/core-update.ts:29
 msgid "Failed to fetch update status"
-msgstr ""
+msgstr "Abrufen des Update-Status fehlgeschlagen"
 
 #: packages/admin/src/lib/api/current-user.ts:22
 #: packages/admin/src/lib/api/users.ts:88
@@ -9637,7 +9637,7 @@ msgstr "Das Release ist zu neu, um installiert zu werden"
 
 #: packages/admin/src/components/CoreUpdateBanner.tsx:75
 msgid "Release notes"
-msgstr ""
+msgstr "Release Notes"
 
 #: packages/admin/src/components/settings/MediaUsageSettings.tsx:325
 msgid "Reload after updating EmDash before trying again."
@@ -12957,7 +12957,7 @@ msgstr "Aktualisiere Details zu {0}"
 
 #: packages/admin/src/components/CoreUpdateBanner.tsx:68
 msgid "Update the emdash package in your project and redeploy to get the latest fixes."
-msgstr ""
+msgstr "Aktualisiere das Paket emdash in deinem Projekt und stelle es neu bereit, um die neuesten Fehlerbehebungen zu erhalten."
 
 #. placeholder {0}: selected.displayName
 #: packages/admin/src/routes/bylines.tsx:674

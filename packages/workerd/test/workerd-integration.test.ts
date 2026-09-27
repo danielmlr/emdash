@@ -8,7 +8,6 @@
  * the workerd package installed).
  */
 
-import Database from "better-sqlite3";
 import {
 	ContentRepository,
 	createSandboxRouteError,
@@ -19,6 +18,7 @@ import type { RuntimeDependencies } from "emdash/plugin-test-runtime";
 import { Kysely, SqliteDialect, type QueryId } from "kysely";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+import { NodeSqliteCompatDatabase as Database } from "../../core/src/db/node-sqlite-compat.js";
 import { WorkerdSandboxRunner } from "../src/sandbox/runner.js";
 
 vi.mock("virtual:emdash/config", () => ({ default: null }), { virtual: true });
@@ -135,6 +135,15 @@ export default {
 				const kvValue = await ctx.kv.get("last-hook");
 				return { input: routeCtx.input, kvValue, ui: routeCtx.ui };
 			}
+		},
+		"editor-draft": {
+			handler: async (routeCtx) => ({
+				snapshot: routeCtx.input.draft,
+				patch: {
+					type: "editor-draft-patch",
+					operations: [{ op: "set", field: "title", value: routeCtx.input.draft.fields.title + " translated" }]
+				}
+			})
 		},
 		"kv-test": {
 			handler: async (routeCtx, ctx) => {
@@ -455,7 +464,7 @@ export default {
 
 describe.skipIf(!workerdAvailable)("WorkerdSandboxRunner integration", () => {
 	let db: Kysely<any>;
-	let sqlite: Database.Database;
+	let sqlite: Database;
 	let runner: WorkerdSandboxRunner;
 
 	beforeEach(async () => {
@@ -499,6 +508,43 @@ describe.skipIf(!workerdAvailable)("WorkerdSandboxRunner integration", () => {
 		expect(result).toBeDefined();
 		expect(result.input).toEqual({ hello: "world" });
 		expect(result.ui).toEqual({ surface: "dashboard-widget", locale: "ar", direction: "rtl" });
+	}, 30_000);
+
+	it("preserves editor draft snapshots and patch effects through the route transport", async () => {
+		const plugin = await runner.load(
+			{
+				id: "test-editor-draft",
+				version: "1.0.0",
+				capabilities: ["admin.editor-draft:read", "admin.editor-draft:patch"],
+				allowedHosts: [],
+				storage: {},
+			},
+			ECHO_PLUGIN,
+		);
+		const draft = {
+			collection: "posts",
+			entryId: "entry-1",
+			locale: "en",
+			baseRevision: "rev-1",
+			invocationId: "workerd_invocation",
+			fields: { title: "Unsaved" },
+			fieldDefinitions: [
+				{ slug: "title", label: "Title", type: "string", required: true, translatable: true },
+			],
+		};
+		await expect(
+			plugin.invokeRoute(
+				"editor-draft",
+				{ type: "editor_action", draft },
+				{ method: "POST", url: "/api/editor-draft", headers: {} },
+			),
+		).resolves.toEqual({
+			snapshot: draft,
+			patch: {
+				type: "editor-draft-patch",
+				operations: [{ op: "set", field: "title", value: "Unsaved translated" }],
+			},
+		});
 	}, 30_000);
 
 	it("preserves bounded media bytes and metadata through a real workerd process", async () => {
@@ -1221,6 +1267,38 @@ describe.skipIf(!workerdAvailable)("WorkerdSandboxRunner integration", () => {
 
 		expect(result.stored).toBe("hello");
 	}, 30_000);
+
+	it("refreshes bridge credentials when a plugin is reactivated", async () => {
+		const plugin = await runner.load(
+			{
+				id: "test-reactivation",
+				version: "1.0.0",
+				capabilities: [],
+				allowedHosts: [],
+				storage: {},
+				hooks: [],
+				routes: ["kv-test"],
+				admin: {},
+			},
+			ECHO_PLUGIN,
+		);
+		const request = { method: "POST", url: "/api/test", headers: {} };
+		const invoke = (value: string) => plugin.invokeRoute("kv-test", { value }, request);
+		const originalToken = runner["plugins"].get(plugin.id)?.token;
+		if (!originalToken || !plugin.setActive) {
+			throw new Error("Plugin must have active credentials and support status changes");
+		}
+
+		await expect(invoke("before disable")).resolves.toEqual({ stored: "before disable" });
+
+		plugin.setActive(false);
+		expect(runner.validateToken(originalToken)).toBeNull();
+		await expect(invoke("while disabled")).rejects.toThrow("Invalid auth token");
+
+		plugin.setActive(true);
+		expect(runner.validateToken(originalToken)).toBeNull();
+		await expect(invoke("after reactivation")).resolves.toEqual({ stored: "after reactivation" });
+	}, 60_000);
 
 	it("encrypts settings through the production workerd process", async () => {
 		vi.stubEnv(

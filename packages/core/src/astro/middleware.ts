@@ -632,8 +632,8 @@ const buildDate = virtualBuildTime ? new Date(virtualBuildTime) : null;
  *
  * Must run after next(), once the route has set its hint. Astro keeps the later
  * of two dates, so a route's own hint still wins when content is newer.
- * `Astro.cache.set(false)` also clears `lastModified`, so an opted-out route
- * never reaches set(), which would re-enable caching.
+ * `Astro.cache.set(false)` also clears `lastModified`, so for an opted-out
+ * route the guard skips the build `set()` below, which would re-enable caching.
  */
 function applyBuildValidator(context: APIContext): void {
 	if (context.isPrerendered || !buildDate || !context.cache?.enabled) return;

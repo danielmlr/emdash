@@ -151,7 +151,7 @@ describe("astro middleware cache validator", () => {
 		expect(cache.options.lastModified?.getTime()).toBe(BUILD_TIME);
 	});
 
-	it("does not give a page without any hint a validator that publishing cannot move", async () => {
+	it("does not give a page with only a route rule a validator that publishing cannot move", async () => {
 		const cache = createCache();
 		cache.set({ maxAge: 300 });
 

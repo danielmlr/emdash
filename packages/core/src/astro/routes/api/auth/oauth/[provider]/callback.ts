@@ -24,6 +24,8 @@ import { createOAuthStateStore } from "#auth/oauth-state-store.js";
 import type { AuthProviderDescriptor } from "#auth/types.js";
 import { OptionsRepository } from "#db/repositories/options.js";
 
+import { SESSION_UNAVAILABLE_MESSAGE } from "../../../../../session-user.js";
+
 type ProviderName = "github" | "google" | "microsoft";
 
 const VALID_PROVIDERS = new Set<string>(["github", "google", "microsoft"]);
@@ -183,6 +185,12 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 			);
 		}
 
+		if (!session) {
+			return redirect(
+				`/_emdash/admin/login?error=server_error&message=${encodeURIComponent(SESSION_UNAVAILABLE_MESSAGE)}`,
+			);
+		}
+
 		const adapter = createKyselyAdapter(emdash.db);
 		const stateStore = createOAuthStateStore(emdash.db);
 
@@ -248,10 +256,7 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 			console.log(`[oauth] Setup complete: created admin user via ${provider} (${user.email})`);
 		}
 
-		// Create session
-		if (session) {
-			session.set("user", { id: user.id });
-		}
+		session.set("user", { id: user.id });
 
 		// Redirect to admin dashboard
 		return redirect("/_emdash/admin");

@@ -1,5 +1,25 @@
 # create-emdash
 
+## 0.41.0
+
+No changes in this release.
+
+## 0.40.1
+
+No changes in this release.
+
+## 0.40.0
+
+No changes in this release.
+
+## 0.39.1
+
+No changes in this release.
+
+## 0.39.0
+
+No changes in this release.
+
 ## 0.38.0
 
 ### Patch Changes

@@ -107,7 +107,7 @@ describe("Microsoft login through the OAuth routes", () => {
 				`http://localhost:4321/_emdash/api/auth/oauth/microsoft/callback?code=auth-code&state=${state}`,
 			),
 			locals,
-			session: undefined,
+			session: { set: vi.fn() },
 			redirect,
 		} as unknown as Parameters<typeof callback>[0]);
 		return finished.headers.get("Location") ?? "";

@@ -1,11 +1,15 @@
 import { sql, type Kysely, type Selectable } from "kysely";
 import { monotonicFactory } from "ulidx";
 
-import { ContentDatetimeNormalizer } from "../content-datetime.js";
+import { ContentDatetimeNormalizer, type DatetimeContextCache } from "../content-datetime.js";
 import type { Database, RevisionTable } from "../types.js";
 import { validateIdentifier } from "../validate.js";
 
 const monotonic = monotonicFactory();
+
+export function createRevisionId(): string {
+	return monotonic();
+}
 
 export interface Revision {
 	id: string;
@@ -38,15 +42,18 @@ export function normalizeRevisionLimit(value: unknown): number {
 export class RevisionRepository {
 	private readonly datetimes: ContentDatetimeNormalizer;
 
-	constructor(private db: Kysely<Database>) {
-		this.datetimes = new ContentDatetimeNormalizer(db);
+	constructor(
+		private db: Kysely<Database>,
+		datetimeContexts?: DatetimeContextCache,
+	) {
+		this.datetimes = new ContentDatetimeNormalizer(db, datetimeContexts);
 	}
 
 	/**
 	 * Create a new revision
 	 */
 	async create(input: CreateRevisionInput): Promise<Revision> {
-		const id = monotonic();
+		const id = createRevisionId();
 		const data = await this.datetimes.normalizeData(input.collection, input.data);
 
 		const row: Omit<RevisionTable, "created_at"> = {
@@ -64,26 +71,30 @@ export class RevisionRepository {
 			throw new Error("Failed to create revision");
 		}
 
+		await this.queuePruning(input.collection, input.entryId, id);
+
+		return revision;
+	}
+
+	async queuePruning(collection: string, entryId: string, revisionId: string): Promise<void> {
 		try {
 			await this.db
 				.insertInto("_emdash_revision_prune_queue")
 				.values({
-					collection: input.collection,
-					entry_id: input.entryId,
-					revision_id: id,
+					collection,
+					entry_id: entryId,
+					revision_id: revisionId,
 				})
 				.onConflict((conflict) =>
-					conflict.columns(["collection", "entry_id"]).doUpdateSet({ revision_id: id }),
+					conflict.columns(["collection", "entry_id"]).doUpdateSet({ revision_id: revisionId }),
 				)
 				.execute();
 		} catch (error) {
 			console.error(
-				`[revisions] Failed to queue revision pruning for ${input.collection}/${input.entryId}:`,
+				`[revisions] Failed to queue revision pruning for ${collection}/${entryId}:`,
 				error,
 			);
 		}
-
-		return revision;
 	}
 
 	/**
@@ -97,6 +108,22 @@ export class RevisionRepository {
 			.executeTakeFirst();
 
 		return row ? this.normalizeRow(row) : null;
+	}
+
+	/** Shallow-merge `patch` into a stored revision's data. */
+	async mergeData(id: string, patch: Record<string, unknown>): Promise<void> {
+		const row = await this.db
+			.selectFrom("revisions")
+			.select("data")
+			.where("id", "=", id)
+			.executeTakeFirst();
+		if (!row) return;
+		const data: Record<string, unknown> = { ...JSON.parse(row.data), ...patch };
+		await this.db
+			.updateTable("revisions")
+			.set({ data: JSON.stringify(data) })
+			.where("id", "=", id)
+			.execute();
 	}
 
 	/**

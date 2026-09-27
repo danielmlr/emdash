@@ -1,7 +1,7 @@
 import { Role } from "@emdash-cms/auth";
 import type { APIContext } from "astro";
 import type { Kysely } from "kysely";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { POST as createTranslation } from "../../../src/astro/routes/api/admin/bylines/[id]/translations.js";
 import { POST as createByline } from "../../../src/astro/routes/api/admin/bylines/index.js";
@@ -70,6 +70,7 @@ describeEachDialect("byline translations keep the user link", (dialect) => {
 	});
 
 	afterEach(async () => {
+		vi.restoreAllMocks();
 		setI18nConfig(null);
 		await teardownForDialect(ctx);
 	});
@@ -174,5 +175,44 @@ describeEachDialect("byline translations keep the user link", (dialect) => {
 		const json = (await res.json()) as BylineJson;
 		expect(json.data.id).toBe(partial.id);
 		expect(json.data.customFields).toMatchObject({ job_title: "Mathematician" });
+	});
+
+	it("returns the same translation to a retry that overlaps the first create", async () => {
+		await new BylineSchemaRegistry(db).createField({
+			slug: "job_title",
+			label: "Job title",
+			type: "string",
+			translatable: true,
+		});
+		const source = await bylines.create({
+			slug: "ada",
+			displayName: "Ada Lovelace",
+			userId,
+			locale: "en",
+		});
+		const body = {
+			slug: "ada",
+			displayName: "Ada Lovelace",
+			locale: "fr",
+			translationOf: source.id,
+			customFields: { job_title: "Mathématicienne" },
+		};
+		const findByTranslationGroup = BylineRepository.prototype.findByTranslationGroup;
+		let first: { status: number; json: BylineJson } | undefined;
+		vi.spyOn(BylineRepository.prototype, "findByTranslationGroup").mockImplementationOnce(
+			async function (this: BylineRepository, group: string) {
+				const siblings = await findByTranslationGroup.call(this, group);
+				const res = await post(createByline, "", body);
+				first = { status: res.status, json: (await res.json()) as BylineJson };
+				return siblings;
+			},
+		);
+
+		const retry = await post(createByline, "", body);
+		expect(first?.status).toBe(201);
+		expect(retry.status).toBe(201);
+		const json = (await retry.json()) as BylineJson;
+		expect(json.data.id).toBe(first?.json.data.id);
+		expect(json.data.userId).toBe(userId);
 	});
 });

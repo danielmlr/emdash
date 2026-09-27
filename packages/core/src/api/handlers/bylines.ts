@@ -202,7 +202,7 @@ export async function handleBylineCreate(
 			const inputHasFields = !!input.customFields && Object.keys(input.customFields).length > 0;
 			if (
 				inputHasFields &&
-				bylineFixedFieldsMatch(existing, input, effectiveLocale) &&
+				bylineFixedFieldsMatch(existing, { ...input, userId }, effectiveLocale) &&
 				existing.translationGroup === expectedTranslationGroup &&
 				existingCustomFieldsAreSubsetOf(existing.customFields ?? {}, input.customFields)
 			) {

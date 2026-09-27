@@ -795,7 +795,7 @@ export class ContentRepository {
 		options: FindManyOptions = {},
 	): Promise<FindManyResult<ContentItem>> {
 		const tableName = getTableName(type);
-		const limit = Math.min(options.limit || 50, 100);
+		const limit = Math.max(1, Math.min(options.limit || 50, 100));
 
 		// Determine ordering
 		const orderField = options.orderBy?.field || "createdAt";
@@ -1641,7 +1641,7 @@ export class ContentRepository {
 		options: Omit<FindManyOptions, "where"> & { where?: { locale?: string } } = {},
 	): Promise<FindManyResult<ContentItem & { deletedAt: string }>> {
 		const tableName = getTableName(type);
-		const limit = Math.min(options.limit || 50, 100);
+		const limit = Math.max(1, Math.min(options.limit || 50, 100));
 
 		// Determine ordering - default to most recently deleted
 		const orderField = options.orderBy?.field || "deletedAt";

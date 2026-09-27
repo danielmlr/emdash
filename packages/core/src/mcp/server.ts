@@ -3084,7 +3084,7 @@ export function createMcpServer(
 
 				const { TaxonomyRepository } = await import("../database/repositories/taxonomy.js");
 				const repo = new TaxonomyRepository(ec.db);
-				const limit = Math.min(args.limit ?? 50, 100);
+				const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
 				let cursor: TaxonomyListCursor | undefined;
 				if (args.cursor) {
 					try {

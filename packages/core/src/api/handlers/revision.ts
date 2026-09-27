@@ -39,7 +39,9 @@ export async function handleRevisionList(
 	try {
 		const repo = new RevisionRepository(db);
 		const [items, total] = await Promise.all([
-			repo.findByEntry(collection, entryId, { limit: Math.min(params.limit || 50, 100) }),
+			repo.findByEntry(collection, entryId, {
+				limit: Math.max(1, Math.min(params.limit || 50, 100)),
+			}),
 			repo.countByEntry(collection, entryId),
 		]);
 

@@ -1,5 +1,5 @@
 import { Role } from "@emdash-cms/auth";
-import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
+import { createKyselyAdapter, type AuthTables } from "@emdash-cms/auth/adapters/kysely";
 import { exportJWK, generateKeyPair, SignJWT, type JWK, type JWTPayload } from "jose";
 import type { Kysely } from "kysely";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,7 +35,7 @@ function redirect(url: string): Response {
 
 async function loadRoutes(env: Record<string, string>) {
 	vi.resetModules();
-	vi.doMock("virtual:emdash/env", () => ({ env }), { virtual: true });
+	vi.doMock("virtual:emdash/env", () => ({ env }));
 	const start = await import("../../../src/astro/routes/api/auth/oauth/[provider].js");
 	const callback = await import("../../../src/astro/routes/api/auth/oauth/[provider]/callback.js");
 	return { start: start.GET, callback: callback.GET };
@@ -150,7 +150,7 @@ describe("Microsoft login through the OAuth routes", () => {
 	});
 
 	it("refuses to link a member whose email lies outside the directory's domains", async () => {
-		await createKyselyAdapter(db).createUser({
+		await createKyselyAdapter(db as unknown as Kysely<AuthTables>).createUser({
 			email: "owner@fabrikam.com",
 			name: "Owner",
 			role: Role.ADMIN,

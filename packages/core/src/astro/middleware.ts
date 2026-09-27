@@ -619,6 +619,10 @@ const buildDate = virtualBuildTime ? new Date(virtualBuildTime) : null;
  * returning visitor's conditional request with 304, leaving them on HTML whose
  * assets 404.
  *
+ * Only a route that set a content validator gets the build dimension. The build
+ * alone does not move when content is published, so as a page's only validator
+ * it would answer every returning visitor with 304 until the next deploy.
+ *
  * Prerendered pages are served by the host's static layer, which manages its
  * own validators — only on-demand responses need the build dimension.
  *
@@ -626,13 +630,14 @@ const buildDate = virtualBuildTime ? new Date(virtualBuildTime) : null;
  * different, so after a rollback the earlier build still answers a conditional
  * request with 304 and the browser stays on the newer build's HTML.
  *
- * Must run before next(): Astro keeps the later of two dates, so a route's own
- * hint still wins when content is newer, and a route that opts out with
- * `Astro.cache.set(false)` stays opted out — calling set() afterwards would
- * clear that opt-out.
+ * Must run after next(), once the route has set its hint. Astro keeps the later
+ * of two dates, so a route's own hint still wins when content is newer.
+ * `Astro.cache.set(false)` also clears `lastModified`, so an opted-out route
+ * never reaches set(), which would re-enable caching.
  */
 function applyBuildValidator(context: APIContext): void {
 	if (context.isPrerendered || !buildDate || !context.cache?.enabled) return;
+	if (!context.cache.options.lastModified) return;
 	context.cache.set({ lastModified: buildDate });
 }
 
@@ -653,8 +658,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 			return finalizeResponse(await next());
 		}
 	}
-
-	applyBuildValidator(context);
 
 	const queryRecorder = isInstrumentationEnabled()
 		? createRecorder(url.pathname, request.method, request.headers.get("x-perf-phase") ?? "default")
@@ -1117,7 +1120,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	};
 
 	try {
-		return await runWithContext({ editMode: false, queryRecorder, metrics }, run);
+		const response = await runWithContext({ editMode: false, queryRecorder, metrics }, run);
+		applyBuildValidator(context);
+		return response;
 	} finally {
 		// Streamed responses defer the flush to stream end (see
 		// wrapBodyForStreamMetrics) so the log captures queries issued while

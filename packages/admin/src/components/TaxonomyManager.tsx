@@ -1526,7 +1526,7 @@ export function TaxonomyManager({ taxonomyName, onDeleted }: TaxonomyManagerProp
 					setDeleteTarget(null);
 					deleteMutation.reset();
 				}}
-				title={t`Delete ${taxonomyDef.labelSingular || "Term"}?`}
+				title={t`Delete ${taxonomyDef.labelSingular || t`Term`}?`}
 				description={
 					<>{t`This will permanently delete "${deleteTarget?.label}" and remove it from all content.`}</>
 				}

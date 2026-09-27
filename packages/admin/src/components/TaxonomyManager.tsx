@@ -51,6 +51,7 @@ import {
 	deleteTaxonomy,
 	deleteTerm,
 } from "../lib/api/taxonomies.js";
+import { inlineLabel } from "../lib/inline-label.js";
 import { slugify } from "../lib/utils";
 import { ADMIN_NAV_ICONS } from "./admin-navigation-icons.js";
 import { BulkTagDialog } from "./BulkTagDialog.js";
@@ -616,7 +617,7 @@ function TermFormDialog({
 	i18n: { defaultLocale: string; locales: string[] } | null;
 	onOpenTranslation?: (translatedTerm: { slug: string; locale: string }) => void;
 }) {
-	const { t } = useLingui();
+	const { t, i18n: lingui } = useLingui();
 	const queryClient = useQueryClient();
 	const slugInputId = React.useId();
 	const [label, setLabel] = React.useState(term?.label || "");
@@ -756,8 +757,8 @@ function TermFormDialog({
 							</Dialog.Title>
 							<Dialog.Description className="mt-1 text-sm text-kumo-subtle">
 								{term
-									? t`Update the ${taxonomyDef.labelSingular?.toLowerCase() || "term"} details`
-									: t`Create a new ${taxonomyDef.labelSingular?.toLowerCase() || "term"}`}
+									? t`Update the ${inlineLabel(taxonomyDef.labelSingular || t`Term`, lingui.locale)} details`
+									: t`Create a new ${inlineLabel(taxonomyDef.labelSingular || t`Term`, lingui.locale)}`}
 							</Dialog.Description>
 						</div>
 						<Dialog.Close
@@ -1111,7 +1112,7 @@ function CreateTaxonomyDialog({
  * Main TaxonomyManager component
  */
 export function TaxonomyManager({ taxonomyName, onDeleted }: TaxonomyManagerProps) {
-	const { t } = useLingui();
+	const { t, i18n: lingui } = useLingui();
 	const queryClient = useQueryClient();
 	const toastManager = Toast.useToastManager();
 	const [formOpen, setFormOpen] = React.useState(false);
@@ -1287,7 +1288,7 @@ export function TaxonomyManager({ taxonomyName, onDeleted }: TaxonomyManagerProp
 				<div>
 					<h1 className="text-2xl font-semibold leading-tight">{taxonomyDef.label}</h1>
 					<p className="mt-1 text-sm leading-5 text-pretty text-kumo-subtle">
-						{t`Manage ${taxonomyDef.label.toLowerCase()} for ${taxonomyDef.collections.join(", ")}`}
+						{t`Manage ${inlineLabel(taxonomyDef.label, lingui.locale)} for ${taxonomyDef.collections.join(", ")}`}
 					</p>
 				</div>
 				<div
@@ -1395,7 +1396,7 @@ export function TaxonomyManager({ taxonomyName, onDeleted }: TaxonomyManagerProp
 						<div className="p-8 text-center text-kumo-subtle">{t`Loading terms...`}</div>
 					) : terms.length === 0 ? (
 						<div className="p-8 text-center text-kumo-subtle">
-							{t`No ${taxonomyDef.label.toLowerCase()} yet. Create one to get started.`}
+							{t`No ${inlineLabel(taxonomyDef.label, lingui.locale)} yet. Create one to get started.`}
 						</div>
 					) : (
 						<LayerCard className="p-0">
@@ -1466,7 +1467,7 @@ export function TaxonomyManager({ taxonomyName, onDeleted }: TaxonomyManagerProp
 						<div className="p-8 text-center text-kumo-subtle">{t`Loading terms...`}</div>
 					) : terms.length === 0 ? (
 						<div className="p-8 text-center text-kumo-subtle">
-							{t`No ${taxonomyDef.label.toLowerCase()} yet. Create one to get started.`}
+							{t`No ${inlineLabel(taxonomyDef.label, lingui.locale)} yet. Create one to get started.`}
 						</div>
 					) : (
 						<div className="divide-y divide-kumo-line">

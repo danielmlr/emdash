@@ -700,6 +700,24 @@ describe("ContentList", () => {
 				.toBeInTheDocument();
 		});
 
+		it("keeps the collection label capitalized for a German admin", async () => {
+			const previousLocale = i18n.locale;
+			i18n.load("de", {});
+			i18n.activate("de");
+
+			try {
+				const items = [makeItem({ id: "1", data: { title: "Beitrag" } })];
+				const screen = await render(
+					<ContentList {...defaultProps} collectionLabel="Beiträge" items={items} />,
+				);
+				await expect
+					.element(screen.getByRole("searchbox"))
+					.toHaveAttribute("placeholder", "Search Beiträge...");
+			} finally {
+				i18n.activate(previousLocale);
+			}
+		});
+
 		it("hides search input when no items", async () => {
 			const screen = await render(<ContentList {...defaultProps} items={[]} />);
 			expect(screen.getByRole("searchbox").query()).toBeNull();

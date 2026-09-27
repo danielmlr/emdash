@@ -1,4 +1,5 @@
 import { Toasty } from "@cloudflare/kumo";
+import { i18n } from "@lingui/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -950,5 +951,47 @@ describe("TaxonomyManager", () => {
 		});
 
 		await expect.element(screen.getByText(NO_CATEGORIES_REGEX)).toBeInTheDocument();
+	});
+
+	it("keeps the taxonomy label capitalized and falls back to Term for a German admin", async () => {
+		mockApiFetch(
+			JSON.stringify({ data: { terms: [] } }),
+			undefined,
+			JSON.stringify({
+				data: {
+					taxonomies: [
+						{
+							id: "topics",
+							name: "topics",
+							label: "Schlagwörter",
+							hierarchical: false,
+							collections: ["posts"],
+						},
+					],
+				},
+			}),
+		);
+		const previousLocale = i18n.locale;
+		i18n.load("de", {});
+		i18n.activate("de");
+
+		try {
+			const screen = await render(<TaxonomyManager taxonomyName="topics" />, { wrapper: Wrapper });
+			await expect
+				.element(screen.getByText("Manage Schlagwörter for posts", { exact: true }))
+				.toBeInTheDocument();
+			await expect
+				.element(
+					screen.getByText("No Schlagwörter yet. Create one to get started.", { exact: true }),
+				)
+				.toBeInTheDocument();
+
+			await screen.getByRole("button", { name: "Add Term", exact: true }).click();
+			await expect
+				.element(screen.getByText("Create a new Term", { exact: true }))
+				.toBeInTheDocument();
+		} finally {
+			i18n.activate(previousLocale);
+		}
 	});
 });

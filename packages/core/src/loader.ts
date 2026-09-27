@@ -1147,7 +1147,8 @@ export function buildTaxonomyPivotQuery(
 	// `CROSS JOIN` keeps the pivot as the outer table. A plain `JOIN` lets the
 	// planner walk the `(deleted_at, <sort> DESC, id DESC)` index on `ec_*`
 	// whatever the term's size, which reads most of the collection for a
-	// small term.
+	// small term. Postgres rejects `CROSS JOIN … ON`, so it always gets the
+	// plain `JOIN`.
 	//
 	// The temp-sort branch keeps the pin. Its `picked` collects every tagged
 	// entry with no `LIMIT`, so starting from `ec_*` can never stop early, and

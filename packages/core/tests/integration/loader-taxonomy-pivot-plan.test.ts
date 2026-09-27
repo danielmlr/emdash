@@ -11,7 +11,7 @@
  *
  * This asserts the plan, not the output (output is covered by
  * loader-taxonomy-pivot). SQLite-only: `EXPLAIN QUERY PLAN` is a SQLite concern
- * and, being stats-blind here, the plan is schema-driven — matching D1 exactly.
+ * and, being stats-blind here, the plan is schema-driven.
  */
 
 import { Kysely, SqliteDialect, sql } from "kysely";
@@ -48,7 +48,7 @@ beforeEach(async () => {
 		},
 	});
 
-	// Deliberately no ANALYZE: matches D1, which never maintains sqlite_stat1.
+	// No ANALYZE: EmDash never runs it, so a site has no sqlite_stat1 unless its operator does.
 	await runMigrations(db);
 	await db
 		.updateTable("_emdash_taxonomy_def_groups")

@@ -1873,10 +1873,10 @@ export class ContentRepository {
 		// of translation groups — at the locale the list is scoped to. Matching
 		// the locale is what keeps the filter agreeing with the list: an
 		// inferred credit renders only when the author's byline has a row at
-		// that locale (`hydrateBylinesMany` -> `findByUserIds`), and byline
-		// translations start life with a null `user_id`, so a group translated
-		// into the locale but not re-linked resolves to no credit. `locale`
-		// falls back to each entry's own when the list spans locales.
+		// that locale (`hydrateBylinesMany` -> `findByUserIds`), so a group
+		// whose translation at the locale has no linked user resolves to no
+		// credit. `locale` falls back to each entry's own when the list spans
+		// locales.
 		const authorHasByline = (eb: any, bylineIds?: string[]) => {
 			let sub = eb
 				.selectFrom("_emdash_bylines as b")

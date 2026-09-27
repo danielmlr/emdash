@@ -503,6 +503,7 @@ async function applySeedWrites(
 					unique: field.unique || false,
 					searchable: field.searchable || false,
 					indexed: field.indexed || false,
+					translatable: field.translatable,
 					defaultValue: field.defaultValue,
 					validation: fieldValidation,
 					widget: field.widget,
@@ -812,10 +813,38 @@ async function applySeedWrites(
 					entries,
 					defaultLocale,
 				);
+				const entriesWithoutLiveMatch = entries.filter((entry) => {
+					const { slug, locale } = seedEntryIdentity(entry, defaultLocale);
+					return !existingEntries.has(seedEntryKey(entry, slug, locale));
+				});
+				const trashedEntries = await findExistingSeedEntries(
+					contentRepo,
+					collectionSlug,
+					entriesWithoutLiveMatch,
+					defaultLocale,
+					true,
+				);
 				for (const entry of entries) {
 					const { slug: entrySlug, locale: entryLocale } = seedEntryIdentity(entry, defaultLocale);
 					const entryKey = seedEntryKey(entry, entrySlug, entryLocale);
 					const existing = existingEntries.get(entryKey);
+
+					if (!existing) {
+						const trashed = trashedEntries.get(entryKey);
+						if (trashed) {
+							if (onConflict === "error") {
+								throw new Error(
+									`Conflict: content "${entrySlug ?? entry.id}" in "${collectionSlug}" already exists (in trash)`,
+								);
+							}
+							console.warn(
+								`content.${collectionSlug}: "${entrySlug ?? entry.id}" (${entryLocale}) exists in the trash — skipping`,
+							);
+							result.content.skipped++;
+							progress.done++;
+							continue;
+						}
+					}
 
 					if (existing) {
 						if (onConflict === "error") {
@@ -1562,6 +1591,7 @@ async function findExistingSeedEntries(
 	collectionSlug: string,
 	entries: SeedContentEntry[],
 	defaultLocale: string,
+	includeTrashed = false,
 ): Promise<Map<string, ContentItem>> {
 	const identities = entries.map((entry) => ({
 		entry,
@@ -1577,11 +1607,15 @@ async function findExistingSeedEntries(
 
 	const bySlug = new Map<string, Map<string, ContentItem>>();
 	for (const [locale, slugs] of slugsByLocale) {
-		bySlug.set(locale, await repo.findManyBySlugsInLocale(collectionSlug, slugs, locale));
+		bySlug.set(
+			locale,
+			await repo.findManyBySlugsInLocale(collectionSlug, slugs, locale, { includeTrashed }),
+		);
 	}
 	const byId = await repo.findManyByIds(
 		collectionSlug,
 		identities.filter(({ slug }) => slug === null).map(({ entry }) => entry.id),
+		{ includeTrashed },
 	);
 
 	const existing = new Map<string, ContentItem>();
@@ -1765,6 +1799,7 @@ async function upsertSeedField(
 			unique: field.unique || false,
 			searchable: field.searchable || false,
 			indexed: field.indexed || false,
+			translatable: field.translatable,
 			defaultValue: field.defaultValue,
 			widget: field.widget,
 			options: field.options,
@@ -1815,6 +1850,7 @@ async function upsertSeedField(
 		unique: field.unique || false,
 		searchable: field.searchable || false,
 		indexed: field.indexed || false,
+		translatable: field.translatable,
 		defaultValue: field.defaultValue,
 		validation: field.validation,
 		widget: field.widget,
@@ -2005,14 +2041,20 @@ async function applyMenuItems(
 		let referenceId: string | null = null;
 		let referenceCollection: string | null = null;
 
-		if (item.type === "page" || item.type === "post") {
-			// Try to resolve from seedIdMap
-			if (item.ref && seedIdMap.has(item.ref)) {
-				referenceId = seedIdMap.get(item.ref)!;
-				// Default to plural collection name (pages/posts) if not specified
-				referenceCollection = item.collection || `${item.type}s`;
+		if (item.type !== "custom" && item.type !== "taxonomy") {
+			const collection =
+				item.collection || (item.type === "page" || item.type === "post" ? `${item.type}s` : null);
+			if (item.ref) {
+				// An unresolved ref stays fully unset: a "collection" item that kept
+				// its collection would render as that collection's archive link.
+				const resolved = seedIdMap.get(item.ref);
+				if (resolved && collection) {
+					referenceId = resolved;
+					referenceCollection = collection;
+				}
+			} else {
+				referenceCollection = collection;
 			}
-			// If not in map, the content might not exist yet (will be broken link)
 		}
 
 		let translationGroup = itemId;

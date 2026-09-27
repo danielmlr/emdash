@@ -197,6 +197,8 @@ export interface EmDashManifest {
 	 * browse or install flows.
 	 */
 	marketplace?: boolean;
+	/** Whether a sandbox runner is enabled for installing and running sandboxed plugins. */
+	sandboxEnabled?: boolean;
 	/**
 	 * Decentralized plugin registry configuration.
 	 *
@@ -237,6 +239,7 @@ export interface EmDashManifest {
 	admin?: {
 		logo?: string;
 		siteName?: string;
+		footerLabel?: string | false;
 		favicon?: string;
 	};
 }
@@ -451,6 +454,7 @@ export interface EmDashHandlers {
 		url?: string;
 		contentType?: string;
 		alt?: string;
+		caption?: string;
 		authorId?: string;
 		maxUploadSize?: number;
 	}) => Promise<HandlerResponse>;

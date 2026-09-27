@@ -1,5 +1,6 @@
 import { Toasty } from "@cloudflare/kumo";
 import { i18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -41,6 +42,20 @@ const tagTaxonomyResponse = JSON.stringify({
 				labelSingular: "Tag",
 				hierarchical: false,
 				collections: ["posts", "pages"],
+			},
+		],
+	},
+});
+
+const topicsTaxonomyResponse = JSON.stringify({
+	data: {
+		taxonomies: [
+			{
+				id: "topics",
+				name: "topics",
+				label: "Schlagwörter",
+				hierarchical: false,
+				collections: ["posts"],
 			},
 		],
 	},
@@ -953,26 +968,10 @@ describe("TaxonomyManager", () => {
 		await expect.element(screen.getByText(NO_CATEGORIES_REGEX)).toBeInTheDocument();
 	});
 
-	it("keeps the taxonomy label capitalized and falls back to Term for a German admin", async () => {
-		mockApiFetch(
-			JSON.stringify({ data: { terms: [] } }),
-			undefined,
-			JSON.stringify({
-				data: {
-					taxonomies: [
-						{
-							id: "topics",
-							name: "topics",
-							label: "Schlagwörter",
-							hierarchical: false,
-							collections: ["posts"],
-						},
-					],
-				},
-			}),
-		);
+	it("keeps the taxonomy label capitalized and falls back to the translated Term for a German admin", async () => {
+		mockApiFetch(JSON.stringify({ data: { terms: [] } }), undefined, topicsTaxonomyResponse);
 		const previousLocale = i18n.locale;
-		i18n.load("de", {});
+		i18n.load("de", { [msg`Term`.id!]: "Begriff" });
 		i18n.activate("de");
 
 		try {
@@ -986,9 +985,28 @@ describe("TaxonomyManager", () => {
 				)
 				.toBeInTheDocument();
 
-			await screen.getByRole("button", { name: "Add Term", exact: true }).click();
+			await screen.getByRole("button", { name: "Add Begriff", exact: true }).click();
 			await expect
-				.element(screen.getByText("Create a new Term", { exact: true }))
+				.element(screen.getByText("Create a new Begriff", { exact: true }))
+				.toBeInTheDocument();
+		} finally {
+			i18n.activate(previousLocale);
+		}
+	});
+
+	it("titles the delete confirmation with the translated Term for a taxonomy without a singular label", async () => {
+		mockApiFetch(undefined, undefined, topicsTaxonomyResponse);
+		const previousLocale = i18n.locale;
+		i18n.load("de", { [msg`Term`.id!]: "Begriff" });
+		i18n.activate("de");
+
+		try {
+			const screen = await render(<TaxonomyManager taxonomyName="topics" />, { wrapper: Wrapper });
+			await expect.element(screen.getByText("Technology", { exact: true })).toBeInTheDocument();
+
+			await screen.getByRole("button", { name: "Delete Technology", exact: true }).click();
+			await expect
+				.element(screen.getByRole("heading", { name: "Delete Begriff?", exact: true }))
 				.toBeInTheDocument();
 		} finally {
 			i18n.activate(previousLocale);

@@ -235,7 +235,7 @@ msgstr "{0, plural, one {# Upload fehlgeschlagen} other {# Uploads fehlgeschlage
 #. placeholder {0}: section.keywords.length - 3
 #: packages/admin/src/components/Sections.tsx:424
 msgid "{0, plural, one {+# more} other {+# more}}"
-msgstr ""
+msgstr "{0, plural, one {+# weiteres} other {+# weitere}}"
 
 #. placeholder {0}: selectedItems.length
 #: packages/admin/src/components/MediaPickerModal.tsx:858
@@ -1408,7 +1408,7 @@ msgstr "Alle Rollen"
 
 #: packages/admin/src/components/Sections.tsx:257
 msgid "All sources"
-msgstr ""
+msgstr "Alle Quellen"
 
 #: packages/admin/src/components/ContentList.tsx:924
 #: packages/admin/src/components/Redirects.tsx:391
@@ -1852,7 +1852,7 @@ msgstr "Automatisch anhand des Namens erstellt (bearbeitbar)"
 
 #: packages/admin/src/components/Sections.tsx:217
 msgid "Auto-generated from the title. You can change it."
-msgstr ""
+msgstr "Automatisch anhand des Titels erstellt. Du kannst den Slug ändern."
 
 #: packages/admin/src/components/BylineCreditsEditor.tsx:654
 msgid "Automatic"
@@ -3410,7 +3410,7 @@ msgstr "Schema erstellen & importieren"
 #: packages/admin/src/components/Sections.tsx:234
 #: packages/admin/src/components/Sections.tsx:312
 msgid "Create section"
-msgstr ""
+msgstr "Abschnitt erstellen"
 
 #: packages/admin/src/components/SectionPickerModal.tsx:110
 msgid "Create sections in the Sections library to use them here"
@@ -3862,7 +3862,7 @@ msgstr "Zeilen löschen"
 
 #: packages/admin/src/components/Sections.tsx:469
 msgid "Delete section"
-msgstr ""
+msgstr "Abschnitt löschen"
 
 #: packages/admin/src/components/Sections.tsx:337
 msgid "Delete Section?"
@@ -5976,7 +5976,7 @@ msgstr "Von URL"
 #: packages/admin/src/components/editor/ImageDetailPanel.tsx:279
 #: packages/admin/src/components/WordPressImport.tsx:1177
 msgid "Full"
-msgstr "Voll"
+msgstr "Volle Breite"
 
 #: packages/admin/src/components/users/roleDefinitions.ts:43
 msgid "Full access"
@@ -6159,7 +6159,7 @@ msgstr "hero, banner, cta"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:582
 msgid "Hide from navigation"
-msgstr ""
+msgstr "In der Navigation ausblenden"
 
 #: packages/admin/src/components/SeoPanel.tsx:243
 #: packages/admin/src/components/SeoPanel.tsx:246
@@ -6276,12 +6276,12 @@ msgstr "Eingerichtet, jetzt erneut prüfen"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:567
 msgid "Icon"
-msgstr ""
+msgstr "Icon"
 
 #: packages/admin/src/components/MarketplaceBrowse.tsx:243
 #: packages/admin/src/components/MarketplacePluginDetail.tsx:163
 msgid "Icon blurred due to image audit"
-msgstr "Symbol ist aufgrund einer Bildprüfung unscharf"
+msgstr "Icon ist aufgrund einer Bildprüfung unscharf"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:126
 msgid "ID"
@@ -7937,7 +7937,7 @@ msgstr "Der Name muss mit einem Buchstaben beginnen und darf nur Kleinbuchstaben
 
 #: packages/admin/src/components/Sections.tsx:174
 msgid "Name your section, then add its content in the editor."
-msgstr ""
+msgstr "Gib deinem Abschnitt einen Titel und füge seinen Inhalt dann im Editor hinzu."
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:594
 msgid "Navigate"
@@ -8032,7 +8032,7 @@ msgstr "Neues wiederverwendbares Profil"
 
 #: packages/admin/src/components/Sections.tsx:159
 msgid "New section"
-msgstr ""
+msgstr "Neuer Abschnitt"
 
 #: packages/admin/src/components/AdminCommandPalette.tsx:492
 msgid "new tab"
@@ -8936,7 +8936,7 @@ msgstr "Berechtigungen"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:573
 msgid "Phosphor icon name, e.g. calendar-blank or trophy"
-msgstr ""
+msgstr "Name eines Phosphor-Icons, z. B. calendar-blank oder trophy"
 
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:47
 msgid "PHP"
@@ -9207,7 +9207,7 @@ msgstr "Entwurfsvorschau"
 #. placeholder {0}: section.title
 #: packages/admin/src/components/Sections.tsx:381
 msgid "Preview of {0}"
-msgstr ""
+msgstr "Vorschau von {0}"
 
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:308
 msgid "Previous"
@@ -9376,7 +9376,7 @@ msgstr "In Warteschlange"
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:595
 msgid "Quick action on the dashboard"
-msgstr ""
+msgstr "Schnellaktion im Dashboard"
 
 #: packages/admin/src/components/FieldEditor.tsx:963
 msgid "Quick create a relationship"
@@ -9431,7 +9431,7 @@ msgstr "Mediendateien lesen"
 
 #: packages/admin/src/lib/api/marketplace.ts:430
 msgid "Read public byline profiles and content credits"
-msgstr ""
+msgstr "Öffentliche Autorenangaben und ihre Zuordnungen zu Inhalten lesen"
 
 #: packages/admin/src/lib/api/marketplace.ts:431
 msgid "Read redirect rules"
@@ -9780,7 +9780,7 @@ msgstr "{0} aus der Auswahl entfernt."
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:584
 msgid "Removes the sidebar entry, command palette link, and dashboard quick action; entries stay reachable by URL, API, and plugins"
-msgstr ""
+msgstr "Entfernt den Inhaltstyp aus Seitenleiste, Befehlspalette und Schnellaktionen im Dashboard; seine Einträge bleiben über URL, API und Plugins erreichbar"
 
 #: packages/admin/src/components/settings/transfer/labels.ts:57
 msgid "Removing starter content"
@@ -10723,7 +10723,7 @@ msgstr "Abschnitte"
 
 #: packages/admin/src/components/Sections.tsx:279
 msgid "Sections could not be loaded."
-msgstr ""
+msgstr "Abschnitte konnten nicht geladen werden."
 
 #: packages/admin/src/components/SetupWizard.tsx:628
 msgid "Secure your account"
@@ -11169,7 +11169,7 @@ msgstr "Wird angezeigt, wenn man mit der Maus über das Bild fährt."
 
 #: packages/admin/src/components/ContentTypeEditor.tsx:597
 msgid "Shows a button for creating a new entry"
-msgstr ""
+msgstr "Zeigt eine Schaltfläche zum Erstellen eines neuen Eintrags an"
 
 #: packages/admin/src/components/SignupPage.tsx:457
 #: packages/admin/src/locales/emails.ts:56

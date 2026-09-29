@@ -129,6 +129,9 @@ describe("plugin admin handlers: runtime-installed plugins", () => {
 		expect(list.success).toBe(true);
 		if (!list.success) return;
 		expect(list.data.items).toHaveLength(2);
+		expect(list.data.items.find((item) => item.id === "mp-plugin")?.iconUrl).toBe(
+			"https://marketplace.example.com/api/v1/plugins/mp-plugin/icon",
+		);
 
 		const registry = await handlePluginGet(
 			db,

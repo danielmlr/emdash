@@ -1,5 +1,101 @@
 # @emdash-cms/admin
 
+## 1.0.1
+
+### Patch Changes
+
+- [#3534](https://github.com/emdash-cms/emdash/pull/3534) [`6f2ef26`](https://github.com/emdash-cms/emdash/commit/6f2ef26f7dc2bd79e191ba5d361923277b35da68) Thanks [@MA2153](https://github.com/MA2153)! - Completes the Arabic (العربية) translation of the admin UI. Every admin string now has an Arabic translation, so Arabic users no longer see English fallback text.
+
+- [#3545](https://github.com/emdash-cms/emdash/pull/3545) [`c66b49b`](https://github.com/emdash-cms/emdash/commit/c66b49b8f98226e3fed4e63f25131551e278edbb) Thanks [@palockocz](https://github.com/palockocz)! - Adds the missing Czech translations for media to the admin UI.
+
+- [#3533](https://github.com/emdash-cms/emdash/pull/3533) [`9e297d6`](https://github.com/emdash-cms/emdash/commit/9e297d6964c3b1875581167484491948f0677fe7) Thanks [@ascorbic](https://github.com/ascorbic)! - Fixes the byline editor discarding changes typed right after it opened. On slower sites the full byline record could finish loading after you started typing and replace your edits, so Save stored the original values. Reopening a byline straight after saving it now also shows the saved values.
+
+- [#3515](https://github.com/emdash-cms/emdash/pull/3515) [`d274172`](https://github.com/emdash-cms/emdash/commit/d27417232e61bf85c1c613fecbe6875e1172af0d) Thanks [@ascorbic](https://github.com/ascorbic)! - Releases EmDash 1.0. This release includes breaking changes, such as removing APIs deprecated during 0.x. Before upgrading from 0.42, read the [upgrade guide](https://docs.emdashcms.com/upgrade-to-v1/), which lists each change and how to migrate.
+  
+  From this release, breaking changes ship only in a new major version.
+
+- [#3522](https://github.com/emdash-cms/emdash/pull/3522) [`a3609fb`](https://github.com/emdash-cms/emdash/commit/a3609fb4c2f514d944e693e1f7eded82aeccdb56) Thanks [@danielmlr](https://github.com/danielmlr)! - Fixes collection and taxonomy names appearing in lowercase inside sentences of the German admin, such as "Noch keine kategorien vorhanden." on a taxonomy page or "beiträge durchsuchen..." in a content list's search field. German capitalizes nouns, so the German admin now shows these names as the site defines them. Other admin languages still lowercase them.
+  
+  In admin languages other than English, the dialogs for creating, editing and deleting terms now show the translated word for "term" instead of the English one when the taxonomy has no singular name, such as a taxonomy created in the admin.
+
+- [#3324](https://github.com/emdash-cms/emdash/pull/3324) [`618591e`](https://github.com/emdash-cms/emdash/commit/618591e94fb87af2bb0086d882f0c2c766635874) Thanks [@danielmlr](https://github.com/danielmlr)! - Completes the German admin translations so German-speaking editors see localized text in site transfer (export, import review and approvals), content relations and reference fields, bulk term assignment, the bylines directory, block types, invitation and sign-in emails, CLI device sign-in, the menu dialog, API token scopes and the dashboard's core update notice, as well as in the taxonomy picker, the link and code block pickers, save errors and plugin registry notices. The code block language button now reads "Sprache festlegen" instead of "Sprache speichern".
+  
+  Makes the German terminology consistent across the admin. Some words German-speaking editors already know change: plugins are now "Plugins" instead of "Erweiterungen", collections "Sammlungen" instead of "Kollektionen", bylines "Autorenangaben" instead of "Autorenzeilen", "Website" replaces "Webseite", publishing is "veröffentlichen" instead of "publizieren" and unpublishing "zurückziehen" instead of "depublizieren", and delete actions say "löschen" while remove actions keep "entfernen". Progress messages, button labels and quotation marks follow one style throughout, and strings whose German said something different from the English now match it.
+
+- [#3519](https://github.com/emdash-cms/emdash/pull/3519) [`0b4be2c`](https://github.com/emdash-cms/emdash/commit/0b4be2c8388744153a7a82814bfe91af09a1fcfd) Thanks [@ascorbic](https://github.com/ascorbic)! - Removes the deprecated `experimental.registry` integration option. Sites that still set it now fail at startup with an error pointing to the top-level `registry` option, including sites that already set `registry` alongside it. The value is not silently ignored, because that would drop the configured aggregator and release-age policy.
+  
+  Move the value unchanged. The top-level option accepts the same URL string or configuration object:
+  
+  ```diff
+   emdash({
+  -	experimental: {
+  -		registry: {
+  -			aggregatorUrl: "https://registry.example.com",
+  -			policy: { minimumReleaseAge: "48h" },
+  -		},
+  -	},
+  +	registry: {
+  +		aggregatorUrl: "https://registry.example.com",
+  +		policy: { minimumReleaseAge: "48h" },
+  +	},
+   });
+  ```
+  
+  The `experimental` option is also removed from the `EmDashConfig` type, because it has no remaining settings. An empty `experimental: {}` block is still ignored at runtime, but TypeScript configs should delete it. Registry configuration errors in the admin now always name the top-level `registry.*` setting.
+- Updated dependencies [[`d274172`](https://github.com/emdash-cms/emdash/commit/d27417232e61bf85c1c613fecbe6875e1172af0d)]:
+  - @emdash-cms/blocks@1.0.1
+
+## 1.0.1-rc.1
+
+### Patch Changes
+
+- [#3545](https://github.com/emdash-cms/emdash/pull/3545) [`c66b49b`](https://github.com/emdash-cms/emdash/commit/c66b49b8f98226e3fed4e63f25131551e278edbb) Thanks [@palockocz](https://github.com/palockocz)! - Adds the missing Czech translations for media to the admin UI.
+
+- [#3533](https://github.com/emdash-cms/emdash/pull/3533) [`9e297d6`](https://github.com/emdash-cms/emdash/commit/9e297d6964c3b1875581167484491948f0677fe7) Thanks [@ascorbic](https://github.com/ascorbic)! - Fixes the byline editor discarding changes typed right after it opened. On slower sites the full byline record could finish loading after you started typing and replace your edits, so Save stored the original values. Reopening a byline straight after saving it now also shows the saved values.
+
+- [#3522](https://github.com/emdash-cms/emdash/pull/3522) [`a3609fb`](https://github.com/emdash-cms/emdash/commit/a3609fb4c2f514d944e693e1f7eded82aeccdb56) Thanks [@danielmlr](https://github.com/danielmlr)! - Fixes collection and taxonomy names appearing in lowercase inside sentences of the German admin, such as "Noch keine kategorien vorhanden." on a taxonomy page or "beiträge durchsuchen..." in a content list's search field. German capitalizes nouns, so the German admin now shows these names as the site defines them. Other admin languages still lowercase them.
+  
+  In admin languages other than English, the dialogs for creating, editing and deleting terms now show the translated word for "term" instead of the English one when the taxonomy has no singular name, such as a taxonomy created in the admin.
+
+- [#3324](https://github.com/emdash-cms/emdash/pull/3324) [`618591e`](https://github.com/emdash-cms/emdash/commit/618591e94fb87af2bb0086d882f0c2c766635874) Thanks [@danielmlr](https://github.com/danielmlr)! - Completes the German admin translations so German-speaking editors see localized text in site transfer (export, import review and approvals), content relations and reference fields, bulk term assignment, the bylines directory, block types, invitation and sign-in emails, CLI device sign-in, the menu dialog, API token scopes and the dashboard's core update notice, as well as in the taxonomy picker, the link and code block pickers, save errors and plugin registry notices. The code block language button now reads "Sprache festlegen" instead of "Sprache speichern".
+  
+  Makes the German terminology consistent across the admin. Some words German-speaking editors already know change: plugins are now "Plugins" instead of "Erweiterungen", collections "Sammlungen" instead of "Kollektionen", bylines "Autorenangaben" instead of "Autorenzeilen", "Website" replaces "Webseite", publishing is "veröffentlichen" instead of "publizieren" and unpublishing "zurückziehen" instead of "depublizieren", and delete actions say "löschen" while remove actions keep "entfernen". Progress messages, button labels and quotation marks follow one style throughout, and strings whose German said something different from the English now match it.
+- Updated dependencies []:
+  - @emdash-cms/blocks@1.0.1-rc.1
+
+## 1.0.1-rc.0
+
+### Patch Changes
+
+- [#3515](https://github.com/emdash-cms/emdash/pull/3515) [`d274172`](https://github.com/emdash-cms/emdash/commit/d27417232e61bf85c1c613fecbe6875e1172af0d) Thanks [@ascorbic](https://github.com/ascorbic)! - Releases EmDash 1.0. This release includes breaking changes, such as removing APIs deprecated during 0.x. The other entries for this version describe each one and how to migrate; check them before upgrading from 0.42.
+  
+  From this release, breaking changes ship only in a new major version.
+  
+  The first 1.x version is 1.0.1. npm also lists a deprecated `emdash@1.0.0`, published by mistake from 0.7-era code; do not install it.
+
+- [#3519](https://github.com/emdash-cms/emdash/pull/3519) [`0b4be2c`](https://github.com/emdash-cms/emdash/commit/0b4be2c8388744153a7a82814bfe91af09a1fcfd) Thanks [@ascorbic](https://github.com/ascorbic)! - Removes the deprecated `experimental.registry` integration option. Sites that still set it now fail at startup with an error pointing to the top-level `registry` option, including sites that already set `registry` alongside it. The value is not silently ignored, because that would drop the configured aggregator and release-age policy.
+  
+  Move the value unchanged. The top-level option accepts the same URL string or configuration object:
+  
+  ```diff
+   emdash({
+  -	experimental: {
+  -		registry: {
+  -			aggregatorUrl: "https://registry.example.com",
+  -			policy: { minimumReleaseAge: "48h" },
+  -		},
+  -	},
+  +	registry: {
+  +		aggregatorUrl: "https://registry.example.com",
+  +		policy: { minimumReleaseAge: "48h" },
+  +	},
+   });
+  ```
+  
+  The `experimental` option is also removed from the `EmDashConfig` type, because it has no remaining settings. An empty `experimental: {}` block is still ignored at runtime, but TypeScript configs should delete it. Registry configuration errors in the admin now always name the top-level `registry.*` setting.
+- Updated dependencies [[`d274172`](https://github.com/emdash-cms/emdash/commit/d27417232e61bf85c1c613fecbe6875e1172af0d)]:
+  - @emdash-cms/blocks@1.0.1-rc.0
+
 ## 0.42.0
 
 ### Minor Changes

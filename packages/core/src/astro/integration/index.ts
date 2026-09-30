@@ -175,7 +175,6 @@ export function buildSerializableConfig(resolvedConfig: EmDashConfig): Record<st
 		authProviders: resolvedConfig.authProviders,
 		marketplace: resolvedConfig.marketplace,
 		registry: resolvedConfig.registry,
-		experimental: resolvedConfig.experimental,
 		siteUrl: resolvedConfig.siteUrl,
 		trustedProxyHeaders: resolvedConfig.trustedProxyHeaders,
 		maxUploadSize: resolvedConfig.maxUploadSize,
@@ -227,7 +226,7 @@ export function resolveImageEndpoint(opts: {
 		return {
 			entrypoint: opts.isCloudflare
 				? "@emdash-cms/cloudflare/image-endpoint"
-				: "emdash/image-endpoint",
+				: "emdash/internal/image-endpoint",
 		};
 	}
 	// A deliberate passthrough setup: leave it alone, no warning.
@@ -237,6 +236,18 @@ export function resolveImageEndpoint(opts: {
 			`A custom image.endpoint (${current}) is configured; EmDash will not wrap ` +
 			`it, so storage-backed media may render unoptimized.`,
 	};
+}
+
+const EDGE_SLASHES = /^\/+|\/+$/g;
+
+/**
+ * The `routePattern` Astro reports for requests to the image endpoint. It drops
+ * the trailing slash `image.endpoint.route` carries under `trailingSlash: "always"`.
+ *
+ * @internal
+ */
+export function imageEndpointRoutePattern(route: string | undefined): string {
+	return `/${(route ?? "/_image").replace(EDGE_SLASHES, "")}`;
 }
 
 /**
@@ -356,31 +367,45 @@ export function buildMiddlewareEntries(
 
 	entries.push(
 		{ entrypoint: "emdash/middleware", order: "pre" },
-		{ entrypoint: "emdash/middleware/redirect", order: "pre" },
+		{ entrypoint: "emdash/internal/middleware/redirect", order: "pre" },
 	);
 
 	if (!config.playground) {
 		entries.push(
-			{ entrypoint: "emdash/middleware/setup", order: "pre" },
-			{ entrypoint: "emdash/middleware/auth", order: "pre" },
+			{ entrypoint: "emdash/internal/middleware/setup", order: "pre" },
+			{ entrypoint: "emdash/internal/middleware/auth", order: "pre" },
 		);
 	}
 
 	entries.push(
-		{ entrypoint: "emdash/middleware/media-usage-write-fence", order: "pre" },
-		{ entrypoint: "emdash/middleware/request-context", order: "pre" },
+		{ entrypoint: "emdash/internal/middleware/media-usage-write-fence", order: "pre" },
+		{ entrypoint: "emdash/internal/middleware/request-context", order: "pre" },
 	);
 
 	return entries;
+}
+
+function assertNoRemovedRegistryOption(config: EmDashConfig): void {
+	const experimental: unknown = Reflect.get(config, "experimental");
+	if (
+		typeof experimental === "object" &&
+		experimental !== null &&
+		Reflect.get(experimental, "registry") !== undefined
+	) {
+		throw new Error(
+			"EmDash config: `experimental.registry` has been removed. Configure the registry with the top-level `registry` option instead.",
+		);
+	}
 }
 
 /**
  * Create the EmDash Astro integration
  */
 export function emdash(config: EmDashConfig = {}): AstroIntegration {
+	assertNoRemovedRegistryOption(config);
+
 	const registry = resolveRegistryConfigForSandbox({
 		registry: config.registry,
-		experimentalRegistry: config.experimental?.registry,
 		sandboxRunner: config.sandboxRunner,
 		sandboxEnabled: config.sandbox !== false,
 	});
@@ -390,16 +415,13 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 		...config,
 		storage: config.storage ?? DEFAULT_STORAGE,
 		migrations: normalizeMigrationConfig(config.migrations),
-		registry: config.registry === false ? false : registry.input,
+		registry: config.registry === false ? false : registry,
 	};
 
 	// Validate environment-independent registry settings while Astro is still
 	// evaluating its config. The command-aware check in astro:config:setup
 	// applies the stricter production localhost policy.
-	normalizeRegistryConfig(registry.input, {
-		allowLocalhost: true,
-		fieldPrefix: registry.fieldPrefix,
-	});
+	normalizeRegistryConfig(registry, { allowLocalhost: true });
 
 	const updateCheckAge =
 		typeof resolvedConfig.updateCheck === "object"
@@ -537,9 +559,8 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 				command,
 			}) => {
 				astroCommand = command;
-				normalizeRegistryConfig(registry.input, {
+				normalizeRegistryConfig(registry, {
 					allowLocalhost: command === "dev" || command === "sync",
-					fieldPrefix: registry.fieldPrefix,
 				});
 				printBanner(logger);
 				// Capture the host's Astro version so the runtime can expose it
@@ -636,7 +657,12 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 
 				const imageConfig: Record<string, unknown> = {};
 				if (imageRemotePatterns.length) imageConfig.remotePatterns = imageRemotePatterns;
-				if (imageEndpoint) imageConfig.endpoint = { entrypoint: imageEndpoint };
+				if (imageEndpoint) {
+					imageConfig.endpoint = { entrypoint: imageEndpoint };
+					serializableConfig.imageEndpointRoute = imageEndpointRoutePattern(
+						astroConfig.image?.endpoint?.route,
+					);
+				}
 
 				updateConfig({
 					security: securityConfig,

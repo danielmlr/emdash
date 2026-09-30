@@ -37,6 +37,7 @@ import {
 	invalidateContentMediaUsageSchemaChange,
 	markContentMediaUsageCollectionStaleSafely,
 } from "../media/usage/content-refresh.js";
+import { finishMediaUsageCollectionDeletion } from "../media/usage/maintenance-engine.js";
 import { FTSManager } from "../search/fts-manager.js";
 import { getPortableTableSpec } from "../transfer/format/columns.js";
 import { canonicalDigest } from "../transfer/format/digest.js";
@@ -319,6 +320,13 @@ export class SchemaError extends Error {
 	}
 }
 
+function collectionBeingDeletedError(slug: string): SchemaError {
+	return new SchemaError(
+		`Collection "${slug}" is being deleted. Try again shortly.`,
+		"COLLECTION_EXISTS",
+	);
+}
+
 /**
  * Schema Registry
  *
@@ -333,6 +341,19 @@ export class SchemaRegistry {
 	 */
 	private notifyTypegen(): void {
 		refreshDevTypes();
+	}
+
+	/** A deleted collection's slug stays taken until its media usage cleanup finalizes. */
+	private async finishPendingDeletion(slug: string): Promise<void> {
+		const deletion = await finishMediaUsageCollectionDeletion(this.db, slug);
+		if (deletion.state === "failed") {
+			throw new SchemaError(
+				`Deleting the previous collection "${slug}" failed. Retry it by sending {"collectionId":"${deletion.collectionId}"} to POST /_emdash/api/admin/media-usage/collection-deletions/retry, then create the collection again.`,
+				"COLLECTION_EXISTS",
+				{ deletedCollectionId: deletion.collectionId },
+			);
+		}
+		if (deletion.state === "pending") throw collectionBeingDeletedError(slug);
 	}
 
 	// ============================================
@@ -499,14 +520,12 @@ export class SchemaRegistry {
 		if (RESERVED_COLLECTION_SLUGS.includes(input.slug)) {
 			throw new SchemaError(`Collection slug "${input.slug}" is reserved`, "RESERVED_SLUG");
 		}
-		if (await isMediaUsageCollectionSlugDeleting(this.db, input.slug)) {
-			throw new SchemaError(`Collection "${input.slug}" already exists`, "COLLECTION_EXISTS");
-		}
+		await this.finishPendingDeletion(input.slug);
 
 		// Check if collection already exists
 		const existing = await this.getCollection(input.slug);
 		if (await isMediaUsageCollectionSlugDeleting(this.db, input.slug)) {
-			throw new SchemaError(`Collection "${input.slug}" already exists`, "COLLECTION_EXISTS");
+			throw collectionBeingDeletedError(input.slug);
 		}
 		if (
 			existing &&
@@ -627,9 +646,6 @@ export class SchemaRegistry {
 		if (RESERVED_COLLECTION_SLUGS.includes(input.slug)) {
 			throw new SchemaError(`Collection slug "${input.slug}" is reserved`, "RESERVED_SLUG");
 		}
-		if (await isMediaUsageCollectionSlugDeleting(this.db, input.slug)) {
-			throw new SchemaError(`Collection "${input.slug}" already exists`, "COLLECTION_EXISTS");
-		}
 
 		const fieldSlugs = new Set<string>();
 		const normalizedFields: CreateFieldInput[] = [];
@@ -669,9 +685,10 @@ export class SchemaRegistry {
 			input,
 			normalizedFields,
 		);
+		await this.finishPendingDeletion(input.slug);
 		const existing = await this.getCollection(input.slug);
 		if (await isMediaUsageCollectionSlugDeleting(this.db, input.slug)) {
-			throw new SchemaError(`Collection "${input.slug}" already exists`, "COLLECTION_EXISTS");
+			throw collectionBeingDeletedError(input.slug);
 		}
 		if (
 			existing &&

@@ -35,7 +35,6 @@ import type {
 	VersionedRedirect,
 	VersionedValue,
 } from "emdash";
-import type { MediaBytes, MediaItem as PluginMediaItem, MediaMetadataPatch } from "emdash/plugin";
 import type {
 	ContentItem,
 	ContentListOptions,
@@ -43,7 +42,8 @@ import type {
 	PaginatedResult,
 	PluginStorageRepository,
 	SettingField,
-} from "emdash/plugins/host";
+} from "emdash/internal/plugins/host";
+import type { MediaBytes, MediaItem as PluginMediaItem, MediaMetadataPatch } from "emdash/plugin";
 import {
 	createPluginSecretRedactor,
 	type PluginSecretRedactor,

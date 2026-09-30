@@ -149,5 +149,5 @@ it.each([
 		pages++;
 	} while (cursor);
 
-	expect(pages).toBe(POSTS / PAGE_SIZE);
+	expect(pages).toBe(Math.ceil(POSTS / PAGE_SIZE));
 });

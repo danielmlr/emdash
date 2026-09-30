@@ -46,6 +46,7 @@ import {
 } from "../lib/content-list-columns.js";
 import { getEntryTitle } from "../lib/entryTitle.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import { inlineLabel } from "../lib/inline-label.js";
 import { usePluginAdmins } from "../lib/plugin-context.js";
 import { contentUrl } from "../lib/url.js";
 import { cn, parseTimestamp } from "../lib/utils";
@@ -277,7 +278,7 @@ export function ContentList({
 	userRole = 0,
 	pluginStates,
 }: ContentListProps) {
-	const { t } = useLingui();
+	const { t, i18n: lingui } = useLingui();
 	const pluginAdmins = usePluginAdmins();
 	const [activeTab, setActiveTab] = React.useState<ViewTab>("all");
 	const [searchQuery, setSearchQuery] = React.useState("");
@@ -474,8 +475,8 @@ export function ContentList({
 						<TableToolbar>
 							{(serverSearch || items.length > 0) && (
 								<TableToolbarSearch
-									placeholder={t`Search ${collectionLabel.toLowerCase()}...`}
-									aria-label={t`Search ${collectionLabel.toLowerCase()}`}
+									placeholder={t`Search ${inlineLabel(collectionLabel, lingui.locale)}...`}
+									aria-label={t`Search ${inlineLabel(collectionLabel, lingui.locale)}`}
 									value={searchQuery}
 									onChange={handleSearchChange}
 								/>
@@ -550,7 +551,7 @@ export function ContentList({
 										}}
 									>
 										{soleBulkTagTaxonomy
-											? t`Add ${(soleBulkTagTaxonomy.labelSingular || soleBulkTagTaxonomy.label).toLowerCase()}`
+											? t`Add ${inlineLabel(soleBulkTagTaxonomy.labelSingular || soleBulkTagTaxonomy.label, lingui.locale)}`
 											: t`Add term`}
 									</Button>
 								)}
@@ -720,7 +721,7 @@ export function ContentList({
 												t`No results for "${activeSearch}"`
 											) : (
 												<>
-													{t`No ${collectionLabel.toLowerCase()} yet.`}{" "}
+													{t`No ${inlineLabel(collectionLabel, lingui.locale)} yet.`}{" "}
 													<Link
 														to="/content/$collection/new"
 														params={{ collection }}

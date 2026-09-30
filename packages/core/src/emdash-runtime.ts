@@ -108,6 +108,7 @@ import type {
 import type {
 	ActorInfo,
 	ContentActionOrigin,
+	ContentSaveHookDetails,
 	ContentItem as PluginContentItem,
 	ResolvedPlugin,
 	MediaItem,
@@ -133,7 +134,7 @@ import type {
 	PluginContentCreateCallback,
 	VersionedContentItem,
 } from "./plugins/types.js";
-import { normalizePluginCapabilities } from "./plugins/types.js";
+import { normalizePluginCapabilities, warnDeprecatedPluginCapabilities } from "./plugins/types.js";
 import { recordSchedulerHeartbeatSafely } from "./scheduler-health.js";
 import { primeRegisteredCollections } from "./schema/collection-slugs-cache.js";
 import { isStoragelessField, isStoragelessFieldRow } from "./schema/types.js";
@@ -283,11 +284,7 @@ import { isContentSaveRejection } from "./plugins/save-rejection.js";
 import type { CronScheduler } from "./plugins/scheduler/types.js";
 import { PluginStateRepository } from "./plugins/state.js";
 import { syncDeclaredStorageIndexes } from "./plugins/storage-indexes.js";
-import {
-	getRegistryConfigInput,
-	resolveManifestRegistryConfig,
-	resolveRegistryConfigForSandbox,
-} from "./registry/config.js";
+import { getRegistryConfigInput, resolveManifestRegistryConfig } from "./registry/config.js";
 import { requestCached } from "./request-cache.js";
 import { getRequestContext } from "./request-context.js";
 import { publishDueContent, type PublishedRef } from "./scheduled-publish.js";
@@ -1170,7 +1167,7 @@ export class EmDashRuntime {
 	 * update, and uninstall handlers complete.
 	 */
 	async syncRegistryPlugins(): Promise<void> {
-		if (!getRegistryConfigInput(this.config.registry, this.config.experimental?.registry)) return;
+		if (!getRegistryConfigInput(this.config.registry)) return;
 		await this.syncSandboxedSourcePlugins("registry");
 	}
 
@@ -1895,10 +1892,7 @@ export class EmDashRuntime {
 		}
 
 		// Cold-start: load registry-installed plugins from site R2
-		if (
-			getRegistryConfigInput(deps.config.registry, deps.config.experimental?.registry) &&
-			storage
-		) {
+		if (getRegistryConfigInput(deps.config.registry) && storage) {
 			installedTierPhases.push(
 				phase("rt.registry", "Registry plugins", () =>
 					EmDashRuntime.loadInstalledSandboxedPlugins(
@@ -2372,7 +2366,7 @@ export class EmDashRuntime {
 	/**
 	 * Get or create storage instance
 	 */
-	private static getStorage(deps: RuntimeDependencies): Storage | null {
+	static getStorage(deps: RuntimeDependencies): Storage | null {
 		const storageConfig = deps.config.storage;
 		if (!storageConfig || !deps.createStorage) {
 			return null;
@@ -2566,6 +2560,7 @@ export class EmDashRuntime {
 								: undefined,
 					}),
 				);
+				warnDeprecatedPluginCapabilities(entry.id, entry.capabilities ?? []);
 				const capabilities = normalizePluginCapabilities(entry.capabilities ?? []);
 
 				// Build manifest from entry's declared config
@@ -3119,13 +3114,8 @@ export class EmDashRuntime {
 					}
 				: undefined;
 
-		const registryConfig = resolveRegistryConfigForSandbox({
-			registry: this.config.registry,
-			experimentalRegistry: this.config.experimental?.registry,
-		});
 		const { registry, error: registryConfigurationError } = resolveManifestRegistryConfig(
-			registryConfig.input,
-			{ fieldPrefix: registryConfig.fieldPrefix },
+			getRegistryConfigInput(this.config.registry),
 		);
 		if (registryConfigurationError) {
 			console.error(
@@ -3406,6 +3396,11 @@ export class EmDashRuntime {
 			}
 		}
 
+		const saveHookDetails = {
+			locale,
+			...(body.translationOf ? { translationOf: body.translationOf } : {}),
+		};
+
 		// Run beforeSave hooks (trusted plugins)
 		let processedData = body.data;
 		if (!options.skipSaveHooks && this.hooks.hasHooks("content:beforeSave")) {
@@ -3416,6 +3411,7 @@ export class EmDashRuntime {
 					true,
 					undefined,
 					actor,
+					saveHookDetails,
 				);
 				processedData = hookResult.content;
 			} catch (error) {
@@ -3511,6 +3507,7 @@ export class EmDashRuntime {
 				true,
 				actor,
 				options.excludeAfterSavePluginId,
+				{ ...saveHookDetails, locale: result.data.item.locale ?? locale },
 			);
 		}
 
@@ -3621,6 +3618,7 @@ export class EmDashRuntime {
 						false,
 						resolvedItem?.id,
 						actor,
+						resolvedItem?.locale ? { locale: resolvedItem.locale } : {},
 					);
 					processedData = hookResult.content;
 				} catch (error) {
@@ -3932,7 +3930,15 @@ export class EmDashRuntime {
 
 		// Run afterSave hooks (fire-and-forget)
 		if (hydrated.success && hydrated.data) {
-			this.runAfterSaveHooks(contentItemToRecord(hydrated.data.item), collection, false, actor);
+			const savedLocale = hydrated.data.item.locale;
+			this.runAfterSaveHooks(
+				contentItemToRecord(hydrated.data.item),
+				collection,
+				false,
+				actor,
+				undefined,
+				savedLocale ? { locale: savedLocale } : {},
+			);
 		}
 
 		if (hydrated.success) {
@@ -5223,6 +5229,26 @@ export class EmDashRuntime {
 		return { context: { surface, locale, direction: getLocaleDir(locale) } };
 	}
 
+	/**
+	 * UI context for a configured plugin's Block Kit page or widget. An
+	 * undeclared surface yields no context and no error: configured plugins
+	 * are not held to their declarations, so rejecting here would break
+	 * configured plugins that serve undeclared pages.
+	 */
+	private resolveTrustedUiContext(
+		plugin: ResolvedPlugin,
+		routeKey: string,
+		body: unknown,
+		request: Request,
+	): PluginUiContext | undefined {
+		if (routeKey !== "admin") return undefined;
+		const surfaces = {
+			pages: (plugin.admin.pages ?? []).map((page) => normalizePluginPagePath(page.path)),
+			widgets: (plugin.admin.widgets ?? []).map((widget) => widget.id),
+		};
+		return this.resolvePluginUiContext(surfaces, body, request).context;
+	}
+
 	private validateSandboxedAdminResponse(
 		pluginId: string,
 		definition: { policy: BlockValidationPolicy },
@@ -5486,7 +5512,10 @@ export class EmDashRuntime {
 				request,
 				body,
 				user: caller,
-				ui: editorDispatch?.ui ?? uiResult.context,
+				ui:
+					editorDispatch?.ui ??
+					uiResult.context ??
+					this.resolveTrustedUiContext(trustedPlugin, routeKey, body, request),
 			});
 			return editorDispatch
 				? this.validatePluginEditorExtensionResponse(pluginId, editorDispatch, result)
@@ -5930,12 +5959,20 @@ export class EmDashRuntime {
 		isNew: boolean,
 		actor?: ActorInfo,
 		excludePluginId?: string,
+		details?: ContentSaveHookDetails,
 	): void {
 		after(async () => {
 			// Trusted plugins
 			if (this.hooks.hasHooks("content:afterSave")) {
 				try {
-					await this.hooks.runContentAfterSave(content, collection, isNew, actor, excludePluginId);
+					await this.hooks.runContentAfterSave(
+						content,
+						collection,
+						isNew,
+						actor,
+						excludePluginId,
+						details,
+					);
 				} catch (err) {
 					console.error("EmDash afterSave hook error:", err);
 				}

@@ -30,6 +30,7 @@ import {
 	updateTaxonomyDefBody,
 } from "#api/schemas.js";
 
+import { after } from "../after.js";
 import { claimEntryLockForWrite } from "../api/handlers/entry-lock.js";
 import type { MediaUsageRepairRequest } from "../api/schemas/media-usage.js";
 import type { EmDashHandlers } from "../astro/types.js";
@@ -1014,7 +1015,11 @@ export function createMcpServer(
 				orderBy: z
 					.string()
 					.optional()
-					.describe("Field to sort by (e.g. 'created_at', 'updated_at')"),
+					.describe(
+						"Field to sort by: 'createdAt' (default), 'updatedAt', 'publishedAt', 'scheduledAt', " +
+							"'slug', 'status', 'locale', or a field slug that is indexed or set as the " +
+							"collection's titleField or dateField",
+					),
 				order: z.enum(["asc", "desc"]).optional().describe("Sort direction (default 'desc')"),
 				locale: z
 					.string()
@@ -2014,8 +2019,10 @@ export function createMcpServer(
 			description:
 				"Create a new byline (author/contributor credit). The slug must be unique " +
 				"and contain only lowercase letters, digits, and hyphens. Link the byline " +
-				"to a CMS user via userId, or leave it as a standalone guest credit. The " +
-				"returned id can then be passed to content_create/content_update bylines.",
+				"to a CMS user via userId, or leave it as a standalone guest credit. A " +
+				"translation created with translationOf keeps the source's userId unless " +
+				"you pass one; pass null to leave it unlinked. The returned id can then be " +
+				"passed to content_create/content_update bylines.",
 			inputSchema: z.object({ ...bylineCreateBody.shape }),
 			annotations: { destructiveHint: false },
 		},
@@ -2026,7 +2033,11 @@ export function createMcpServer(
 			try {
 				const { handleBylineCreate } = await import("../api/handlers/bylines.js");
 				const result = await handleBylineCreate(ec.db, args);
-				if (result.success) await invalidateBylines();
+				if (result.success) {
+					await invalidateBylines();
+					const byline = result.data;
+					after(() => ec.hooks.runBylineAfterSave(byline, true));
+				}
 				return unwrap(result);
 			} catch (error) {
 				return respondHandlerError(error, "BYLINE_CREATE_ERROR");
@@ -2054,7 +2065,11 @@ export function createMcpServer(
 				const { handleBylineUpdate } = await import("../api/handlers/bylines.js");
 				const { id, ...input } = args;
 				const result = await handleBylineUpdate(ec.db, id, input);
-				if (result.success) await invalidateBylines();
+				if (result.success) {
+					await invalidateBylines();
+					const byline = result.data;
+					after(() => ec.hooks.runBylineAfterSave(byline, false));
+				}
 				return unwrap(result);
 			} catch (error) {
 				return respondHandlerError(error, "BYLINE_UPDATE_ERROR");
@@ -2080,9 +2095,14 @@ export function createMcpServer(
 			const ec = getEmDash(extra);
 			try {
 				const { BylineRepository } = await import("../database/repositories/byline.js");
-				const deleted = await new BylineRepository(ec.db).delete(args.id);
+				const repo = new BylineRepository(ec.db);
+				const existing = ec.hooks.hasHooks("byline:afterDelete")
+					? await repo.findById(args.id)
+					: null;
+				const deleted = await repo.delete(args.id);
 				if (!deleted) return respondError("NOT_FOUND", `Byline '${args.id}' not found`);
 				await invalidateBylines();
+				if (existing) after(() => ec.hooks.runBylineAfterDelete(existing));
 				return jsonResult({ deleted: args.id });
 			} catch (error) {
 				return respondHandlerError(error, "BYLINE_DELETE_ERROR");
@@ -3676,7 +3696,9 @@ export function createMcpServer(
 			title: "Update Site Settings",
 			description:
 				"Update one or more site-wide settings. This is a partial update: only " +
-				"the fields provided are changed; omitted fields are left as-is. Returns " +
+				"the fields provided are changed; omitted fields are left as-is, including " +
+				"fields inside `seo` and `social`. Send an empty string to clear a text " +
+				"field. Returns " +
 				"the full settings object after the update. To set a media reference " +
 				"(logo, favicon, seo.defaultOgImage), pass an object with `mediaId` " +
 				"(and optional `alt`) — the media item must already exist (use " +

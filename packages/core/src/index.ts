@@ -88,6 +88,7 @@ export {
 	handleMediaList,
 	handleMediaGet,
 	handleMediaCreate,
+	handleMediaRegisterUpload,
 	handleMediaUpdate,
 	handleMediaReplaceMetadata,
 	handleMediaDelete,
@@ -130,6 +131,7 @@ export type {
 	PortableTextImageBlock,
 	PortableTextCodeBlock,
 	PortableTextHtmlBlock,
+	PortableTextIframeBlock,
 	PortableTextTableAlignment,
 	PortableTextTableBlock,
 	PortableTextTableCell,
@@ -150,6 +152,7 @@ export { decodeSlug, slugify } from "./utils/slugify.js";
 export {
 	getEmDashCollection,
 	getEmDashEntry,
+	getEmDashReferences,
 	getEditMeta,
 	getTranslations,
 	resolveEmDashPath,
@@ -162,8 +165,17 @@ export type {
 	EditFieldMeta,
 	EntryResult,
 	EmDashCollections,
+	EmDashCollectionReferences,
 	InferCollectionData,
+	InferCollectionReferences,
+	ReferencePage,
+	ReferencePages,
+	ReferenceQuery,
+	ReferenceResult,
+	ReferenceSelection,
 	ResolvePathResult,
+	SelectableReferences,
+	SelectedReferences,
 	TranslationSummary,
 	TranslationsResult,
 	WhereRange,
@@ -310,6 +322,7 @@ export {
 	createRedirectAccess,
 	RedirectAccessError,
 	createSchemaAccess,
+	createBylineAccess,
 	createMediaAccess,
 	DEFAULT_PLUGIN_MEDIA_READ_BYTES,
 	MAX_PLUGIN_MEDIA_READ_BYTES,
@@ -364,6 +377,11 @@ export type {
 	TaxonomyTermInfo,
 	TaxonomyTermCreateInput,
 	TaxonomyReadOptions,
+	BylineAccess,
+	BylineCreditInfo,
+	BylineInfo,
+	BylineListOptions,
+	EntryBylineCredits,
 	RedirectAccess,
 	RedirectAccessWithWrite,
 	RedirectCreateInput,
@@ -403,6 +421,10 @@ export type {
 	FieldWidgetConfig,
 	PortableTextBlockConfig,
 	PortableTextBlockField,
+	BylineAfterSaveEvent,
+	BylineAfterDeleteEvent,
+	BylineAfterSaveHandler,
+	BylineAfterDeleteHandler,
 	// Comment types
 	CommentBeforeCreateEvent,
 	CommentModerateEvent,
@@ -461,7 +483,15 @@ export type { CurrentPluginCapability, DeprecatedPluginCapability } from "./plug
 export type { PluginDescriptor } from "./astro/integration/runtime.js";
 
 // Schema registry
-export { SchemaRegistry, SchemaError, getCollectionInfo } from "./schema/index.js";
+export {
+	SchemaRegistry,
+	SchemaError,
+	BlockTypeRegistry,
+	expandCollectionBlockFields,
+	normalizeBlocksData,
+	resolveBlockTypes,
+	getCollectionInfo,
+} from "./schema/index.js";
 export type {
 	FieldType,
 	ColumnType,
@@ -477,6 +507,21 @@ export type {
 	CreateFieldInput,
 	UpdateFieldInput,
 	CollectionWithFields,
+	BlockFieldDefinition,
+	BlockFieldOptions,
+	BlockFieldType,
+	BlockType,
+	BlockTypeCompatibility,
+	BlockTypeDifference,
+	BlockTypeSource,
+	BlockTypeVersion,
+	CreateBlockTypeInput,
+	UpdateBlockTypeInput,
+	ApplySeedBlockTypeInput,
+	SeedBlockTypeVersionInput,
+	BlockWriteOptions,
+	ResolvedBlockTypes,
+	StoredBlockValue,
 } from "./schema/index.js";
 export {
 	FIELD_TYPE_TO_COLUMN,
@@ -551,9 +596,11 @@ export {
 } from "./settings/index.js";
 export type {
 	SiteSettings,
+	SiteSettingsUpdate,
 	SiteSettingKey,
 	MediaReference,
 	SeoSettings,
+	SeoSettingsUpdate,
 } from "./settings/types.js";
 
 // SEO

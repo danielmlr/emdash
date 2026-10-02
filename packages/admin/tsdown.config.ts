@@ -24,11 +24,17 @@ function linguiMacroPlugin(): Plugin {
 }
 
 export default defineConfig({
+	// locales/config and locales/emails are separate server-safe entries:
+	// EmDash core imports them from API routes, where the locales barrel's
+	// React/Kumo graph must not be pulled into the server bundle.
 	entry: [
 		"src/index.ts",
 		"src/locales/index.ts",
 		"src/locales/server.ts",
+		"src/locales/config.ts",
+		"src/locales/emails.ts",
 		"src/portable-text-table.ts",
+		"src/html-block.ts",
 		"src/slugify.ts",
 	],
 	format: ["esm"],

@@ -26,6 +26,8 @@ const TABLE_BLOCK_CONTENT_PATTERN = /<(?:img|h[1-6]|ul|ol|pre|blockquote|hr)\b/i
 const MERGED_CELL_PATTERN = /\b(?:colspan|rowspan)\s*=\s*(?:["']\s*)?(?:[2-9]|[1-9]\d)/i;
 const TABLE_ROW_TAG_PATTERN = /<tr\b/gi;
 const TABLE_CELL_TAG_PATTERN = /<t[dh]\b/gi;
+const TABLE_ROW_END_TAG_PATTERN = /<\/tr>/gi;
+const TABLE_CELL_END_TAG_PATTERN = /<\/t[dh]>/gi;
 const BLOCK_END_INSIDE_CELL_PATTERN = /<\/(?:p|div)>(?!\s*<\/(?:p|div|t[dh])>)/gi;
 const BLOCK_START_INSIDE_CELL_PATTERN =
 	/(?<!(?:<(?:t[dh]|p|div)\b[^>]*>|<br\s*\/?>)\s*)<(?:p|div)\b/gi;
@@ -512,7 +514,16 @@ function classicTableToPortableText(
 	options: ConvertOptions,
 	generateKey: () => string,
 ): PortableTextBlock[] {
-	if (TABLE_BLOCK_CONTENT_PATTERN.test(html) || MERGED_CELL_PATTERN.test(html)) {
+	const rowTags = html.match(TABLE_ROW_TAG_PATTERN)?.length ?? 0;
+	const cellTags = html.match(TABLE_CELL_TAG_PATTERN)?.length ?? 0;
+	if (
+		TABLE_BLOCK_CONTENT_PATTERN.test(html) ||
+		MERGED_CELL_PATTERN.test(html) ||
+		// The transformer's row and cell patterns rescan the rest of the table from every start
+		// tag that has no end tag.
+		(html.match(TABLE_ROW_END_TAG_PATTERN)?.length ?? 0) < rowTags ||
+		(html.match(TABLE_CELL_END_TAG_PATTERN)?.length ?? 0) < cellTags
+	) {
 		return [];
 	}
 
@@ -537,8 +548,8 @@ function classicTableToPortableText(
 	const cellText = cells.flatMap((cell) => cell.content.map((span) => span.text)).join("");
 	const withoutWhitespace = (text: string) => text.replace(ALL_WHITESPACE_PATTERN, "");
 	const keepsEverything =
-		table.rows.length === (html.match(TABLE_ROW_TAG_PATTERN)?.length ?? 0) &&
-		cells.length === (html.match(TABLE_CELL_TAG_PATTERN)?.length ?? 0) &&
+		table.rows.length === rowTags &&
+		cells.length === cellTags &&
 		withoutWhitespace(cellText) === withoutWhitespace(extractText(html));
 	return keepsEverything ? converted : [];
 }

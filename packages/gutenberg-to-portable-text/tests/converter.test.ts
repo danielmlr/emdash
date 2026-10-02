@@ -1401,6 +1401,9 @@ describe("classic editor tables", () => {
 			`<table><tr><td>colspan=${" ".repeat(100_000)}x</td></tr></table>`,
 			["table"],
 		],
+		["row start tags without end tags", `<table>${"<tr".repeat(20_000)}</table>`, []],
+		["rows without end tags", `<table>${"<tr><td>x</td>".repeat(20_000)}</table>`, ["block"]],
+		["cell start tags without end tags", `<table><tr>${"<td".repeat(20_000)}</tr></table>`, []],
 	])("converts %s within a second", (_shape, html, types) => {
 		const started = performance.now();
 		const result = gutenbergToPortableText(html);

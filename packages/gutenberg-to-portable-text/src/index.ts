@@ -20,9 +20,10 @@ import type {
 
 // Regex patterns for HTML parsing and conversion
 const BLOCK_ELEMENT_PATTERN =
-	/<(p|h[1-6]|blockquote|pre|ul|ol|figure|div|hr)[^>]*>([\s\S]*?)<\/\1>|<(hr|br)\s*\/?>|<img\s+[^>]+\/?>|<(table)\b[^>]*>[\s\S]*?<\/table>/gu;
+	/<(p|h[1-6]|blockquote|pre|ul|ol|figure|div|hr)[^>]*>([\s\S]*?)<\/\1>|<(hr|br)\s*\/?>|<img\s+[^>]+\/?>/gu;
+const WORD_CHARACTER_PATTERN = /\w/;
 const TABLE_BLOCK_CONTENT_PATTERN = /<(?:img|h[1-6]|ul|ol|pre|blockquote|hr)\b/i;
-const MERGED_CELL_PATTERN = /\b(?:colspan|rowspan)\s*=\s*["']?\s*(?:[2-9]|[1-9]\d)/i;
+const MERGED_CELL_PATTERN = /\b(?:colspan|rowspan)\s*=\s*(?:["']\s*)?(?:[2-9]|[1-9]\d)/i;
 const TABLE_ROW_TAG_PATTERN = /<tr\b/gi;
 const TABLE_CELL_TAG_PATTERN = /<t[dh]\b/gi;
 const BLOCK_END_INSIDE_CELL_PATTERN = /<\/(?:p|div)>(?!\s*<\/(?:p|div|t[dh])>)/gi;
@@ -174,20 +175,49 @@ export function htmlToPortableText(
 	let lastIndex = 0;
 	let match;
 
-	while ((match = BLOCK_ELEMENT_PATTERN.exec(html)) !== null) {
-		const fullMatch = match[0];
-		const tag = (match[1] || match[3] || match[4] || "").toLowerCase();
-		const content = match[2] || "";
+	const tables = findClassicTables(html);
+	let nextTable = 0;
+	// Tables that would lose content are skipped here and read as plain HTML by the scan below.
+	const pushTablesBefore = (end: number) => {
+		while (nextTable < tables.length && tables[nextTable]!.start < end) {
+			const table = tables[nextTable++]!;
+			if (table.start < lastIndex || table.nested) continue;
+			const tableBlocks = classicTableToPortableText(
+				html.slice(table.start, table.end),
+				options,
+				generateKey,
+			);
+			if (tableBlocks.length === 0) continue;
 
-		let tableBlocks: PortableTextBlock[] = [];
-		if (tag === "table") {
-			tableBlocks = classicTableToPortableText(fullMatch, options, generateKey);
-			if (tableBlocks.length === 0) {
-				// Treat the table as plain HTML: the scan continues with the elements inside it.
-				BLOCK_ELEMENT_PATTERN.lastIndex = match.index + 1;
-				continue;
+			const between = html.slice(lastIndex, table.start).trim();
+			if (between) {
+				const { children, markDefs } = parseInlineContent(between, generateKey);
+				if (children.some((c) => c.text.trim())) {
+					blocks.push({
+						_type: "block",
+						_key: generateKey(),
+						style: "normal",
+						children,
+						markDefs: markDefs.length > 0 ? markDefs : undefined,
+					});
+				}
 			}
+			blocks.push(...tableBlocks);
+			lastIndex = table.end;
 		}
+	};
+
+	while ((match = BLOCK_ELEMENT_PATTERN.exec(html)) !== null) {
+		pushTablesBefore(match.index);
+		if (lastIndex > match.index) {
+			// A table took in this element: resume the scan after the table.
+			BLOCK_ELEMENT_PATTERN.lastIndex = lastIndex;
+			continue;
+		}
+
+		const fullMatch = match[0];
+		const tag = (match[1] || match[3] || "").toLowerCase();
+		const content = match[2] || "";
 
 		// Handle text between matches
 		const between = html.slice(lastIndex, match.index).trim();
@@ -368,11 +398,6 @@ export function htmlToPortableText(
 				break;
 			}
 
-			case "table": {
-				blocks.push(...tableBlocks);
-				break;
-			}
-
 			case "hr": {
 				blocks.push({
 					_type: "break",
@@ -407,6 +432,7 @@ export function htmlToPortableText(
 			}
 		}
 	}
+	pushTablesBefore(html.length);
 
 	// Handle remaining text
 	const remaining = html.slice(lastIndex).trim();
@@ -440,6 +466,39 @@ function createTransformContext(
 			blocks.flatMap((block) => transformBlock(block, options, context)),
 	};
 	return context;
+}
+
+interface ClassicTable {
+	start: number;
+	end: number;
+	nested: boolean;
+}
+
+/**
+ * Find each `<table` start tag in source order, with the first `</table>` after it. A table
+ * whose span holds the start of another one ends at the inner table's end tag, so it is marked
+ * as nested and never converted itself. Searches with `indexOf` only: a regular expression for
+ * the span backtracks polynomially on unclosed tags.
+ */
+function findClassicTables(html: string): ClassicTable[] {
+	const tables: ClassicTable[] = [];
+	let tagEnd = -1;
+	let close = -1;
+	for (
+		let start = html.indexOf("<table");
+		start !== -1;
+		start = html.indexOf("<table", start + 1)
+	) {
+		if (WORD_CHARACTER_PATTERN.test(html.charAt(start + 6))) continue;
+		if (tagEnd < start + 6) tagEnd = html.indexOf(">", start + 6);
+		if (tagEnd === -1) break;
+		if (close <= tagEnd) close = html.indexOf("</table>", tagEnd + 1);
+		if (close === -1) break;
+		const previous = tables.at(-1);
+		if (previous && start < previous.end) previous.nested = true;
+		tables.push({ start, end: close + "</table>".length, nested: false });
+	}
+	return tables;
 }
 
 /**

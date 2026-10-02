@@ -1341,10 +1341,10 @@ describe("classic editor tables", () => {
 <td><div><p>Wrapped</p></div>after</td>
 </tr></tbody></table>`;
 
-		const [table] = gutenbergToPortableText(html) as PortableTextTableBlock[];
+		const result = gutenbergToPortableText(html);
 
-		expect(table!._type).toBe("table");
-		expect(cellTexts(table!)[0]).toEqual([
+		expect(result.map((block) => block._type)).toEqual(["table"]);
+		expect(cellTexts(result[0] as PortableTextTableBlock)[0]).toEqual([
 			"Line one\nLine two",
 			"Intro\nDetail",
 			"Price\nper month",
@@ -1354,18 +1354,59 @@ describe("classic editor tables", () => {
 		]);
 	});
 
-	it("converts a table nested in another table on its own", () => {
-		const html = `<table><tbody><tr>
+	it.each([
+		[
+			"beside a cell of the outer table",
+			`<table><tbody><tr>
 <td>Opening hours</td>
 <td><table><tbody><tr><td>Mon</td><td>9-17</td></tr></tbody></table></td>
-</tr></tbody></table>`;
-
+</tr></tbody></table>`,
+			[["Mon", "9-17"]],
+		],
+		[
+			"with an empty header row, below a row of the outer table",
+			`<table><tbody>
+<tr><td>Opening hours</td></tr>
+<tr><td><table><thead><tr><th></th></tr></thead><tbody><tr><td>Mon 9-17</td></tr></tbody></table></td></tr>
+</tbody></table>`,
+			[[""], ["Mon 9-17"]],
+		],
+	])("converts a nested table on its own: %s", (_shape, html, rows) => {
 		const result = gutenbergToPortableText(html);
 
 		expect(result.map((block) => block._type)).toEqual(["block", "table"]);
 		const outerText = result[0] as PortableTextTextBlock;
 		expect(outerText.children.map((span) => span.text).join("")).toContain("Opening hours");
-		expect(cellTexts(result[1] as PortableTextTableBlock)).toEqual([["Mon", "9-17"]]);
+		expect(cellTexts(result[1] as PortableTextTableBlock)).toEqual(rows);
+	});
+
+	it("reads a table inside a <div> as text", () => {
+		const html = `<div><table><tr><td>Role</td><td>Salary</td></tr></table></div><p>After.</p>`;
+
+		const result = gutenbergToPortableText(html) as PortableTextTextBlock[];
+
+		expect(result.map((block) => block._type)).toEqual(["block", "block"]);
+		expect(result[0]!.children.map((span) => span.text).join("")).toBe("RoleSalary");
+	});
+
+	it.each([
+		["unclosed table start tags", "<table".repeat(50_000), []],
+		[
+			"table start tags in an HTML comment",
+			`<!--${"<table ".repeat(25_000)}>${"<table>".repeat(25_000)}</table>-->`,
+			[],
+		],
+		[
+			"spaces after a colspan attribute name",
+			`<table><tr><td>colspan=${" ".repeat(100_000)}x</td></tr></table>`,
+			["table"],
+		],
+	])("converts %s within a second", (_shape, html, types) => {
+		const started = performance.now();
+		const result = gutenbergToPortableText(html);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+		expect(result.map((block) => block._type)).toEqual(types);
 	});
 });
 

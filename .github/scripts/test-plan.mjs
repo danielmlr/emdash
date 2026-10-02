@@ -47,6 +47,7 @@ const UNIT_PACKAGE_BY_PATH = new Map([
 	["packages/plugins/embeds/", "@emdash-cms/plugin-embeds"],
 	["packages/plugins/field-kit/", "@emdash-cms/plugin-field-kit"],
 	["packages/plugins/forms/", "@emdash-cms/plugin-forms"],
+	["packages/plugins/webhook-notifier/", "@emdash-cms/plugin-webhook-notifier"],
 	["packages/registry-client/", "@emdash-cms/registry-client"],
 	["packages/registry-lexicons/", "@emdash-cms/registry-lexicons"],
 	["packages/registry-loader/", "@emdash-cms/registry-loader"],

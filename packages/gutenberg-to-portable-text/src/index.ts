@@ -8,7 +8,8 @@
 
 import { parse } from "@wordpress/block-serialization-default-parser";
 
-import { parseInlineContent } from "./inline.js";
+import { extractText, parseInlineContent } from "./inline.js";
+import { table as tableTransformer } from "./transformers/core.js";
 import { getTransformer } from "./transformers/index.js";
 import type {
 	GutenbergBlock,
@@ -19,7 +20,15 @@ import type {
 
 // Regex patterns for HTML parsing and conversion
 const BLOCK_ELEMENT_PATTERN =
-	/<(p|h[1-6]|blockquote|pre|ul|ol|figure|div|hr)[^>]*>([\s\S]*?)<\/\1>|<(hr|br)\s*\/?>|<img\s+[^>]+\/?>/gu;
+	/<(p|h[1-6]|blockquote|pre|ul|ol|figure|div|hr)[^>]*>([\s\S]*?)<\/\1>|<(hr|br)\s*\/?>|<img\s+[^>]+\/?>|<(table)\b[^>]*>[\s\S]*?<\/table>/gu;
+const TABLE_BLOCK_CONTENT_PATTERN = /<(?:img|h[1-6]|ul|ol|pre|blockquote|hr)\b/i;
+const MERGED_CELL_PATTERN = /\b(?:colspan|rowspan)\s*=\s*["']?\s*(?:[2-9]|[1-9]\d)/i;
+const TABLE_ROW_TAG_PATTERN = /<tr\b/gi;
+const TABLE_CELL_TAG_PATTERN = /<t[dh]\b/gi;
+const BLOCK_END_INSIDE_CELL_PATTERN = /<\/(?:p|div)>(?!\s*<\/(?:p|div|t[dh])>)/gi;
+const BLOCK_START_INSIDE_CELL_PATTERN =
+	/(?<!(?:<(?:t[dh]|p|div)\b[^>]*>|<br\s*\/?>)\s*)<(?:p|div)\b/gi;
+const ALL_WHITESPACE_PATTERN = /\s+/g;
 const LINKED_IMAGE_PATTERN = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>\s*<img\s+([^>]+)\/?>\s*<\/a>/gu;
 const STANDALONE_IMAGE_PATTERN = /<img\s+[^>]+\/?>/gu;
 const IMG_TAG_PATTERN = /<img[^>]+>/i;
@@ -167,8 +176,18 @@ export function htmlToPortableText(
 
 	while ((match = BLOCK_ELEMENT_PATTERN.exec(html)) !== null) {
 		const fullMatch = match[0];
-		const tag = (match[1] || match[3] || "").toLowerCase();
+		const tag = (match[1] || match[3] || match[4] || "").toLowerCase();
 		const content = match[2] || "";
+
+		let tableBlocks: PortableTextBlock[] = [];
+		if (tag === "table") {
+			tableBlocks = classicTableToPortableText(fullMatch, options, generateKey);
+			if (tableBlocks.length === 0) {
+				// Treat the table as plain HTML: the scan continues with the elements inside it.
+				BLOCK_ELEMENT_PATTERN.lastIndex = match.index + 1;
+				continue;
+			}
+		}
 
 		// Handle text between matches
 		const between = html.slice(lastIndex, match.index).trim();
@@ -349,6 +368,11 @@ export function htmlToPortableText(
 				break;
 			}
 
+			case "table": {
+				blocks.push(...tableBlocks);
+				break;
+			}
+
 			case "hr": {
 				blocks.push({
 					_type: "break",
@@ -416,6 +440,48 @@ function createTransformContext(
 			blocks.flatMap((block) => transformBlock(block, options, context)),
 	};
 	return context;
+}
+
+/**
+ * Convert a classic-editor `<table>` with the `core/table` transformer, or return no blocks
+ * when the result would lose part of the table. The transformer emits text-only cells without
+ * colspan or rowspan, needs end tags on rows and cells, and skips text outside the rows it
+ * reads, such as a caption or footer rows.
+ */
+function classicTableToPortableText(
+	html: string,
+	options: ConvertOptions,
+	generateKey: () => string,
+): PortableTextBlock[] {
+	if (TABLE_BLOCK_CONTENT_PATTERN.test(html) || MERGED_CELL_PATTERN.test(html)) {
+		return [];
+	}
+
+	// Cells keep inline content only, so paragraphs in one cell are separated by a line break.
+	const cellHtml = html
+		.replace(BLOCK_END_INSIDE_CELL_PATTERN, "$&<br>")
+		.replace(BLOCK_START_INSIDE_CELL_PATTERN, "<br>$&");
+	const block: GutenbergBlock = {
+		blockName: "core/table",
+		attrs: {},
+		innerHTML: cellHtml,
+		innerBlocks: [],
+		innerContent: [cellHtml],
+	};
+	const converted = tableTransformer(block, options, createTransformContext(options, generateKey));
+	const table = converted[0];
+	if (table?._type !== "table") {
+		return [];
+	}
+
+	const cells = table.rows.flatMap((row) => row.cells);
+	const cellText = cells.flatMap((cell) => cell.content.map((span) => span.text)).join("");
+	const withoutWhitespace = (text: string) => text.replace(ALL_WHITESPACE_PATTERN, "");
+	const keepsEverything =
+		table.rows.length === (html.match(TABLE_ROW_TAG_PATTERN)?.length ?? 0) &&
+		cells.length === (html.match(TABLE_CELL_TAG_PATTERN)?.length ?? 0) &&
+		withoutWhitespace(cellText) === withoutWhitespace(extractText(html));
+	return keepsEverything ? converted : [];
 }
 
 /**

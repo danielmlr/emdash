@@ -1389,6 +1389,28 @@ describe("classic editor tables", () => {
 		expect(result[0]!.children.map((span) => span.text).join("")).toBe("RoleSalary");
 	});
 
+	it("leaves a table inside an HTML comment out", () => {
+		const html = `<p>Before</p><!--<table><tr><td>Hidden</td></tr></table>--><p>After</p>`;
+
+		const result = gutenbergToPortableText(html);
+
+		expect(result.map((block) => block._type)).toEqual(["block", "block"]);
+		expect(
+			(result as PortableTextTextBlock[]).map((block) =>
+				block.children.map((span) => span.text).join(""),
+			),
+		).toEqual(["Before", "After"]);
+	});
+
+	it("converts a table after an HTML comment", () => {
+		const html = `<p>Intro</p><!--more--><table><tr><td>Shown</td></tr></table>`;
+
+		const result = gutenbergToPortableText(html);
+
+		expect(result.map((block) => block._type)).toEqual(["block", "table"]);
+		expect(cellTexts(result[1] as PortableTextTableBlock)).toEqual([["Shown"]]);
+	});
+
 	it.each([
 		["unclosed table start tags", "<table".repeat(50_000), []],
 		[
@@ -1404,6 +1426,12 @@ describe("classic editor tables", () => {
 		["row start tags without end tags", `<table>${"<tr".repeat(20_000)}</table>`, []],
 		["rows without end tags", `<table>${"<tr><td>x</td>".repeat(20_000)}</table>`, ["block"]],
 		["cell start tags without end tags", `<table><tr>${"<td".repeat(20_000)}</tr></table>`, []],
+		["table tags after an unclosed HTML comment", `<!--${"<table>-".repeat(50_000)}</table>`, []],
+		[
+			"table start tags in an attribute value",
+			`<span title="${"<table>".repeat(50_000)}</table>">Text</span>`,
+			["block"],
+		],
 	])("converts %s within a second", (_shape, html, types) => {
 		const started = performance.now();
 		const result = gutenbergToPortableText(html);

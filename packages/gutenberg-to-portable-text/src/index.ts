@@ -477,20 +477,30 @@ interface ClassicTable {
 }
 
 /**
- * Find each `<table` start tag in source order, with the first `</table>` after it. A table
- * whose span holds the start of another one ends at the inner table's end tag, so it is marked
- * as nested and never converted itself. Searches with `indexOf` only: a regular expression for
- * the span backtracks polynomially on unclosed tags.
+ * Find each `<table` start tag outside HTML comments in source order, with the first `</table>`
+ * after it. A table whose span holds the start of another one ends at the inner table's end tag,
+ * so it is marked as nested and never converted itself. Searches with `indexOf` only: a regular
+ * expression for the span backtracks polynomially on unclosed tags.
  */
 function findClassicTables(html: string): ClassicTable[] {
 	const tables: ClassicTable[] = [];
 	let tagEnd = -1;
 	let close = -1;
+	let commentStart = html.indexOf("<!--");
+	let commentEnd = -1;
 	for (
 		let start = html.indexOf("<table");
 		start !== -1;
 		start = html.indexOf("<table", start + 1)
 	) {
+		while (commentStart !== -1 && commentStart < start) {
+			// `<!-->` and `<!--->` end at their own `>`, as HTML parses them.
+			const commentClose = html.indexOf("-->", commentStart + 2);
+			if (commentClose === -1) return tables;
+			commentEnd = commentClose + 3;
+			commentStart = html.indexOf("<!--", commentEnd);
+		}
+		if (start < commentEnd) continue;
 		if (WORD_CHARACTER_PATTERN.test(html.charAt(start + 6))) continue;
 		if (tagEnd < start + 6) tagEnd = html.indexOf(">", start + 6);
 		if (tagEnd === -1) break;

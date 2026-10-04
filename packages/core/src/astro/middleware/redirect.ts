@@ -47,7 +47,7 @@ function recordHitInBackground(repo: RedirectRepository, id: string): void {
 		try {
 			await repo.recordHit(id);
 		} catch (error) {
-			console.error("[redirects] failed to record redirect hit:", error);
+			console.error("[emdash:redirects] failed to record redirect hit:", error);
 		}
 	});
 }
@@ -160,7 +160,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 						userAgent,
 					});
 				} catch (error) {
-					console.error("[redirects] failed to log 404:", error);
+					console.error("[emdash:redirects] failed to log 404:", error);
 				}
 			});
 		}

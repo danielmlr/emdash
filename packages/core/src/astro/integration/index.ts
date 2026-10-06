@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import type { AstroIntegration, AstroIntegrationLogger, AstroIntegrationMiddleware } from "astro";
 
+import { getEnvSiteUrl } from "../../api/public-url.js";
 import { validateAllowedOrigins, validateOriginShape } from "../../auth/allowed-origins.js";
 import { normalizeMigrationConfig } from "../../database/migrations/policy.js";
 import { normalizeAstroI18n } from "../../i18n/normalize.js";
@@ -34,6 +35,8 @@ import {
 } from "../../registry/config.js";
 import { VERSION } from "../../version.js";
 import { local } from "../storage/adapters.js";
+import { readAdminLocaleManifest, resolveAdminLocales } from "./admin-locales.js";
+import { loadDevEnv } from "./dev-env.js";
 import { createDebouncedTypegenRefresh, listenForDevTypegenRefresh } from "./dev-typegen.js";
 import { notoSans } from "./font-provider.js";
 import {
@@ -43,7 +46,7 @@ import {
 	injectMcpRoute,
 } from "./routes.js";
 import type { EmDashConfig } from "./runtime.js";
-import { createViteConfig } from "./vite-config.js";
+import { createViteConfig, resolveAdminDist } from "./vite-config.js";
 
 // Re-export runtime types and functions
 export type {
@@ -77,10 +80,23 @@ const DEFAULT_STORAGE = local({
 	baseUrl: "/_emdash/api/media/file",
 });
 
-interface ImageRemotePattern {
+export interface ImageRemotePattern {
 	protocol?: "http" | "https";
 	hostname?: string;
 	pathname?: string;
+}
+
+/**
+ * Resolve the site origin for `image.remotePatterns`: the configured `siteUrl`,
+ * then `EMDASH_SITE_URL` / `SITE_URL`. Astro bakes `remotePatterns` into the
+ * build output, so the env vars only take effect if they are set when
+ * `astro build` runs.
+ *
+ * @internal Exported for unit testing.
+ */
+export function resolveBuildTimeSiteUrl(configuredSiteUrl: string | undefined): string | undefined {
+	if (configuredSiteUrl) return configuredSiteUrl;
+	return getEnvSiteUrl();
 }
 
 /**
@@ -142,10 +158,12 @@ export function buildImageRemotePatterns(
 
 	if (siteUrl) {
 		try {
-			patterns.push({
-				hostname: new URL(siteUrl).hostname,
-				pathname: `${INTERNAL_MEDIA_PREFIX}**`,
-			});
+			const { hostname } = new URL(siteUrl);
+			// WHATWG URL accepts `*` in a hostname, which Astro's matcher treats
+			// as a wildcard that would allowlist other hosts.
+			if (!hostname.includes("*")) {
+				patterns.push({ hostname, pathname: `${INTERNAL_MEDIA_PREFIX}**` });
+			}
 		} catch {
 			// ignore an unparseable site URL
 		}
@@ -459,8 +477,9 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 
 	// Validate siteUrl if provided in astro.config.mjs.
 	// Env-var fallback (EMDASH_SITE_URL / SITE_URL) is handled at runtime by
-	// getPublicOrigin() in api/public-url.ts — NOT here — so Docker images built
-	// without a domain can pick it up at container start via process.env.
+	// getPublicOrigin() in api/public-url.ts — don't fold it into
+	// resolvedConfig.siteUrl here — so Docker images built without a domain can
+	// pick it up at container start via process.env.
 	if (resolvedConfig.siteUrl) {
 		const raw = resolvedConfig.siteUrl;
 		try {
@@ -530,6 +549,14 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 		}
 	}
 
+	if (config.admin?.locales !== undefined) {
+		const manifest = readAdminLocaleManifest(resolveAdminDist());
+		resolvedConfig.admin = {
+			...config.admin,
+			locales: resolveAdminLocales(config.admin.locales, Object.keys(manifest)),
+		};
+	}
+
 	// Resolved plugins (populated at build time by importing entrypoints)
 	let _resolvedPlugins: ResolvedPlugin[] = [];
 
@@ -563,6 +590,19 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 					allowLocalhost: command === "dev" || command === "sync",
 				});
 				printBanner(logger);
+				if (command === "dev") {
+					// In Node `astro dev`, Vite loads `.env` into `import.meta.env`
+					// but not `process.env`. The plugin-secret encryption key
+					// intentionally reads only `process.env`, so a freshly
+					// scaffolded site can't save secret plugin settings until the
+					// key is copied over. Load only `EMDASH_ENCRYPTION_KEY` here,
+					// honoring any value already present in the shell.
+					try {
+						loadDevEnv(astroConfig.root);
+					} catch (error: unknown) {
+						logger.warn(`Failed to load EMDASH_ENCRYPTION_KEY from .env: ${String(error)}`);
+					}
+				}
 				// Capture the host's Astro version so the runtime can expose it
 				// to the admin and the registry install gate for `env:astro`
 				// constraint checks.
@@ -641,7 +681,7 @@ export function emdash(config: EmDashConfig = {}): AstroIntegration {
 				// merges arrays, so user-configured remotePatterns are preserved.
 				const imageRemotePatterns = buildImageRemotePatterns(
 					resolvedConfig.storage,
-					resolvedConfig.siteUrl,
+					resolveBuildTimeSiteUrl(resolvedConfig.siteUrl),
 					command,
 				);
 

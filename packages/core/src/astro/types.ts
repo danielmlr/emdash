@@ -83,6 +83,8 @@ export interface ManifestCollection {
 			id?: string;
 			/** Validation config for the field (e.g. `allowedMimeTypes` for file/image fields, subFields for repeater). */
 			validation?: Record<string, unknown>;
+			/** Value a new entry starts with in the admin editor. */
+			defaultValue?: unknown;
 		}
 	>;
 }
@@ -107,6 +109,7 @@ export interface ManifestPlugin {
 		path: string;
 		label?: string;
 		icon?: string;
+		group?: string;
 	}>;
 	dashboardWidgets?: Array<{
 		id: string;
@@ -163,6 +166,12 @@ export interface EmDashManifest {
 	 * authentication is handled externally.
 	 */
 	authMode: ManifestAuthMode;
+	/**
+	 * Whether the external auth provider replaces user names on every
+	 * authenticated request (`syncName` is not `false`). The admin shows the
+	 * name as managed by the identity provider instead of editable.
+	 */
+	providerManagedName?: boolean;
 	/**
 	 * Whether self-signup is enabled (at least one allowed domain is active).
 	 * Used by the login page to conditionally show the "Sign up" link.
@@ -288,6 +297,7 @@ export interface EmDashHandlers {
 		collection: string,
 		params: {
 			cursor?: string;
+			page?: number;
 			limit?: number;
 			status?: string;
 			orderBy?: string;
@@ -375,7 +385,7 @@ export interface EmDashHandlers {
 	// Trash handlers
 	handleContentListTrashed: (
 		collection: string,
-		params?: { cursor?: string; limit?: number; locale?: string },
+		params?: { cursor?: string; page?: number; limit?: number; locale?: string },
 	) => Promise<HandlerResponse>;
 
 	handleContentRestore: (collection: string, id: string) => Promise<HandlerResponse>;
@@ -469,6 +479,8 @@ export interface EmDashHandlers {
 		size?: number;
 		width?: number;
 		height?: number;
+		alt?: string;
+		caption?: string;
 		storageKey: string;
 		contentHash?: string;
 		blurhash?: string;

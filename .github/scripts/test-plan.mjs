@@ -3,6 +3,8 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
+import { isTranslationCatalog } from "./translation-scope.mjs";
+
 export const TEST_LANES = [
 	"unit",
 	"smoke",
@@ -23,6 +25,7 @@ const REPOSITORY_METADATA_PATTERN =
 	/^\.github\/(?:dependabot\.yml|bonk-models\.json|codeql-config\.yml|zizmor\.yml)$/;
 const UNIT_PACKAGE_PATH_PATTERN =
 	/^packages\/(?:blocks|gutenberg-to-portable-text|plugin-(?:cli|types)|registry-(?:client|lexicons|moderation|verification))\//;
+
 const TABLE_E2E_PATH_PATTERN = /^e2e\/tests\/.*(?:table|data-grid).*\.(?:spec|test)\.[cm]?[jt]sx?$/;
 const LINE_BREAK_PATTERN = /\r?\n/;
 
@@ -99,6 +102,16 @@ const RULES = [
 		lanes: [],
 	},
 	{
+		name: "Arabic translation catalog",
+		matches: (path) => path === "packages/admin/src/locales/ar/messages.po",
+		lanes: ["visual"],
+	},
+	{
+		name: "translation catalogs",
+		matches: isTranslationCatalog,
+		lanes: [],
+	},
+	{
 		name: "admin UI",
 		matches: (path) => path.startsWith("packages/admin/") || path.startsWith("i18n/"),
 		lanes: ["browser", "browser_admin", "e2e_node", "e2e_table", "visual", "preview"],
@@ -155,6 +168,12 @@ const RULES = [
 		name: "embeds plugin",
 		matches: (path) => path.startsWith("packages/plugins/embeds/"),
 		lanes: ["unit", "integration", "browser", "browser_embeds"],
+		unitMode: "full",
+	},
+	{
+		name: "marketplace image fixture",
+		matches: (path) => path.startsWith("packages/plugins/marketplace-test/"),
+		lanes: ["unit", "integration", "e2e_table"],
 		unitMode: "full",
 	},
 	{
@@ -237,7 +256,7 @@ const FULL_PLAN_PATHS = [
 	/^tsconfig(?:\..+)?\.json$/,
 	/^vitest(?:\..+)?\.config\.[cm]?[jt]s$/,
 	/^playwright\.config\.[cm]?[jt]s$/,
-	/^\.github\/scripts\/test-plan(?:\.test)?\.mjs$/,
+	/^\.github\/scripts\/(?:test-plan|translation-scope)(?:\.test)?\.mjs$/,
 	/^\.github\/workflows\//,
 	/^patches\//,
 ];

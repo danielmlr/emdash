@@ -474,7 +474,7 @@ msgid "{added} updated · {0} failed"
 msgstr "{added} updated · {0} failed"
 
 #. placeholder {0}: allowedHosts.join(", ")
-#: packages/admin/src/lib/api/marketplace.ts:474
+#: packages/admin/src/lib/api/marketplace.ts:477
 msgid "{base} to: {0}"
 msgstr "{base} to: {0}"
 
@@ -1126,8 +1126,8 @@ msgstr "Access denied"
 msgid "Access Denied"
 msgstr "Access Denied"
 
-#: packages/admin/src/lib/api/marketplace.ts:434
-#: packages/admin/src/lib/api/marketplace.ts:448
+#: packages/admin/src/lib/api/marketplace.ts:437
+#: packages/admin/src/lib/api/marketplace.ts:451
 msgid "Access your media library"
 msgstr "Access your media library"
 
@@ -1362,8 +1362,8 @@ msgstr "Add row above"
 msgid "Add row below"
 msgstr "Add row below"
 
-#: packages/admin/src/lib/api/marketplace.ts:444
-#: packages/admin/src/lib/api/marketplace.ts:455
+#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:458
 msgid "Add scripts and styles to your site's pages"
 msgstr "Add scripts and styles to your site's pages"
 
@@ -1797,7 +1797,7 @@ msgstr "Approval requests"
 msgid "Approve"
 msgstr "Approve"
 
-#: packages/admin/src/lib/api/marketplace.ts:424
+#: packages/admin/src/lib/api/marketplace.ts:427
 msgid "Approve comments and mark them as pending or spam"
 msgstr "Approve comments and mark them as pending or spam"
 
@@ -2552,7 +2552,7 @@ msgstr "Change publication date: {formattedValue}"
 msgid "Change schedule"
 msgstr "Change schedule"
 
-#: packages/admin/src/lib/api/marketplace.ts:433
+#: packages/admin/src/lib/api/marketplace.ts:436
 msgid "Change where visitors are sent"
 msgstr "Change where visitors are sent"
 
@@ -3088,13 +3088,13 @@ msgstr "Connect & Analyze"
 msgid "Connect to {0}"
 msgstr "Connect to {0}"
 
-#: packages/admin/src/lib/api/marketplace.ts:440
-#: packages/admin/src/lib/api/marketplace.ts:452
+#: packages/admin/src/lib/api/marketplace.ts:443
+#: packages/admin/src/lib/api/marketplace.ts:455
 msgid "Connect to any network host and load external plugin admin images (unrestricted)"
 msgstr "Connect to any network host and load external plugin admin images (unrestricted)"
 
-#: packages/admin/src/lib/api/marketplace.ts:439
-#: packages/admin/src/lib/api/marketplace.ts:451
+#: packages/admin/src/lib/api/marketplace.ts:442
+#: packages/admin/src/lib/api/marketplace.ts:454
 msgid "Connect to network hosts and load external plugin admin images"
 msgstr "Connect to network hosts and load external plugin admin images"
 
@@ -3642,7 +3642,7 @@ msgstr "Create sections in the Sections library to use them here"
 msgid "Create Taxonomy"
 msgstr "Create Taxonomy"
 
-#: packages/admin/src/lib/api/marketplace.ts:430
+#: packages/admin/src/lib/api/marketplace.ts:433
 msgid "Create taxonomy terms and change content classifications"
 msgstr "Create taxonomy terms and change content classifications"
 
@@ -3675,8 +3675,8 @@ msgstr "Create your first one"
 msgid "Create your first reusable content section to get started."
 msgstr "Create your first reusable content section to get started."
 
-#: packages/admin/src/lib/api/marketplace.ts:420
-#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:450
 msgid "Create, update, and delete content"
 msgstr "Create, update, and delete content"
 
@@ -4156,8 +4156,8 @@ msgstr "Deleting..."
 msgid "Deleting…"
 msgstr "Deleting…"
 
-#: packages/admin/src/lib/api/marketplace.ts:443
-#: packages/admin/src/lib/api/marketplace.ts:454
+#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:457
 msgid "Deliver all email your site sends"
 msgstr "Deliver all email your site sends"
 
@@ -4768,7 +4768,7 @@ msgstr "Edit link"
 msgid "Edit locking"
 msgstr "Edit locking"
 
-#: packages/admin/src/lib/api/marketplace.ts:436
+#: packages/admin/src/lib/api/marketplace.ts:439
 msgid "Edit media alt text, captions, and focal points"
 msgstr "Edit media alt text, captions, and focal points"
 
@@ -5284,6 +5284,10 @@ msgstr "Failed security audit"
 msgid "Failed to abandon import"
 msgstr "Failed to abandon import"
 
+#: packages/admin/src/lib/api/schema.ts:319
+msgid "Failed to activate block type version"
+msgstr "Failed to activate block type version"
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:84
 msgid "Failed to add domain"
 msgstr "Failed to add domain"
@@ -5292,11 +5296,20 @@ msgstr "Failed to add domain"
 msgid "Failed to add passkey"
 msgstr "Failed to add passkey"
 
+#: packages/admin/src/lib/api/taxonomies.ts:120
+msgid "Failed to add term to entries"
+msgstr "Failed to add term to entries"
+
+#: packages/admin/src/lib/api/import.ts:378
+msgid "Failed to analyze file"
+msgstr "Failed to analyze file"
+
 #: packages/admin/src/lib/api/transfer.ts:442
 msgid "Failed to analyze import"
 msgstr "Failed to analyze import"
 
 #: packages/admin/src/components/WordPressImport.tsx:433
+#: packages/admin/src/lib/api/import.ts:766
 msgid "Failed to analyze WordPress site"
 msgstr "Failed to analyze WordPress site"
 
@@ -5312,9 +5325,17 @@ msgstr "Failed to cancel import"
 msgid "Failed to change the domain"
 msgstr "Failed to change the domain"
 
+#: packages/admin/src/lib/api/marketplace.ts:401
+msgid "Failed to check for updates"
+msgstr "Failed to check for updates"
+
 #: packages/admin/src/components/SandboxedPluginPage.tsx:78
 msgid "Failed to communicate with plugin"
 msgstr "Failed to communicate with plugin"
+
+#: packages/admin/src/lib/api/content.ts:594
+msgid "Failed to compare revisions"
+msgstr "Failed to compare revisions"
 
 #: packages/admin/src/lib/api/media.ts:379
 msgid "Failed to confirm upload"
@@ -5342,15 +5363,44 @@ msgstr "Failed to create a sign-in link"
 msgid "Failed to create admin"
 msgstr "Failed to create admin"
 
+#: packages/admin/src/lib/api/users.ts:313
+msgid "Failed to create allowed domain"
+msgstr "Failed to create allowed domain"
+
+#: packages/admin/src/lib/api/api-tokens.ts:91
+msgid "Failed to create API token"
+msgstr "Failed to create API token"
+
 #: packages/admin/src/components/settings/BackupSettings.tsx:123
 #: packages/admin/src/lib/api/backups.ts:51
 msgid "Failed to create backup"
 msgstr "Failed to create backup"
 
+#: packages/admin/src/lib/api/schema.ts:283
+msgid "Failed to create block type"
+msgstr "Failed to create block type"
+
+#: packages/admin/src/lib/api/bylines.ts:127
+msgid "Failed to create byline"
+msgstr "Failed to create byline"
+
 #: packages/admin/src/lib/api/byline-fields.ts:120
 msgid "Failed to create byline field"
 msgstr "Failed to create byline field"
 
+#: packages/admin/src/lib/api/bylines.ts:178
+msgid "Failed to create byline translation"
+msgstr "Failed to create byline translation"
+
+#: packages/admin/src/lib/api/schema.ts:371
+msgid "Failed to create collection"
+msgstr "Failed to create collection"
+
+#: packages/admin/src/lib/api/content.ts:306
+msgid "Failed to create content"
+msgstr "Failed to create content"
+
+#: packages/admin/src/lib/api/schema.ts:432
 #: packages/admin/src/routes/byline-schema.tsx:102
 msgid "Failed to create field"
 msgstr "Failed to create field"
@@ -5358,6 +5408,26 @@ msgstr "Failed to create field"
 #: packages/admin/src/lib/api/media.ts:252
 msgid "Failed to create media folder"
 msgstr "Failed to create media folder"
+
+#: packages/admin/src/lib/api/menus.ts:137
+msgid "Failed to create menu"
+msgstr "Failed to create menu"
+
+#: packages/admin/src/lib/api/menus.ts:182
+msgid "Failed to create menu item"
+msgstr "Failed to create menu item"
+
+#: packages/admin/src/lib/api/menus.ts:270
+msgid "Failed to create menu translation"
+msgstr "Failed to create menu translation"
+
+#: packages/admin/src/lib/api/redirects.ts:89
+msgid "Failed to create redirect"
+msgstr "Failed to create redirect"
+
+#: packages/admin/src/lib/api/relations.ts:119
+msgid "Failed to create relation"
+msgstr "Failed to create relation"
 
 #: packages/admin/src/lib/api/sections.ts:88
 msgid "Failed to create section"
@@ -5367,14 +5437,31 @@ msgstr "Failed to create section"
 msgid "Failed to create some collections"
 msgstr "Failed to create some collections"
 
+#: packages/admin/src/lib/api/taxonomies.ts:164
+msgid "Failed to create taxonomy"
+msgstr "Failed to create taxonomy"
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:732
+#: packages/admin/src/lib/api/taxonomies.ts:215
 msgid "Failed to create term"
 msgstr "Failed to create term"
+
+#: packages/admin/src/lib/api/taxonomies.ts:314
+msgid "Failed to create term translation"
+msgstr "Failed to create term translation"
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:782
 #: packages/admin/src/router.tsx:1544
 msgid "Failed to create translation"
 msgstr "Failed to create translation"
+
+#: packages/admin/src/lib/api/widgets.ts:120
+msgid "Failed to create widget"
+msgstr "Failed to create widget"
+
+#: packages/admin/src/lib/api/widgets.ts:98
+msgid "Failed to create widget area"
+msgstr "Failed to create widget area"
 
 #: packages/admin/src/router.tsx:580
 #: packages/admin/src/router.tsx:609
@@ -5383,7 +5470,7 @@ msgstr "Failed to create translation"
 msgid "Failed to delete"
 msgstr "Failed to delete"
 
-#: packages/admin/src/lib/api/users.ts:345
+#: packages/admin/src/lib/api/users.ts:351
 msgid "Failed to delete allowed domain"
 msgstr "Failed to delete allowed domain"
 
@@ -5391,7 +5478,7 @@ msgstr "Failed to delete allowed domain"
 msgid "Failed to delete backup"
 msgstr "Failed to delete backup"
 
-#: packages/admin/src/lib/api/bylines.ts:143
+#: packages/admin/src/lib/api/bylines.ts:146
 msgid "Failed to delete byline"
 msgstr "Failed to delete byline"
 
@@ -5399,20 +5486,20 @@ msgstr "Failed to delete byline"
 msgid "Failed to delete byline field"
 msgstr "Failed to delete byline field"
 
-#: packages/admin/src/lib/api/schema.ts:394
+#: packages/admin/src/lib/api/schema.ts:403
 msgid "Failed to delete collection"
 msgstr "Failed to delete collection"
 
-#: packages/admin/src/lib/api/comments.ts:111
+#: packages/admin/src/lib/api/comments.ts:114
 #: packages/admin/src/router.tsx:2332
 msgid "Failed to delete comment"
 msgstr "Failed to delete comment"
 
-#: packages/admin/src/lib/api/content.ts:343
+#: packages/admin/src/lib/api/content.ts:349
 msgid "Failed to delete content"
 msgstr "Failed to delete content"
 
-#: packages/admin/src/lib/api/schema.ts:455
+#: packages/admin/src/lib/api/schema.ts:473
 #: packages/admin/src/routes/byline-schema.tsx:138
 msgid "Failed to delete field"
 msgstr "Failed to delete field"
@@ -5437,7 +5524,7 @@ msgstr "Failed to delete menu"
 msgid "Failed to delete menu item"
 msgstr "Failed to delete menu item"
 
-#: packages/admin/src/lib/api/users.ts:256
+#: packages/admin/src/lib/api/users.ts:262
 msgid "Failed to delete passkey"
 msgstr "Failed to delete passkey"
 
@@ -5457,7 +5544,7 @@ msgstr "Failed to delete section"
 msgid "Failed to delete taxonomy"
 msgstr "Failed to delete taxonomy"
 
-#: packages/admin/src/lib/api/taxonomies.ts:267
+#: packages/admin/src/lib/api/taxonomies.ts:276
 msgid "Failed to delete term"
 msgstr "Failed to delete term"
 
@@ -5482,7 +5569,7 @@ msgstr "Failed to disable plugin"
 msgid "Failed to disable search"
 msgstr "Failed to disable search"
 
-#: packages/admin/src/lib/api/users.ts:118
+#: packages/admin/src/lib/api/users.ts:124
 msgid "Failed to disable user"
 msgstr "Failed to disable user"
 
@@ -5507,6 +5594,10 @@ msgstr "Failed to download a package file"
 msgid "Failed to duplicate"
 msgstr "Failed to duplicate"
 
+#: packages/admin/src/lib/api/content.ts:409
+msgid "Failed to duplicate content"
+msgstr "Failed to duplicate content"
+
 #: packages/admin/src/lib/api/settings.ts:105
 msgid "Failed to email users"
 msgstr "Failed to email users"
@@ -5520,13 +5611,25 @@ msgstr "Failed to enable plugin"
 msgid "Failed to enable search"
 msgstr "Failed to enable search"
 
-#: packages/admin/src/lib/api/users.ts:138
+#: packages/admin/src/lib/api/users.ts:144
 msgid "Failed to enable user"
 msgstr "Failed to enable user"
 
 #: packages/admin/src/components/WordPressImport.tsx:360
 msgid "Failed to execute import"
 msgstr "Failed to execute import"
+
+#: packages/admin/src/lib/api/redirects.ts:127
+msgid "Failed to fetch 404 summary"
+msgstr "Failed to fetch 404 summary"
+
+#: packages/admin/src/lib/api/users.ts:297
+msgid "Failed to fetch allowed domains"
+msgstr "Failed to fetch allowed domains"
+
+#: packages/admin/src/lib/api/api-tokens.ts:76
+msgid "Failed to fetch API tokens"
+msgstr "Failed to fetch API tokens"
 
 #: packages/admin/src/lib/api/client.ts:374
 msgid "Failed to fetch auth mode"
@@ -5536,10 +5639,55 @@ msgstr "Failed to fetch auth mode"
 msgid "Failed to fetch backup settings"
 msgstr "Failed to fetch backup settings"
 
-#: packages/admin/src/lib/api/schema.ts:342
-#: packages/admin/src/lib/api/schema.ts:346
+#: packages/admin/src/lib/api/schema.ts:270
+msgid "Failed to fetch block type"
+msgstr "Failed to fetch block type"
+
+#: packages/admin/src/lib/api/schema.ts:261
+msgid "Failed to fetch block types"
+msgstr "Failed to fetch block types"
+
+#: packages/admin/src/lib/api/bylines.ts:118
+msgid "Failed to fetch byline"
+msgstr "Failed to fetch byline"
+
+#: packages/admin/src/lib/api/bylines.ts:157
+msgid "Failed to fetch byline translations"
+msgstr "Failed to fetch byline translations"
+
+#: packages/admin/src/lib/api/bylines.ts:112
+msgid "Failed to fetch bylines"
+msgstr "Failed to fetch bylines"
+
+#: packages/admin/src/lib/api/schema.ts:351
+#: packages/admin/src/lib/api/schema.ts:355
 msgid "Failed to fetch collection"
 msgstr "Failed to fetch collection"
+
+#: packages/admin/src/lib/api/schema.ts:331
+msgid "Failed to fetch collections"
+msgstr "Failed to fetch collections"
+
+#: packages/admin/src/lib/api/comments.ts:85
+msgid "Failed to fetch comment"
+msgstr "Failed to fetch comment"
+
+#: packages/admin/src/lib/api/comments.ts:77
+msgid "Failed to fetch comment counts"
+msgstr "Failed to fetch comment counts"
+
+#: packages/admin/src/lib/api/comments.ts:68
+msgid "Failed to fetch comments"
+msgstr "Failed to fetch comments"
+
+#: packages/admin/src/lib/api/content.ts:237
+#: packages/admin/src/lib/api/content.ts:277
+msgid "Failed to fetch content"
+msgstr "Failed to fetch content"
+
+#: packages/admin/src/lib/api/content.ts:258
+msgid "Failed to fetch content authors"
+msgstr "Failed to fetch content authors"
 
 #: packages/admin/src/lib/api/dashboard.ts:56
 msgid "Failed to fetch dashboard stats"
@@ -5552,6 +5700,10 @@ msgstr "Failed to fetch email settings"
 #: packages/admin/src/components/TaxonomySidebar.tsx:160
 msgid "Failed to fetch entry terms"
 msgstr "Failed to fetch entry terms"
+
+#: packages/admin/src/lib/api/schema.ts:413
+msgid "Failed to fetch fields"
+msgstr "Failed to fetch fields"
 
 #: packages/admin/src/lib/api/client.ts:357
 msgid "Failed to fetch manifest"
@@ -5581,6 +5733,27 @@ msgstr "Failed to fetch media providers"
 msgid "Failed to fetch media usage details"
 msgstr "Failed to fetch media usage details"
 
+#: packages/admin/src/lib/api/menus.ts:125
+msgid "Failed to fetch menu"
+msgstr "Failed to fetch menu"
+
+#: packages/admin/src/lib/api/menus.ts:249
+msgid "Failed to fetch menu translations"
+msgstr "Failed to fetch menu translations"
+
+#: packages/admin/src/lib/api/menus.ts:117
+msgid "Failed to fetch menus"
+msgstr "Failed to fetch menus"
+
+#: packages/admin/src/lib/api/schema.ts:525
+msgid "Failed to fetch orphaned tables"
+msgstr "Failed to fetch orphaned tables"
+
+#: packages/admin/src/lib/api/users.ts:234
+msgid "Failed to fetch passkeys"
+msgstr "Failed to fetch passkeys"
+
+#: packages/admin/src/lib/api/marketplace.ts:324
 #: packages/admin/src/lib/api/plugins.ts:70
 #: packages/admin/src/lib/api/plugins.ts:74
 msgid "Failed to fetch plugin"
@@ -5598,10 +5771,34 @@ msgstr "Failed to fetch plugins"
 msgid "Failed to fetch provider media"
 msgstr "Failed to fetch provider media"
 
-#: packages/admin/src/lib/api/content.ts:635
-#: packages/admin/src/lib/api/content.ts:640
+#: packages/admin/src/lib/api/redirects.ts:77
+msgid "Failed to fetch redirects"
+msgstr "Failed to fetch redirects"
+
+#: packages/admin/src/lib/api/relations.ts:174
+msgid "Failed to fetch reference children"
+msgstr "Failed to fetch reference children"
+
+#: packages/admin/src/lib/api/relations.ts:193
+msgid "Failed to fetch reference parents"
+msgstr "Failed to fetch reference parents"
+
+#: packages/admin/src/lib/api/relations.ts:106
+msgid "Failed to fetch relation"
+msgstr "Failed to fetch relation"
+
+#: packages/admin/src/lib/api/relations.ts:94
+msgid "Failed to fetch relations"
+msgstr "Failed to fetch relations"
+
+#: packages/admin/src/lib/api/content.ts:641
+#: packages/admin/src/lib/api/content.ts:646
 msgid "Failed to fetch revision"
 msgstr "Failed to fetch revision"
+
+#: packages/admin/src/lib/api/content.ts:628
+msgid "Failed to fetch revisions"
+msgstr "Failed to fetch revisions"
 
 #: packages/admin/src/lib/api/sections.ts:76
 msgid "Failed to fetch section"
@@ -5619,7 +5816,16 @@ msgstr "Failed to fetch settings"
 msgid "Failed to fetch setup status"
 msgstr "Failed to fetch setup status"
 
+#: packages/admin/src/lib/api/taxonomies.ts:137
+msgid "Failed to fetch taxonomies"
+msgstr "Failed to fetch taxonomies"
+
+#: packages/admin/src/lib/api/taxonomies.ts:290
+msgid "Failed to fetch term translations"
+msgstr "Failed to fetch term translations"
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:144
+#: packages/admin/src/lib/api/taxonomies.ts:196
 msgid "Failed to fetch terms"
 msgstr "Failed to fetch terms"
 
@@ -5627,23 +5833,52 @@ msgstr "Failed to fetch terms"
 msgid "Failed to fetch the site domain"
 msgstr "Failed to fetch the site domain"
 
+#: packages/admin/src/lib/api/theme-marketplace.ts:99
+msgid "Failed to fetch theme"
+msgstr "Failed to fetch theme"
+
+#: packages/admin/src/lib/api/content.ts:113
+msgid "Failed to fetch translations"
+msgstr "Failed to fetch translations"
+
+#: packages/admin/src/lib/api/content.ts:375
+msgid "Failed to fetch trashed content"
+msgstr "Failed to fetch trashed content"
+
 #: packages/admin/src/lib/api/core-update.ts:29
 msgid "Failed to fetch update status"
 msgstr "Failed to fetch update status"
 
 #: packages/admin/src/lib/api/current-user.ts:22
-#: packages/admin/src/lib/api/users.ts:88
-#: packages/admin/src/lib/api/users.ts:93
+#: packages/admin/src/lib/api/users.ts:91
+#: packages/admin/src/lib/api/users.ts:96
 #: packages/admin/src/router.tsx:1127
 #: packages/admin/src/router.tsx:2263
 msgid "Failed to fetch user"
 msgstr "Failed to fetch user"
+
+#: packages/admin/src/lib/api/users.ts:77
+msgid "Failed to fetch users"
+msgstr "Failed to fetch users"
+
+#: packages/admin/src/lib/api/widgets.ts:86
+msgid "Failed to fetch widget area"
+msgstr "Failed to fetch widget area"
+
+#: packages/admin/src/lib/api/widgets.ts:76
+msgid "Failed to fetch widget areas"
+msgstr "Failed to fetch widget areas"
+
+#: packages/admin/src/lib/api/widgets.ts:168
+msgid "Failed to fetch widget components"
+msgstr "Failed to fetch widget components"
 
 #: packages/admin/src/components/ThemeMarketplaceBrowse.tsx:263
 msgid "Failed to generate preview"
 msgstr "Failed to generate preview"
 
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:157
+#: packages/admin/src/lib/api/theme-marketplace.ts:114
 msgid "Failed to generate preview URL"
 msgstr "Failed to generate preview URL"
 
@@ -5659,19 +5894,29 @@ msgstr "Failed to get registration options"
 msgid "Failed to get upload URL"
 msgstr "Failed to get upload URL"
 
+#: packages/admin/src/lib/api/import.ts:432
+msgid "Failed to import"
+msgstr "Failed to import"
+
 #: packages/admin/src/components/WordPressImport.tsx:456
+#: packages/admin/src/lib/api/import.ts:257
 msgid "Failed to import from WordPress"
 msgstr "Failed to import from WordPress"
 
 #: packages/admin/src/components/WordPressImport.tsx:385
-#: packages/admin/src/lib/api/import.ts:531
+#: packages/admin/src/lib/api/import.ts:534
+#: packages/admin/src/lib/api/import.ts:539
 msgid "Failed to import media"
 msgstr "Failed to import media"
 
-#: packages/admin/src/lib/api/marketplace.ts:344
+#: packages/admin/src/lib/api/marketplace.ts:347
 #: packages/admin/src/lib/api/registry.ts:789
 msgid "Failed to install plugin"
 msgstr "Failed to install plugin"
+
+#: packages/admin/src/lib/api/users.ts:168
+msgid "Failed to invite user"
+msgstr "Failed to invite user"
 
 #: packages/admin/src/lib/api/byline-fields.ts:98
 msgid "Failed to list byline fields"
@@ -5800,17 +6045,23 @@ msgstr "Failed to load widget"
 msgid "Failed to lock the entry"
 msgstr "Failed to lock the entry"
 
+#: packages/admin/src/lib/api/comments.ts:131
 #: packages/admin/src/router.tsx:2357
 msgid "Failed to perform bulk action"
 msgstr "Failed to perform bulk action"
 
-#: packages/admin/src/lib/api/content.ts:391
+#: packages/admin/src/lib/api/content.ts:397
 msgid "Failed to permanently delete content"
 msgstr "Failed to permanently delete content"
 
 #: packages/admin/src/components/WordPressImport.tsx:339
+#: packages/admin/src/lib/api/import.ts:390
 msgid "Failed to prepare import"
 msgstr "Failed to prepare import"
+
+#: packages/admin/src/lib/api/import.ts:710
+msgid "Failed to probe URL"
+msgstr "Failed to probe URL"
 
 #: packages/admin/src/router.tsx:648
 #: packages/admin/src/router.tsx:1389
@@ -5820,6 +6071,10 @@ msgstr "Failed to publish"
 #: packages/admin/src/lib/api/byline-fields.ts:106
 msgid "Failed to read byline field usage"
 msgstr "Failed to read byline field usage"
+
+#: packages/admin/src/lib/api/schema.ts:548
+msgid "Failed to register orphaned table"
+msgstr "Failed to register orphaned table"
 
 #: packages/admin/src/lib/api/entry-lock.ts:70
 msgid "Failed to release the entry lock"
@@ -5839,6 +6094,7 @@ msgid "Failed to rename media folder"
 msgstr "Failed to rename media folder"
 
 #: packages/admin/src/components/settings/SecuritySettings.tsx:55
+#: packages/admin/src/lib/api/users.ts:250
 msgid "Failed to rename passkey"
 msgstr "Failed to rename passkey"
 
@@ -5846,14 +6102,22 @@ msgstr "Failed to rename passkey"
 msgid "Failed to reorder byline fields"
 msgstr "Failed to reorder byline fields"
 
-#: packages/admin/src/lib/api/schema.ts:487
+#: packages/admin/src/lib/api/schema.ts:505
 msgid "Failed to reorder content types"
 msgstr "Failed to reorder content types"
 
-#: packages/admin/src/lib/api/schema.ts:470
+#: packages/admin/src/lib/api/schema.ts:488
 #: packages/admin/src/routes/byline-schema.tsx:152
 msgid "Failed to reorder fields"
 msgstr "Failed to reorder fields"
+
+#: packages/admin/src/lib/api/menus.ts:236
+msgid "Failed to reorder menu items"
+msgstr "Failed to reorder menu items"
+
+#: packages/admin/src/lib/api/taxonomies.ts:261
+msgid "Failed to reorder terms"
+msgstr "Failed to reorder terms"
 
 #: packages/admin/src/lib/api/widgets.ts:158
 msgid "Failed to reorder widgets"
@@ -5867,12 +6131,12 @@ msgstr "Failed to replace media image"
 msgid "Failed to restore"
 msgstr "Failed to restore"
 
-#: packages/admin/src/lib/api/content.ts:380
+#: packages/admin/src/lib/api/content.ts:386
 msgid "Failed to restore content"
 msgstr "Failed to restore content"
 
-#: packages/admin/src/lib/api/content.ts:657
-#: packages/admin/src/lib/api/content.ts:662
+#: packages/admin/src/lib/api/content.ts:663
+#: packages/admin/src/lib/api/content.ts:668
 msgid "Failed to restore revision"
 msgstr "Failed to restore revision"
 
@@ -5881,6 +6145,7 @@ msgid "Failed to revoke API token"
 msgstr "Failed to revoke API token"
 
 #: packages/admin/src/components/WordPressImport.tsx:398
+#: packages/admin/src/lib/api/import.ts:727
 msgid "Failed to rewrite URLs"
 msgstr "Failed to rewrite URLs"
 
@@ -5914,7 +6179,7 @@ msgstr "Failed to schedule"
 msgid "Failed to send magic link"
 msgstr "Failed to send magic link"
 
-#: packages/admin/src/lib/api/users.ts:128
+#: packages/admin/src/lib/api/users.ts:134
 msgid "Failed to send recovery link"
 msgstr "Failed to send recovery link"
 
@@ -5940,7 +6205,7 @@ msgstr "Failed to start export"
 msgid "Failed to start import"
 msgstr "Failed to start import"
 
-#: packages/admin/src/lib/api/marketplace.ts:387
+#: packages/admin/src/lib/api/marketplace.ts:390
 #: packages/admin/src/lib/api/registry.ts:1003
 msgid "Failed to uninstall plugin"
 msgstr "Failed to uninstall plugin"
@@ -5962,24 +6227,60 @@ msgstr "Failed to update"
 msgid "Failed to update {0}"
 msgstr "Failed to update {0}"
 
+#: packages/admin/src/lib/api/users.ts:335
+msgid "Failed to update allowed domain"
+msgstr "Failed to update allowed domain"
+
 #: packages/admin/src/lib/api/backups.ts:46
 msgid "Failed to update backup settings"
 msgstr "Failed to update backup settings"
+
+#: packages/admin/src/lib/api/schema.ts:299
+msgid "Failed to update block type"
+msgstr "Failed to update block type"
+
+#: packages/admin/src/lib/api/bylines.ts:139
+msgid "Failed to update byline"
+msgstr "Failed to update byline"
 
 #: packages/admin/src/lib/api/byline-fields.ts:135
 msgid "Failed to update byline field"
 msgstr "Failed to update byline field"
 
+#: packages/admin/src/lib/api/schema.ts:390
+msgid "Failed to update collection"
+msgstr "Failed to update collection"
+
+#: packages/admin/src/lib/api/comments.ts:104
+msgid "Failed to update comment status"
+msgstr "Failed to update comment status"
+
+#: packages/admin/src/lib/api/content.ts:330
+msgid "Failed to update content"
+msgstr "Failed to update content"
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:107
 msgid "Failed to update domain"
 msgstr "Failed to update domain"
+
+#: packages/admin/src/lib/api/schema.ts:455
+msgid "Failed to update field"
+msgstr "Failed to update field"
 
 #: packages/admin/src/lib/api/media.ts:647
 msgid "Failed to update media"
 msgstr "Failed to update media"
 
+#: packages/admin/src/lib/api/menus.ts:153
+msgid "Failed to update menu"
+msgstr "Failed to update menu"
+
+#: packages/admin/src/lib/api/menus.ts:202
+msgid "Failed to update menu item"
+msgstr "Failed to update menu item"
+
 #: packages/admin/src/components/PluginManager.tsx:326
-#: packages/admin/src/lib/api/marketplace.ts:370
+#: packages/admin/src/lib/api/marketplace.ts:373
 #: packages/admin/src/lib/api/registry.ts:878
 msgid "Failed to update plugin"
 msgstr "Failed to update plugin"
@@ -5992,6 +6293,14 @@ msgstr "Failed to update plugin MCP access"
 msgid "Failed to update plugin settings"
 msgstr "Failed to update plugin settings"
 
+#: packages/admin/src/lib/api/redirects.ts:101
+msgid "Failed to update redirect"
+msgstr "Failed to update redirect"
+
+#: packages/admin/src/lib/api/relations.ts:132
+msgid "Failed to update relation"
+msgstr "Failed to update relation"
+
 #: packages/admin/src/lib/api/sections.ts:100
 msgid "Failed to update section"
 msgstr "Failed to update section"
@@ -6003,6 +6312,18 @@ msgstr "Failed to update settings"
 #: packages/admin/src/router.tsx:2316
 msgid "Failed to update status"
 msgstr "Failed to update status"
+
+#: packages/admin/src/lib/api/taxonomies.ts:239
+msgid "Failed to update term"
+msgstr "Failed to update term"
+
+#: packages/admin/src/lib/api/users.ts:112
+msgid "Failed to update user"
+msgstr "Failed to update user"
+
+#: packages/admin/src/lib/api/widgets.ts:136
+msgid "Failed to update widget"
+msgstr "Failed to update widget"
 
 #: packages/admin/src/lib/api/transfer.ts:431
 msgid "Failed to upload a package file"
@@ -7125,6 +7446,10 @@ msgstr "Invite Link Created"
 msgid "Invite User"
 msgstr "Invite User"
 
+#: packages/admin/src/lib/api/users.ts:194
+msgid "Invite validation failed"
+msgstr "Invite validation failed"
+
 #: packages/admin/src/components/users/UserList.tsx:133
 msgid "Invite your first team member"
 msgstr "Invite your first team member"
@@ -7884,6 +8209,10 @@ msgstr "Marketplace browsing is no longer available. Manage installed plugins fr
 #: packages/admin/src/components/MarketplaceMigrationBanner.tsx:14
 msgid "Marketplace configuration is deprecated"
 msgstr "Marketplace configuration is deprecated"
+
+#: packages/admin/src/lib/api/marketplace.ts:311
+msgid "Marketplace search failed"
+msgstr "Marketplace search failed"
 
 #: packages/admin/src/components/settings/transfer/ImportReview.tsx:339
 msgid "Matched by email"
@@ -9864,7 +10193,7 @@ msgstr "Progress"
 msgid "Progress stopped"
 msgstr "Progress stopped"
 
-#: packages/admin/src/lib/api/marketplace.ts:427
+#: packages/admin/src/lib/api/marketplace.ts:430
 msgid "Propose unsaved changes to selected editor fields for your review"
 msgstr "Propose unsaved changes to selected editor fields for your review"
 
@@ -9929,7 +10258,7 @@ msgstr "Publish now"
 msgid "Publish now?"
 msgstr "Publish now?"
 
-#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:424
 msgid "Publish, unpublish, schedule, and unschedule content"
 msgstr "Publish, unpublish, schedule, and unschedule content"
 
@@ -10033,16 +10362,16 @@ msgstr "Quote"
 msgid "Raw meta"
 msgstr "Raw meta"
 
-#: packages/admin/src/lib/api/marketplace.ts:442
-#: packages/admin/src/lib/api/marketplace.ts:453
+#: packages/admin/src/lib/api/marketplace.ts:445
+#: packages/admin/src/lib/api/marketplace.ts:456
 msgid "Read and change email your site sends"
 msgstr "Read and change email your site sends"
 
-#: packages/admin/src/lib/api/marketplace.ts:422
+#: packages/admin/src/lib/api/marketplace.ts:425
 msgid "Read and restore trashed content"
 msgstr "Read and restore trashed content"
 
-#: packages/admin/src/lib/api/marketplace.ts:425
+#: packages/admin/src/lib/api/marketplace.ts:428
 msgid "Read collection and field definitions"
 msgstr "Read collection and field definitions"
 
@@ -10050,7 +10379,7 @@ msgstr "Read collection and field definitions"
 msgid "Read collection schemas"
 msgstr "Read collection schemas"
 
-#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:426
 msgid "Read comment bodies, author email addresses, pseudonymous IP hashes, user agents, and moderation metadata"
 msgstr "Read comment bodies, author email addresses, pseudonymous IP hashes, user agents, and moderation metadata"
 
@@ -10058,7 +10387,7 @@ msgstr "Read comment bodies, author email addresses, pseudonymous IP hashes, use
 msgid "Read content entries"
 msgstr "Read content entries"
 
-#: packages/admin/src/lib/api/marketplace.ts:435
+#: packages/admin/src/lib/api/marketplace.ts:438
 msgid "Read media file contents"
 msgstr "Read media file contents"
 
@@ -10066,19 +10395,19 @@ msgstr "Read media file contents"
 msgid "Read media files"
 msgstr "Read media files"
 
-#: packages/admin/src/lib/api/marketplace.ts:431
+#: packages/admin/src/lib/api/marketplace.ts:434
 msgid "Read public byline profiles and content credits"
 msgstr "Read public byline profiles and content credits"
 
-#: packages/admin/src/lib/api/marketplace.ts:432
+#: packages/admin/src/lib/api/marketplace.ts:435
 msgid "Read redirect rules"
 msgstr "Read redirect rules"
 
-#: packages/admin/src/lib/api/marketplace.ts:419
+#: packages/admin/src/lib/api/marketplace.ts:422
 msgid "Read retained content revision history"
 msgstr "Read retained content revision history"
 
-#: packages/admin/src/lib/api/marketplace.ts:426
+#: packages/admin/src/lib/api/marketplace.ts:429
 msgid "Read selected unsaved editor content after you explicitly invoke the plugin"
 msgstr "Read selected unsaved editor content after you explicitly invoke the plugin"
 
@@ -10086,17 +10415,17 @@ msgstr "Read selected unsaved editor content after you explicitly invoke the plu
 msgid "Read site settings"
 msgstr "Read site settings"
 
-#: packages/admin/src/lib/api/marketplace.ts:438
-#: packages/admin/src/lib/api/marketplace.ts:450
+#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:453
 msgid "Read user accounts"
 msgstr "Read user accounts"
 
-#: packages/admin/src/lib/api/marketplace.ts:418
-#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:449
 msgid "Read your content"
 msgstr "Read your content"
 
-#: packages/admin/src/lib/api/marketplace.ts:429
+#: packages/admin/src/lib/api/marketplace.ts:432
 msgid "Read your taxonomies and terms"
 msgstr "Read your taxonomies and terms"
 
@@ -10799,7 +11128,7 @@ msgstr "Reverted to published version"
 msgid "Review"
 msgstr "Review"
 
-#: packages/admin/src/lib/api/marketplace.ts:428
+#: packages/admin/src/lib/api/marketplace.ts:431
 msgid "Review and block publishing, scheduling, and unpublishing content"
 msgstr "Review and block publishing, scheduling, and unpublishing content"
 
@@ -11689,7 +12018,7 @@ msgstr "Send a test email through the full pipeline to verify your email configu
 msgid "Send an invitation email to a new team member."
 msgstr "Send an invitation email to a new team member."
 
-#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:444
 msgid "Send email through your site"
 msgstr "Send email through your site"
 
@@ -11964,6 +12293,14 @@ msgstr "Signed release verified"
 #: packages/admin/src/components/MagicLinkConfirmPage.tsx:56
 msgid "Signing in failed. Please try again."
 msgstr "Signing in failed. Please try again."
+
+#: packages/admin/src/lib/api/users.ts:431
+msgid "Signup completion failed"
+msgstr "Signup completion failed"
+
+#: packages/admin/src/lib/api/users.ts:377
+msgid "Signup request failed"
+msgstr "Signup request failed"
 
 #: packages/admin/src/components/FieldEditor.tsx:427
 msgid "Single choice from options"
@@ -12676,11 +13013,11 @@ msgstr "The import can go ahead, but check these first."
 msgid "The import can’t start until these are resolved."
 msgstr "The import can’t start until these are resolved."
 
-#: packages/admin/src/lib/api/import.ts:467
+#: packages/admin/src/lib/api/import.ts:470
 msgid "The import did not return a completion cursor"
 msgstr "The import did not return a completion cursor"
 
-#: packages/admin/src/lib/api/import.ts:452
+#: packages/admin/src/lib/api/import.ts:455
 msgid "The import did not return a preparation cursor"
 msgstr "The import did not return a preparation cursor"
 
@@ -12957,6 +13294,10 @@ msgstr "Theme ID: {0}"
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:91
 msgid "Theme not found"
 msgstr "Theme not found"
+
+#: packages/admin/src/lib/api/theme-marketplace.ts:87
+msgid "Theme search failed"
+msgstr "Theme search failed"
 
 #: packages/admin/src/components/SectionEditor.tsx:205
 msgid "Theme Section"
@@ -13477,6 +13818,10 @@ msgstr "Token created: {0}"
 msgid "Token Name"
 msgstr "Token Name"
 
+#: packages/admin/src/lib/api/users.ts:393
+msgid "Token verification failed"
+msgstr "Token verification failed"
+
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:55
 msgid "TOML"
 msgstr "TOML"
@@ -13967,8 +14312,8 @@ msgstr "Upload an image to get started"
 msgid "Upload and delete media"
 msgstr "Upload and delete media"
 
-#: packages/admin/src/lib/api/marketplace.ts:437
-#: packages/admin/src/lib/api/marketplace.ts:449
+#: packages/admin/src/lib/api/marketplace.ts:440
+#: packages/admin/src/lib/api/marketplace.ts:452
 msgid "Upload and manage media"
 msgstr "Upload and manage media"
 

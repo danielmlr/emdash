@@ -474,7 +474,7 @@ msgid "{added} updated · {0} failed"
 msgstr "已更新 {added} 篇 · {0} 篇失敗"
 
 #. placeholder {0}: allowedHosts.join(", ")
-#: packages/admin/src/lib/api/marketplace.ts:474
+#: packages/admin/src/lib/api/marketplace.ts:477
 msgid "{base} to: {0}"
 msgstr "{base} 至: {0}"
 
@@ -1126,8 +1126,8 @@ msgstr "存取遭拒"
 msgid "Access Denied"
 msgstr "存取遭拒"
 
-#: packages/admin/src/lib/api/marketplace.ts:434
-#: packages/admin/src/lib/api/marketplace.ts:448
+#: packages/admin/src/lib/api/marketplace.ts:437
+#: packages/admin/src/lib/api/marketplace.ts:451
 msgid "Access your media library"
 msgstr "存取您的媒體庫"
 
@@ -1362,8 +1362,8 @@ msgstr "在上方新增列"
 msgid "Add row below"
 msgstr "在下方新增列"
 
-#: packages/admin/src/lib/api/marketplace.ts:444
-#: packages/admin/src/lib/api/marketplace.ts:455
+#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:458
 msgid "Add scripts and styles to your site's pages"
 msgstr "將指令碼和樣式加入網站頁面"
 
@@ -1797,7 +1797,7 @@ msgstr "待核准要求"
 msgid "Approve"
 msgstr "核准"
 
-#: packages/admin/src/lib/api/marketplace.ts:424
+#: packages/admin/src/lib/api/marketplace.ts:427
 msgid "Approve comments and mark them as pending or spam"
 msgstr "核准留言，或將留言標示為待審閱或垃圾留言"
 
@@ -2552,7 +2552,7 @@ msgstr "變更發佈日期：{formattedValue}"
 msgid "Change schedule"
 msgstr "變更排程"
 
-#: packages/admin/src/lib/api/marketplace.ts:433
+#: packages/admin/src/lib/api/marketplace.ts:436
 msgid "Change where visitors are sent"
 msgstr "變更訪客的導向位置"
 
@@ -3088,13 +3088,13 @@ msgstr "連線並分析"
 msgid "Connect to {0}"
 msgstr "連線至 {0}"
 
-#: packages/admin/src/lib/api/marketplace.ts:440
-#: packages/admin/src/lib/api/marketplace.ts:452
+#: packages/admin/src/lib/api/marketplace.ts:443
+#: packages/admin/src/lib/api/marketplace.ts:455
 msgid "Connect to any network host and load external plugin admin images (unrestricted)"
 msgstr "連線至任何網路主機，並載入外掛管理介面的外部圖片 (無限制)"
 
-#: packages/admin/src/lib/api/marketplace.ts:439
-#: packages/admin/src/lib/api/marketplace.ts:451
+#: packages/admin/src/lib/api/marketplace.ts:442
+#: packages/admin/src/lib/api/marketplace.ts:454
 msgid "Connect to network hosts and load external plugin admin images"
 msgstr "連線至網路主機，並載入外掛管理介面的外部圖片"
 
@@ -3642,7 +3642,7 @@ msgstr "請先在區段庫中建立區段，才能在這裡使用"
 msgid "Create Taxonomy"
 msgstr "建立分類法"
 
-#: packages/admin/src/lib/api/marketplace.ts:430
+#: packages/admin/src/lib/api/marketplace.ts:433
 msgid "Create taxonomy terms and change content classifications"
 msgstr "建立分類項目，並變更內容的分類"
 
@@ -3675,8 +3675,8 @@ msgstr "建立第一個項目"
 msgid "Create your first reusable content section to get started."
 msgstr "建立第一個可重複使用的內容區段即可開始。"
 
-#: packages/admin/src/lib/api/marketplace.ts:420
-#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:450
 msgid "Create, update, and delete content"
 msgstr "建立、更新及刪除內容"
 
@@ -4156,8 +4156,8 @@ msgstr "正在刪除..."
 msgid "Deleting…"
 msgstr "正在刪除…"
 
-#: packages/admin/src/lib/api/marketplace.ts:443
-#: packages/admin/src/lib/api/marketplace.ts:454
+#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:457
 msgid "Deliver all email your site sends"
 msgstr "寄送網站傳出的所有電子郵件"
 
@@ -4768,7 +4768,7 @@ msgstr "編輯連結"
 msgid "Edit locking"
 msgstr "編輯鎖定"
 
-#: packages/admin/src/lib/api/marketplace.ts:436
+#: packages/admin/src/lib/api/marketplace.ts:439
 msgid "Edit media alt text, captions, and focal points"
 msgstr "編輯媒體的替代文字、說明文字與焦點"
 
@@ -5284,6 +5284,10 @@ msgstr "安全性稽核失敗"
 msgid "Failed to abandon import"
 msgstr "無法放棄匯入"
 
+#: packages/admin/src/lib/api/schema.ts:319
+msgid "Failed to activate block type version"
+msgstr ""
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:84
 msgid "Failed to add domain"
 msgstr "新增網域失敗"
@@ -5292,11 +5296,20 @@ msgstr "新增網域失敗"
 msgid "Failed to add passkey"
 msgstr "新增通行密鑰失敗"
 
+#: packages/admin/src/lib/api/taxonomies.ts:120
+msgid "Failed to add term to entries"
+msgstr ""
+
+#: packages/admin/src/lib/api/import.ts:378
+msgid "Failed to analyze file"
+msgstr ""
+
 #: packages/admin/src/lib/api/transfer.ts:442
 msgid "Failed to analyze import"
 msgstr "無法分析匯入資料"
 
 #: packages/admin/src/components/WordPressImport.tsx:433
+#: packages/admin/src/lib/api/import.ts:766
 msgid "Failed to analyze WordPress site"
 msgstr "無法分析 WordPress 網站"
 
@@ -5312,9 +5325,17 @@ msgstr "無法取消匯入"
 msgid "Failed to change the domain"
 msgstr "無法變更網域"
 
+#: packages/admin/src/lib/api/marketplace.ts:401
+msgid "Failed to check for updates"
+msgstr ""
+
 #: packages/admin/src/components/SandboxedPluginPage.tsx:78
 msgid "Failed to communicate with plugin"
 msgstr "無法與外掛通訊"
+
+#: packages/admin/src/lib/api/content.ts:594
+msgid "Failed to compare revisions"
+msgstr ""
 
 #: packages/admin/src/lib/api/media.ts:379
 msgid "Failed to confirm upload"
@@ -5342,15 +5363,44 @@ msgstr "無法建立登入連結"
 msgid "Failed to create admin"
 msgstr "無法建立管理員"
 
+#: packages/admin/src/lib/api/users.ts:313
+msgid "Failed to create allowed domain"
+msgstr ""
+
+#: packages/admin/src/lib/api/api-tokens.ts:91
+msgid "Failed to create API token"
+msgstr ""
+
 #: packages/admin/src/components/settings/BackupSettings.tsx:123
 #: packages/admin/src/lib/api/backups.ts:51
 msgid "Failed to create backup"
 msgstr "無法建立備份"
 
+#: packages/admin/src/lib/api/schema.ts:283
+msgid "Failed to create block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:127
+msgid "Failed to create byline"
+msgstr ""
+
 #: packages/admin/src/lib/api/byline-fields.ts:120
 msgid "Failed to create byline field"
 msgstr "建立署名欄位失敗"
 
+#: packages/admin/src/lib/api/bylines.ts:178
+msgid "Failed to create byline translation"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:371
+msgid "Failed to create collection"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:306
+msgid "Failed to create content"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:432
 #: packages/admin/src/routes/byline-schema.tsx:102
 msgid "Failed to create field"
 msgstr "無法建立欄位"
@@ -5358,6 +5408,26 @@ msgstr "無法建立欄位"
 #: packages/admin/src/lib/api/media.ts:252
 msgid "Failed to create media folder"
 msgstr "無法建立媒體資料夾"
+
+#: packages/admin/src/lib/api/menus.ts:137
+msgid "Failed to create menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:182
+msgid "Failed to create menu item"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:270
+msgid "Failed to create menu translation"
+msgstr ""
+
+#: packages/admin/src/lib/api/redirects.ts:89
+msgid "Failed to create redirect"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:119
+msgid "Failed to create relation"
+msgstr ""
 
 #: packages/admin/src/lib/api/sections.ts:88
 msgid "Failed to create section"
@@ -5367,14 +5437,31 @@ msgstr "無法建立區段"
 msgid "Failed to create some collections"
 msgstr "建立部分內容集合失敗"
 
+#: packages/admin/src/lib/api/taxonomies.ts:164
+msgid "Failed to create taxonomy"
+msgstr ""
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:732
+#: packages/admin/src/lib/api/taxonomies.ts:215
 msgid "Failed to create term"
 msgstr "建立分類項目失敗"
+
+#: packages/admin/src/lib/api/taxonomies.ts:314
+msgid "Failed to create term translation"
+msgstr ""
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:782
 #: packages/admin/src/router.tsx:1544
 msgid "Failed to create translation"
 msgstr "無法建立翻譯"
+
+#: packages/admin/src/lib/api/widgets.ts:120
+msgid "Failed to create widget"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:98
+msgid "Failed to create widget area"
+msgstr ""
 
 #: packages/admin/src/router.tsx:580
 #: packages/admin/src/router.tsx:609
@@ -5383,7 +5470,7 @@ msgstr "無法建立翻譯"
 msgid "Failed to delete"
 msgstr "無法刪除"
 
-#: packages/admin/src/lib/api/users.ts:345
+#: packages/admin/src/lib/api/users.ts:351
 msgid "Failed to delete allowed domain"
 msgstr "刪除允許的網域失敗"
 
@@ -5391,7 +5478,7 @@ msgstr "刪除允許的網域失敗"
 msgid "Failed to delete backup"
 msgstr "刪除備份失敗"
 
-#: packages/admin/src/lib/api/bylines.ts:143
+#: packages/admin/src/lib/api/bylines.ts:146
 msgid "Failed to delete byline"
 msgstr "刪除署名失敗"
 
@@ -5399,20 +5486,20 @@ msgstr "刪除署名失敗"
 msgid "Failed to delete byline field"
 msgstr "無法刪除署名欄位"
 
-#: packages/admin/src/lib/api/schema.ts:394
+#: packages/admin/src/lib/api/schema.ts:403
 msgid "Failed to delete collection"
 msgstr "無法刪除內容集合"
 
-#: packages/admin/src/lib/api/comments.ts:111
+#: packages/admin/src/lib/api/comments.ts:114
 #: packages/admin/src/router.tsx:2332
 msgid "Failed to delete comment"
 msgstr "刪除留言失敗"
 
-#: packages/admin/src/lib/api/content.ts:343
+#: packages/admin/src/lib/api/content.ts:349
 msgid "Failed to delete content"
 msgstr "無法刪除內容"
 
-#: packages/admin/src/lib/api/schema.ts:455
+#: packages/admin/src/lib/api/schema.ts:473
 #: packages/admin/src/routes/byline-schema.tsx:138
 msgid "Failed to delete field"
 msgstr "無法刪除欄位"
@@ -5437,7 +5524,7 @@ msgstr "無法刪除選單"
 msgid "Failed to delete menu item"
 msgstr "無法刪除選單項目"
 
-#: packages/admin/src/lib/api/users.ts:256
+#: packages/admin/src/lib/api/users.ts:262
 msgid "Failed to delete passkey"
 msgstr "無法刪除通行密鑰"
 
@@ -5457,7 +5544,7 @@ msgstr "無法刪除區段"
 msgid "Failed to delete taxonomy"
 msgstr "無法刪除分類法"
 
-#: packages/admin/src/lib/api/taxonomies.ts:267
+#: packages/admin/src/lib/api/taxonomies.ts:276
 msgid "Failed to delete term"
 msgstr "無法刪除分類項目"
 
@@ -5482,7 +5569,7 @@ msgstr "無法停用外掛"
 msgid "Failed to disable search"
 msgstr "無法停用搜尋"
 
-#: packages/admin/src/lib/api/users.ts:118
+#: packages/admin/src/lib/api/users.ts:124
 msgid "Failed to disable user"
 msgstr "無法停用使用者"
 
@@ -5507,6 +5594,10 @@ msgstr "無法下載套件檔案"
 msgid "Failed to duplicate"
 msgstr "無法建立副本"
 
+#: packages/admin/src/lib/api/content.ts:409
+msgid "Failed to duplicate content"
+msgstr ""
+
 #: packages/admin/src/lib/api/settings.ts:105
 msgid "Failed to email users"
 msgstr "無法傳送電子郵件給使用者"
@@ -5520,13 +5611,25 @@ msgstr "無法啟用外掛"
 msgid "Failed to enable search"
 msgstr "啟用搜尋失敗"
 
-#: packages/admin/src/lib/api/users.ts:138
+#: packages/admin/src/lib/api/users.ts:144
 msgid "Failed to enable user"
 msgstr "無法啟用使用者"
 
 #: packages/admin/src/components/WordPressImport.tsx:360
 msgid "Failed to execute import"
 msgstr "無法執行匯入"
+
+#: packages/admin/src/lib/api/redirects.ts:127
+msgid "Failed to fetch 404 summary"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:297
+msgid "Failed to fetch allowed domains"
+msgstr ""
+
+#: packages/admin/src/lib/api/api-tokens.ts:76
+msgid "Failed to fetch API tokens"
+msgstr ""
 
 #: packages/admin/src/lib/api/client.ts:374
 msgid "Failed to fetch auth mode"
@@ -5536,10 +5639,55 @@ msgstr "無法擷取驗證模式"
 msgid "Failed to fetch backup settings"
 msgstr "擷取備份設定失敗"
 
-#: packages/admin/src/lib/api/schema.ts:342
-#: packages/admin/src/lib/api/schema.ts:346
+#: packages/admin/src/lib/api/schema.ts:270
+msgid "Failed to fetch block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:261
+msgid "Failed to fetch block types"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:118
+msgid "Failed to fetch byline"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:157
+msgid "Failed to fetch byline translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:112
+msgid "Failed to fetch bylines"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:351
+#: packages/admin/src/lib/api/schema.ts:355
 msgid "Failed to fetch collection"
 msgstr "擷取內容集合失敗"
+
+#: packages/admin/src/lib/api/schema.ts:331
+msgid "Failed to fetch collections"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:85
+msgid "Failed to fetch comment"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:77
+msgid "Failed to fetch comment counts"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:68
+msgid "Failed to fetch comments"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:237
+#: packages/admin/src/lib/api/content.ts:277
+msgid "Failed to fetch content"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:258
+msgid "Failed to fetch content authors"
+msgstr ""
 
 #: packages/admin/src/lib/api/dashboard.ts:56
 msgid "Failed to fetch dashboard stats"
@@ -5552,6 +5700,10 @@ msgstr "無法擷取電子郵件設定"
 #: packages/admin/src/components/TaxonomySidebar.tsx:160
 msgid "Failed to fetch entry terms"
 msgstr "無法擷取內容項目的分類項目"
+
+#: packages/admin/src/lib/api/schema.ts:413
+msgid "Failed to fetch fields"
+msgstr ""
 
 #: packages/admin/src/lib/api/client.ts:357
 msgid "Failed to fetch manifest"
@@ -5581,6 +5733,27 @@ msgstr "無法擷取媒體服務提供者"
 msgid "Failed to fetch media usage details"
 msgstr "無法取得媒體使用詳情"
 
+#: packages/admin/src/lib/api/menus.ts:125
+msgid "Failed to fetch menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:249
+msgid "Failed to fetch menu translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:117
+msgid "Failed to fetch menus"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:525
+msgid "Failed to fetch orphaned tables"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:234
+msgid "Failed to fetch passkeys"
+msgstr ""
+
+#: packages/admin/src/lib/api/marketplace.ts:324
 #: packages/admin/src/lib/api/plugins.ts:70
 #: packages/admin/src/lib/api/plugins.ts:74
 msgid "Failed to fetch plugin"
@@ -5598,10 +5771,34 @@ msgstr "無法擷取外掛"
 msgid "Failed to fetch provider media"
 msgstr "無法擷取服務提供者媒體"
 
-#: packages/admin/src/lib/api/content.ts:635
-#: packages/admin/src/lib/api/content.ts:640
+#: packages/admin/src/lib/api/redirects.ts:77
+msgid "Failed to fetch redirects"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:174
+msgid "Failed to fetch reference children"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:193
+msgid "Failed to fetch reference parents"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:106
+msgid "Failed to fetch relation"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:94
+msgid "Failed to fetch relations"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:641
+#: packages/admin/src/lib/api/content.ts:646
 msgid "Failed to fetch revision"
 msgstr "無法取得修訂版本"
+
+#: packages/admin/src/lib/api/content.ts:628
+msgid "Failed to fetch revisions"
+msgstr ""
 
 #: packages/admin/src/lib/api/sections.ts:76
 msgid "Failed to fetch section"
@@ -5619,7 +5816,16 @@ msgstr "無法取得設定"
 msgid "Failed to fetch setup status"
 msgstr "擷取設定狀態失敗"
 
+#: packages/admin/src/lib/api/taxonomies.ts:137
+msgid "Failed to fetch taxonomies"
+msgstr ""
+
+#: packages/admin/src/lib/api/taxonomies.ts:290
+msgid "Failed to fetch term translations"
+msgstr ""
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:144
+#: packages/admin/src/lib/api/taxonomies.ts:196
 msgid "Failed to fetch terms"
 msgstr "擷取分類項目失敗"
 
@@ -5627,23 +5833,52 @@ msgstr "擷取分類項目失敗"
 msgid "Failed to fetch the site domain"
 msgstr "無法取得網站網域"
 
+#: packages/admin/src/lib/api/theme-marketplace.ts:99
+msgid "Failed to fetch theme"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:113
+msgid "Failed to fetch translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:375
+msgid "Failed to fetch trashed content"
+msgstr ""
+
 #: packages/admin/src/lib/api/core-update.ts:29
 msgid "Failed to fetch update status"
 msgstr "無法取得更新狀態"
 
 #: packages/admin/src/lib/api/current-user.ts:22
-#: packages/admin/src/lib/api/users.ts:88
-#: packages/admin/src/lib/api/users.ts:93
+#: packages/admin/src/lib/api/users.ts:91
+#: packages/admin/src/lib/api/users.ts:96
 #: packages/admin/src/router.tsx:1127
 #: packages/admin/src/router.tsx:2263
 msgid "Failed to fetch user"
 msgstr "無法擷取使用者"
+
+#: packages/admin/src/lib/api/users.ts:77
+msgid "Failed to fetch users"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:86
+msgid "Failed to fetch widget area"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:76
+msgid "Failed to fetch widget areas"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:168
+msgid "Failed to fetch widget components"
+msgstr ""
 
 #: packages/admin/src/components/ThemeMarketplaceBrowse.tsx:263
 msgid "Failed to generate preview"
 msgstr "無法產生預覽"
 
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:157
+#: packages/admin/src/lib/api/theme-marketplace.ts:114
 msgid "Failed to generate preview URL"
 msgstr "產生預覽網址失敗"
 
@@ -5659,19 +5894,29 @@ msgstr "無法取得註冊選項"
 msgid "Failed to get upload URL"
 msgstr "無法取得上傳網址"
 
+#: packages/admin/src/lib/api/import.ts:432
+msgid "Failed to import"
+msgstr ""
+
 #: packages/admin/src/components/WordPressImport.tsx:456
+#: packages/admin/src/lib/api/import.ts:257
 msgid "Failed to import from WordPress"
 msgstr "無法從 WordPress 匯入"
 
 #: packages/admin/src/components/WordPressImport.tsx:385
-#: packages/admin/src/lib/api/import.ts:531
+#: packages/admin/src/lib/api/import.ts:534
+#: packages/admin/src/lib/api/import.ts:539
 msgid "Failed to import media"
 msgstr "匯入媒體失敗"
 
-#: packages/admin/src/lib/api/marketplace.ts:344
+#: packages/admin/src/lib/api/marketplace.ts:347
 #: packages/admin/src/lib/api/registry.ts:789
 msgid "Failed to install plugin"
 msgstr "安裝外掛失敗"
+
+#: packages/admin/src/lib/api/users.ts:168
+msgid "Failed to invite user"
+msgstr ""
 
 #: packages/admin/src/lib/api/byline-fields.ts:98
 msgid "Failed to list byline fields"
@@ -5800,17 +6045,23 @@ msgstr "載入小工具失敗"
 msgid "Failed to lock the entry"
 msgstr "無法鎖定內容項目"
 
+#: packages/admin/src/lib/api/comments.ts:131
 #: packages/admin/src/router.tsx:2357
 msgid "Failed to perform bulk action"
 msgstr "執行批次操作失敗"
 
-#: packages/admin/src/lib/api/content.ts:391
+#: packages/admin/src/lib/api/content.ts:397
 msgid "Failed to permanently delete content"
 msgstr "無法永久刪除內容"
 
 #: packages/admin/src/components/WordPressImport.tsx:339
+#: packages/admin/src/lib/api/import.ts:390
 msgid "Failed to prepare import"
 msgstr "準備匯入失敗"
+
+#: packages/admin/src/lib/api/import.ts:710
+msgid "Failed to probe URL"
+msgstr ""
 
 #: packages/admin/src/router.tsx:648
 #: packages/admin/src/router.tsx:1389
@@ -5820,6 +6071,10 @@ msgstr "發佈失敗"
 #: packages/admin/src/lib/api/byline-fields.ts:106
 msgid "Failed to read byline field usage"
 msgstr "無法讀取署名欄位的使用情況"
+
+#: packages/admin/src/lib/api/schema.ts:548
+msgid "Failed to register orphaned table"
+msgstr ""
 
 #: packages/admin/src/lib/api/entry-lock.ts:70
 msgid "Failed to release the entry lock"
@@ -5839,6 +6094,7 @@ msgid "Failed to rename media folder"
 msgstr "無法重新命名媒體資料夾"
 
 #: packages/admin/src/components/settings/SecuritySettings.tsx:55
+#: packages/admin/src/lib/api/users.ts:250
 msgid "Failed to rename passkey"
 msgstr "無法重新命名通行密鑰"
 
@@ -5846,14 +6102,22 @@ msgstr "無法重新命名通行密鑰"
 msgid "Failed to reorder byline fields"
 msgstr "無法重新排序署名欄位"
 
-#: packages/admin/src/lib/api/schema.ts:487
+#: packages/admin/src/lib/api/schema.ts:505
 msgid "Failed to reorder content types"
 msgstr "無法調整內容類型的順序"
 
-#: packages/admin/src/lib/api/schema.ts:470
+#: packages/admin/src/lib/api/schema.ts:488
 #: packages/admin/src/routes/byline-schema.tsx:152
 msgid "Failed to reorder fields"
 msgstr "重新排序欄位失敗"
+
+#: packages/admin/src/lib/api/menus.ts:236
+msgid "Failed to reorder menu items"
+msgstr ""
+
+#: packages/admin/src/lib/api/taxonomies.ts:261
+msgid "Failed to reorder terms"
+msgstr ""
 
 #: packages/admin/src/lib/api/widgets.ts:158
 msgid "Failed to reorder widgets"
@@ -5867,12 +6131,12 @@ msgstr "無法取代媒體圖片"
 msgid "Failed to restore"
 msgstr "還原失敗"
 
-#: packages/admin/src/lib/api/content.ts:380
+#: packages/admin/src/lib/api/content.ts:386
 msgid "Failed to restore content"
 msgstr "還原內容失敗"
 
-#: packages/admin/src/lib/api/content.ts:657
-#: packages/admin/src/lib/api/content.ts:662
+#: packages/admin/src/lib/api/content.ts:663
+#: packages/admin/src/lib/api/content.ts:668
 msgid "Failed to restore revision"
 msgstr "無法還原修訂版本"
 
@@ -5881,6 +6145,7 @@ msgid "Failed to revoke API token"
 msgstr "撤銷 API 權杖失敗"
 
 #: packages/admin/src/components/WordPressImport.tsx:398
+#: packages/admin/src/lib/api/import.ts:727
 msgid "Failed to rewrite URLs"
 msgstr "重寫網址失敗"
 
@@ -5914,7 +6179,7 @@ msgstr "無法排程"
 msgid "Failed to send magic link"
 msgstr "無法傳送快速登入連結"
 
-#: packages/admin/src/lib/api/users.ts:128
+#: packages/admin/src/lib/api/users.ts:134
 msgid "Failed to send recovery link"
 msgstr "無法傳送復原連結"
 
@@ -5940,7 +6205,7 @@ msgstr "無法開始匯出"
 msgid "Failed to start import"
 msgstr "無法開始匯入"
 
-#: packages/admin/src/lib/api/marketplace.ts:387
+#: packages/admin/src/lib/api/marketplace.ts:390
 #: packages/admin/src/lib/api/registry.ts:1003
 msgid "Failed to uninstall plugin"
 msgstr "無法解除安裝外掛"
@@ -5962,24 +6227,60 @@ msgstr "更新失敗"
 msgid "Failed to update {0}"
 msgstr "更新 {0} 失敗"
 
+#: packages/admin/src/lib/api/users.ts:335
+msgid "Failed to update allowed domain"
+msgstr ""
+
 #: packages/admin/src/lib/api/backups.ts:46
 msgid "Failed to update backup settings"
 msgstr "無法更新備份設定"
+
+#: packages/admin/src/lib/api/schema.ts:299
+msgid "Failed to update block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:139
+msgid "Failed to update byline"
+msgstr ""
 
 #: packages/admin/src/lib/api/byline-fields.ts:135
 msgid "Failed to update byline field"
 msgstr "無法更新署名欄位"
 
+#: packages/admin/src/lib/api/schema.ts:390
+msgid "Failed to update collection"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:104
+msgid "Failed to update comment status"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:330
+msgid "Failed to update content"
+msgstr ""
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:107
 msgid "Failed to update domain"
 msgstr "無法更新網域"
+
+#: packages/admin/src/lib/api/schema.ts:455
+msgid "Failed to update field"
+msgstr ""
 
 #: packages/admin/src/lib/api/media.ts:647
 msgid "Failed to update media"
 msgstr "更新媒體失敗"
 
+#: packages/admin/src/lib/api/menus.ts:153
+msgid "Failed to update menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:202
+msgid "Failed to update menu item"
+msgstr ""
+
 #: packages/admin/src/components/PluginManager.tsx:326
-#: packages/admin/src/lib/api/marketplace.ts:370
+#: packages/admin/src/lib/api/marketplace.ts:373
 #: packages/admin/src/lib/api/registry.ts:878
 msgid "Failed to update plugin"
 msgstr "無法更新外掛"
@@ -5992,6 +6293,14 @@ msgstr "更新外掛 MCP 存取權失敗"
 msgid "Failed to update plugin settings"
 msgstr "無法更新外掛設定"
 
+#: packages/admin/src/lib/api/redirects.ts:101
+msgid "Failed to update redirect"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:132
+msgid "Failed to update relation"
+msgstr ""
+
 #: packages/admin/src/lib/api/sections.ts:100
 msgid "Failed to update section"
 msgstr "更新區段失敗"
@@ -6003,6 +6312,18 @@ msgstr "無法更新設定"
 #: packages/admin/src/router.tsx:2316
 msgid "Failed to update status"
 msgstr "無法更新狀態"
+
+#: packages/admin/src/lib/api/taxonomies.ts:239
+msgid "Failed to update term"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:112
+msgid "Failed to update user"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:136
+msgid "Failed to update widget"
+msgstr ""
 
 #: packages/admin/src/lib/api/transfer.ts:431
 msgid "Failed to upload a package file"
@@ -7125,6 +7446,10 @@ msgstr "已建立邀請連結"
 msgid "Invite User"
 msgstr "邀請使用者"
 
+#: packages/admin/src/lib/api/users.ts:194
+msgid "Invite validation failed"
+msgstr ""
+
 #: packages/admin/src/components/users/UserList.tsx:133
 msgid "Invite your first team member"
 msgstr "邀請第一位團隊成員"
@@ -7884,6 +8209,10 @@ msgstr "已無法瀏覽外掛市集。請從 [外掛] 管理已安裝的外掛�
 #: packages/admin/src/components/MarketplaceMigrationBanner.tsx:14
 msgid "Marketplace configuration is deprecated"
 msgstr "外掛市集設定已淘汰"
+
+#: packages/admin/src/lib/api/marketplace.ts:311
+msgid "Marketplace search failed"
+msgstr ""
 
 #: packages/admin/src/components/settings/transfer/ImportReview.tsx:339
 msgid "Matched by email"
@@ -9864,7 +10193,7 @@ msgstr "進度"
 msgid "Progress stopped"
 msgstr "進度已停止"
 
-#: packages/admin/src/lib/api/marketplace.ts:427
+#: packages/admin/src/lib/api/marketplace.ts:430
 msgid "Propose unsaved changes to selected editor fields for your review"
 msgstr "針對所選的編輯器欄位提出尚未儲存的變更，供你審核"
 
@@ -9929,7 +10258,7 @@ msgstr "立即發佈"
 msgid "Publish now?"
 msgstr "要立即發佈嗎？"
 
-#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:424
 msgid "Publish, unpublish, schedule, and unschedule content"
 msgstr "發佈、取消發佈、排程及取消排程內容"
 
@@ -10033,16 +10362,16 @@ msgstr "引用"
 msgid "Raw meta"
 msgstr "原始中繼資料"
 
-#: packages/admin/src/lib/api/marketplace.ts:442
-#: packages/admin/src/lib/api/marketplace.ts:453
+#: packages/admin/src/lib/api/marketplace.ts:445
+#: packages/admin/src/lib/api/marketplace.ts:456
 msgid "Read and change email your site sends"
 msgstr "讀取及變更網站傳送的電子郵件"
 
-#: packages/admin/src/lib/api/marketplace.ts:422
+#: packages/admin/src/lib/api/marketplace.ts:425
 msgid "Read and restore trashed content"
 msgstr "讀取及還原回收桶中的內容"
 
-#: packages/admin/src/lib/api/marketplace.ts:425
+#: packages/admin/src/lib/api/marketplace.ts:428
 msgid "Read collection and field definitions"
 msgstr "讀取集合及欄位定義"
 
@@ -10050,7 +10379,7 @@ msgstr "讀取集合及欄位定義"
 msgid "Read collection schemas"
 msgstr "讀取內容集合結構描述"
 
-#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:426
 msgid "Read comment bodies, author email addresses, pseudonymous IP hashes, user agents, and moderation metadata"
 msgstr "讀取留言本文、作者電子郵件地址、假名化的 IP 雜湊值、使用者代理程式及審核中繼資料"
 
@@ -10058,7 +10387,7 @@ msgstr "讀取留言本文、作者電子郵件地址、假名化的 IP 雜湊�
 msgid "Read content entries"
 msgstr "讀取內容項目"
 
-#: packages/admin/src/lib/api/marketplace.ts:435
+#: packages/admin/src/lib/api/marketplace.ts:438
 msgid "Read media file contents"
 msgstr "讀取媒體檔案內容"
 
@@ -10066,19 +10395,19 @@ msgstr "讀取媒體檔案內容"
 msgid "Read media files"
 msgstr "讀取媒體檔案"
 
-#: packages/admin/src/lib/api/marketplace.ts:431
+#: packages/admin/src/lib/api/marketplace.ts:434
 msgid "Read public byline profiles and content credits"
 msgstr "讀取公開的署名個人資料及內容署名"
 
-#: packages/admin/src/lib/api/marketplace.ts:432
+#: packages/admin/src/lib/api/marketplace.ts:435
 msgid "Read redirect rules"
 msgstr "讀取重新導向規則"
 
-#: packages/admin/src/lib/api/marketplace.ts:419
+#: packages/admin/src/lib/api/marketplace.ts:422
 msgid "Read retained content revision history"
 msgstr "讀取保留的內容修訂歷程記錄"
 
-#: packages/admin/src/lib/api/marketplace.ts:426
+#: packages/admin/src/lib/api/marketplace.ts:429
 msgid "Read selected unsaved editor content after you explicitly invoke the plugin"
 msgstr "明確呼叫外掛後，讀取所選且尚未儲存的編輯器內容"
 
@@ -10086,17 +10415,17 @@ msgstr "明確呼叫外掛後，讀取所選且尚未儲存的編輯器內容"
 msgid "Read site settings"
 msgstr "讀取網站設定"
 
-#: packages/admin/src/lib/api/marketplace.ts:438
-#: packages/admin/src/lib/api/marketplace.ts:450
+#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:453
 msgid "Read user accounts"
 msgstr "讀取使用者帳號"
 
-#: packages/admin/src/lib/api/marketplace.ts:418
-#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:449
 msgid "Read your content"
 msgstr "讀取您的內容"
 
-#: packages/admin/src/lib/api/marketplace.ts:429
+#: packages/admin/src/lib/api/marketplace.ts:432
 msgid "Read your taxonomies and terms"
 msgstr "讀取您的分類法及分類項目"
 
@@ -10799,7 +11128,7 @@ msgstr "已還原至已發佈版本"
 msgid "Review"
 msgstr "審閱"
 
-#: packages/admin/src/lib/api/marketplace.ts:428
+#: packages/admin/src/lib/api/marketplace.ts:431
 msgid "Review and block publishing, scheduling, and unpublishing content"
 msgstr "審查並阻止內容的發佈、排程與取消發佈"
 
@@ -11689,7 +12018,7 @@ msgstr "透過完整電子郵件處理管線傳送測試郵件，以驗證電子
 msgid "Send an invitation email to a new team member."
 msgstr "傳送邀請電子郵件給新的團隊成員。"
 
-#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:444
 msgid "Send email through your site"
 msgstr "透過網站傳送電子郵件"
 
@@ -11964,6 +12293,14 @@ msgstr "已驗證簽署版本"
 #: packages/admin/src/components/MagicLinkConfirmPage.tsx:56
 msgid "Signing in failed. Please try again."
 msgstr "登入失敗。請再試一次。"
+
+#: packages/admin/src/lib/api/users.ts:431
+msgid "Signup completion failed"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:377
+msgid "Signup request failed"
+msgstr ""
 
 #: packages/admin/src/components/FieldEditor.tsx:427
 msgid "Single choice from options"
@@ -12676,11 +13013,11 @@ msgstr "可以繼續匯入，但請先檢查這些項目。"
 msgid "The import can’t start until these are resolved."
 msgstr "必須先解決這些問題，才能開始匯入。"
 
-#: packages/admin/src/lib/api/import.ts:467
+#: packages/admin/src/lib/api/import.ts:470
 msgid "The import did not return a completion cursor"
 msgstr "匯入作業未傳回完成游標"
 
-#: packages/admin/src/lib/api/import.ts:452
+#: packages/admin/src/lib/api/import.ts:455
 msgid "The import did not return a preparation cursor"
 msgstr "匯入作業未傳回準備游標"
 
@@ -12957,6 +13294,10 @@ msgstr "佈景主題 ID: {0}"
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:91
 msgid "Theme not found"
 msgstr "找不到佈景主題"
+
+#: packages/admin/src/lib/api/theme-marketplace.ts:87
+msgid "Theme search failed"
+msgstr ""
 
 #: packages/admin/src/components/SectionEditor.tsx:205
 msgid "Theme Section"
@@ -13477,6 +13818,10 @@ msgstr "已建立權杖: {0}"
 msgid "Token Name"
 msgstr "權杖名稱"
 
+#: packages/admin/src/lib/api/users.ts:393
+msgid "Token verification failed"
+msgstr ""
+
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:55
 msgid "TOML"
 msgstr "TOML"
@@ -13967,8 +14312,8 @@ msgstr "上傳圖片即可開始使用"
 msgid "Upload and delete media"
 msgstr "上傳及刪除媒體"
 
-#: packages/admin/src/lib/api/marketplace.ts:437
-#: packages/admin/src/lib/api/marketplace.ts:449
+#: packages/admin/src/lib/api/marketplace.ts:440
+#: packages/admin/src/lib/api/marketplace.ts:452
 msgid "Upload and manage media"
 msgstr "上傳及管理媒體"
 

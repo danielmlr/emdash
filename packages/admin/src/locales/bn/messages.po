@@ -474,7 +474,7 @@ msgid "{added} updated · {0} failed"
 msgstr ""
 
 #. placeholder {0}: allowedHosts.join(", ")
-#: packages/admin/src/lib/api/marketplace.ts:474
+#: packages/admin/src/lib/api/marketplace.ts:477
 msgid "{base} to: {0}"
 msgstr "{base} (গন্তব্য: {0})"
 
@@ -1126,8 +1126,8 @@ msgstr "অ্যাক্সেস অস্বীকৃত"
 msgid "Access Denied"
 msgstr "অ্যাক্সেস অস্বীকৃত"
 
-#: packages/admin/src/lib/api/marketplace.ts:434
-#: packages/admin/src/lib/api/marketplace.ts:448
+#: packages/admin/src/lib/api/marketplace.ts:437
+#: packages/admin/src/lib/api/marketplace.ts:451
 msgid "Access your media library"
 msgstr "আপনার মিডিয়া লাইব্রেরিতে অ্যাক্সেস"
 
@@ -1362,8 +1362,8 @@ msgstr "উপরে সারি যোগ করুন"
 msgid "Add row below"
 msgstr "নিচে সারি যোগ করুন"
 
-#: packages/admin/src/lib/api/marketplace.ts:444
-#: packages/admin/src/lib/api/marketplace.ts:455
+#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:458
 msgid "Add scripts and styles to your site's pages"
 msgstr ""
 
@@ -1797,7 +1797,7 @@ msgstr "অনুমোদনের অনুরোধ"
 msgid "Approve"
 msgstr "অনুমোদন করুন"
 
-#: packages/admin/src/lib/api/marketplace.ts:424
+#: packages/admin/src/lib/api/marketplace.ts:427
 msgid "Approve comments and mark them as pending or spam"
 msgstr "মন্তব্য অনুমোদন করা এবং সেগুলোকে অপেক্ষমাণ বা স্প্যাম হিসেবে চিহ্নিত করা"
 
@@ -2552,7 +2552,7 @@ msgstr "প্রকাশের তারিখ পরিবর্তন কর
 msgid "Change schedule"
 msgstr "সময়সূচি পরিবর্তন করুন"
 
-#: packages/admin/src/lib/api/marketplace.ts:433
+#: packages/admin/src/lib/api/marketplace.ts:436
 msgid "Change where visitors are sent"
 msgstr "ভিজিটরদের কোথায় পাঠানো হবে তা পরিবর্তন করুন"
 
@@ -3088,13 +3088,13 @@ msgstr "সংযুক্ত করুন ও বিশ্লেষণ কর�
 msgid "Connect to {0}"
 msgstr "{0}-এর সাথে সংযুক্ত করুন"
 
-#: packages/admin/src/lib/api/marketplace.ts:440
-#: packages/admin/src/lib/api/marketplace.ts:452
+#: packages/admin/src/lib/api/marketplace.ts:443
+#: packages/admin/src/lib/api/marketplace.ts:455
 msgid "Connect to any network host and load external plugin admin images (unrestricted)"
 msgstr "যেকোনো নেটওয়ার্ক হোস্টে সংযুক্ত হওয়া এবং বাহ্যিক প্লাগইন অ্যাডমিন ছবি লোড করা (সীমাবদ্ধতাহীন)"
 
-#: packages/admin/src/lib/api/marketplace.ts:439
-#: packages/admin/src/lib/api/marketplace.ts:451
+#: packages/admin/src/lib/api/marketplace.ts:442
+#: packages/admin/src/lib/api/marketplace.ts:454
 msgid "Connect to network hosts and load external plugin admin images"
 msgstr "নেটওয়ার্ক হোস্টে সংযুক্ত হওয়া এবং বাহ্যিক প্লাগইন অ্যাডমিন ছবি লোড করা"
 
@@ -3642,7 +3642,7 @@ msgstr "এখানে ব্যবহার করতে সেকশন ল�
 msgid "Create Taxonomy"
 msgstr "ট্যাক্সোনমি তৈরি করুন"
 
-#: packages/admin/src/lib/api/marketplace.ts:430
+#: packages/admin/src/lib/api/marketplace.ts:433
 msgid "Create taxonomy terms and change content classifications"
 msgstr "ট্যাক্সোনমি টার্ম তৈরি করা এবং কনটেন্টের শ্রেণিবিভাগ পরিবর্তন করা"
 
@@ -3675,8 +3675,8 @@ msgstr "প্রথমটি তৈরি করুন"
 msgid "Create your first reusable content section to get started."
 msgstr "শুরু করতে আপনার প্রথম পুনঃব্যবহারযোগ্য কনটেন্ট সেকশন তৈরি করুন।"
 
-#: packages/admin/src/lib/api/marketplace.ts:420
-#: packages/admin/src/lib/api/marketplace.ts:447
+#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:450
 msgid "Create, update, and delete content"
 msgstr "কনটেন্ট তৈরি, আপডেট ও মুছে ফেলা"
 
@@ -4156,8 +4156,8 @@ msgstr "মোছা হচ্ছে..."
 msgid "Deleting…"
 msgstr "মোছা হচ্ছে…"
 
-#: packages/admin/src/lib/api/marketplace.ts:443
-#: packages/admin/src/lib/api/marketplace.ts:454
+#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:457
 msgid "Deliver all email your site sends"
 msgstr ""
 
@@ -4768,7 +4768,7 @@ msgstr "লিঙ্ক সম্পাদনা করুন"
 msgid "Edit locking"
 msgstr "সম্পাদনা লক"
 
-#: packages/admin/src/lib/api/marketplace.ts:436
+#: packages/admin/src/lib/api/marketplace.ts:439
 msgid "Edit media alt text, captions, and focal points"
 msgstr "মিডিয়ার বিকল্প টেক্সট, ক্যাপশন এবং ফোকাল পয়েন্ট সম্পাদনা করুন"
 
@@ -5284,6 +5284,10 @@ msgstr "নিরাপত্তা অডিটে ব্যর্থ"
 msgid "Failed to abandon import"
 msgstr "ইমপোর্ট পরিত্যাগ করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/schema.ts:319
+msgid "Failed to activate block type version"
+msgstr ""
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:84
 msgid "Failed to add domain"
 msgstr "ডোমেইন যোগ করতে ব্যর্থ হয়েছে"
@@ -5292,11 +5296,20 @@ msgstr "ডোমেইন যোগ করতে ব্যর্থ হয়�
 msgid "Failed to add passkey"
 msgstr "পাসকি যোগ করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/taxonomies.ts:120
+msgid "Failed to add term to entries"
+msgstr ""
+
+#: packages/admin/src/lib/api/import.ts:378
+msgid "Failed to analyze file"
+msgstr ""
+
 #: packages/admin/src/lib/api/transfer.ts:442
 msgid "Failed to analyze import"
 msgstr "ইমপোর্ট বিশ্লেষণ করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/WordPressImport.tsx:433
+#: packages/admin/src/lib/api/import.ts:766
 msgid "Failed to analyze WordPress site"
 msgstr "WordPress সাইট বিশ্লেষণ করতে ব্যর্থ হয়েছে"
 
@@ -5312,9 +5325,17 @@ msgstr "ইমপোর্ট বাতিল করতে ব্যর্থ �
 msgid "Failed to change the domain"
 msgstr ""
 
+#: packages/admin/src/lib/api/marketplace.ts:401
+msgid "Failed to check for updates"
+msgstr ""
+
 #: packages/admin/src/components/SandboxedPluginPage.tsx:78
 msgid "Failed to communicate with plugin"
 msgstr "প্লাগইনের সাথে যোগাযোগ করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/content.ts:594
+msgid "Failed to compare revisions"
+msgstr ""
 
 #: packages/admin/src/lib/api/media.ts:379
 msgid "Failed to confirm upload"
@@ -5342,15 +5363,44 @@ msgstr ""
 msgid "Failed to create admin"
 msgstr "অ্যাডমিন তৈরি করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/users.ts:313
+msgid "Failed to create allowed domain"
+msgstr ""
+
+#: packages/admin/src/lib/api/api-tokens.ts:91
+msgid "Failed to create API token"
+msgstr ""
+
 #: packages/admin/src/components/settings/BackupSettings.tsx:123
 #: packages/admin/src/lib/api/backups.ts:51
 msgid "Failed to create backup"
 msgstr "ব্যাকআপ তৈরি করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/schema.ts:283
+msgid "Failed to create block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:127
+msgid "Failed to create byline"
+msgstr ""
+
 #: packages/admin/src/lib/api/byline-fields.ts:120
 msgid "Failed to create byline field"
 msgstr "বাইলাইন ফিল্ড তৈরি করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/bylines.ts:178
+msgid "Failed to create byline translation"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:371
+msgid "Failed to create collection"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:306
+msgid "Failed to create content"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:432
 #: packages/admin/src/routes/byline-schema.tsx:102
 msgid "Failed to create field"
 msgstr "ফিল্ড তৈরি করতে ব্যর্থ হয়েছে"
@@ -5358,6 +5408,26 @@ msgstr "ফিল্ড তৈরি করতে ব্যর্থ হয়�
 #: packages/admin/src/lib/api/media.ts:252
 msgid "Failed to create media folder"
 msgstr "মিডিয়া ফোল্ডার তৈরি করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/menus.ts:137
+msgid "Failed to create menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:182
+msgid "Failed to create menu item"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:270
+msgid "Failed to create menu translation"
+msgstr ""
+
+#: packages/admin/src/lib/api/redirects.ts:89
+msgid "Failed to create redirect"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:119
+msgid "Failed to create relation"
+msgstr ""
 
 #: packages/admin/src/lib/api/sections.ts:88
 msgid "Failed to create section"
@@ -5367,14 +5437,31 @@ msgstr "সেকশন তৈরি করতে ব্যর্থ হয়�
 msgid "Failed to create some collections"
 msgstr "কিছু কালেকশন তৈরি করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/taxonomies.ts:164
+msgid "Failed to create taxonomy"
+msgstr ""
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:732
+#: packages/admin/src/lib/api/taxonomies.ts:215
 msgid "Failed to create term"
 msgstr "টার্ম তৈরি করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/taxonomies.ts:314
+msgid "Failed to create term translation"
+msgstr ""
 
 #: packages/admin/src/components/TaxonomySidebar.tsx:782
 #: packages/admin/src/router.tsx:1544
 msgid "Failed to create translation"
 msgstr "অনুবাদ তৈরি করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/widgets.ts:120
+msgid "Failed to create widget"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:98
+msgid "Failed to create widget area"
+msgstr ""
 
 #: packages/admin/src/router.tsx:580
 #: packages/admin/src/router.tsx:609
@@ -5383,7 +5470,7 @@ msgstr "অনুবাদ তৈরি করতে ব্যর্থ হয�
 msgid "Failed to delete"
 msgstr "মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/users.ts:345
+#: packages/admin/src/lib/api/users.ts:351
 msgid "Failed to delete allowed domain"
 msgstr "অনুমোদিত ডোমেইন মুছতে ব্যর্থ হয়েছে"
 
@@ -5391,7 +5478,7 @@ msgstr "অনুমোদিত ডোমেইন মুছতে ব্যর
 msgid "Failed to delete backup"
 msgstr "ব্যাকআপ মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/bylines.ts:143
+#: packages/admin/src/lib/api/bylines.ts:146
 msgid "Failed to delete byline"
 msgstr "বাইলাইন মুছতে ব্যর্থ হয়েছে"
 
@@ -5399,20 +5486,20 @@ msgstr "বাইলাইন মুছতে ব্যর্থ হয়েছ
 msgid "Failed to delete byline field"
 msgstr "বাইলাইন ফিল্ড মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/schema.ts:394
+#: packages/admin/src/lib/api/schema.ts:403
 msgid "Failed to delete collection"
 msgstr "কালেকশন মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/comments.ts:111
+#: packages/admin/src/lib/api/comments.ts:114
 #: packages/admin/src/router.tsx:2332
 msgid "Failed to delete comment"
 msgstr "মন্তব্য মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/content.ts:343
+#: packages/admin/src/lib/api/content.ts:349
 msgid "Failed to delete content"
 msgstr "কনটেন্ট মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/schema.ts:455
+#: packages/admin/src/lib/api/schema.ts:473
 #: packages/admin/src/routes/byline-schema.tsx:138
 msgid "Failed to delete field"
 msgstr "ফিল্ড মুছতে ব্যর্থ হয়েছে"
@@ -5437,7 +5524,7 @@ msgstr "মেনু মুছতে ব্যর্থ হয়েছে"
 msgid "Failed to delete menu item"
 msgstr "মেনু আইটেম মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/users.ts:256
+#: packages/admin/src/lib/api/users.ts:262
 msgid "Failed to delete passkey"
 msgstr "পাসকি মুছতে ব্যর্থ হয়েছে"
 
@@ -5457,7 +5544,7 @@ msgstr "সেকশন মুছতে ব্যর্থ হয়েছে"
 msgid "Failed to delete taxonomy"
 msgstr "ট্যাক্সোনমি মুছতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/taxonomies.ts:267
+#: packages/admin/src/lib/api/taxonomies.ts:276
 msgid "Failed to delete term"
 msgstr "টার্ম মুছতে ব্যর্থ হয়েছে"
 
@@ -5482,7 +5569,7 @@ msgstr "প্লাগইন বন্ধ করতে ব্যর্থ হ�
 msgid "Failed to disable search"
 msgstr "অনুসন্ধান বন্ধ করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/users.ts:118
+#: packages/admin/src/lib/api/users.ts:124
 msgid "Failed to disable user"
 msgstr "ব্যবহারকারীকে নিষ্ক্রিয় করতে ব্যর্থ হয়েছে"
 
@@ -5507,6 +5594,10 @@ msgstr "একটি প্যাকেজ ফাইল ডাউনলোড �
 msgid "Failed to duplicate"
 msgstr "ডুপ্লিকেট করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/content.ts:409
+msgid "Failed to duplicate content"
+msgstr ""
+
 #: packages/admin/src/lib/api/settings.ts:105
 msgid "Failed to email users"
 msgstr ""
@@ -5520,13 +5611,25 @@ msgstr "প্লাগইন চালু করতে ব্যর্থ হ�
 msgid "Failed to enable search"
 msgstr "অনুসন্ধান চালু করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/users.ts:138
+#: packages/admin/src/lib/api/users.ts:144
 msgid "Failed to enable user"
 msgstr "ব্যবহারকারীকে সক্রিয় করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/WordPressImport.tsx:360
 msgid "Failed to execute import"
 msgstr "ইমপোর্ট সম্পাদন করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/redirects.ts:127
+msgid "Failed to fetch 404 summary"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:297
+msgid "Failed to fetch allowed domains"
+msgstr ""
+
+#: packages/admin/src/lib/api/api-tokens.ts:76
+msgid "Failed to fetch API tokens"
+msgstr ""
 
 #: packages/admin/src/lib/api/client.ts:374
 msgid "Failed to fetch auth mode"
@@ -5536,10 +5639,55 @@ msgstr "প্রমাণীকরণ মোড আনতে ব্যর্থ
 msgid "Failed to fetch backup settings"
 msgstr "ব্যাকআপ সেটিংস আনতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/schema.ts:342
-#: packages/admin/src/lib/api/schema.ts:346
+#: packages/admin/src/lib/api/schema.ts:270
+msgid "Failed to fetch block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:261
+msgid "Failed to fetch block types"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:118
+msgid "Failed to fetch byline"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:157
+msgid "Failed to fetch byline translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:112
+msgid "Failed to fetch bylines"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:351
+#: packages/admin/src/lib/api/schema.ts:355
 msgid "Failed to fetch collection"
 msgstr "কালেকশন আনতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/schema.ts:331
+msgid "Failed to fetch collections"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:85
+msgid "Failed to fetch comment"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:77
+msgid "Failed to fetch comment counts"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:68
+msgid "Failed to fetch comments"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:237
+#: packages/admin/src/lib/api/content.ts:277
+msgid "Failed to fetch content"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:258
+msgid "Failed to fetch content authors"
+msgstr ""
 
 #: packages/admin/src/lib/api/dashboard.ts:56
 msgid "Failed to fetch dashboard stats"
@@ -5552,6 +5700,10 @@ msgstr "ইমেইল সেটিংস আনতে ব্যর্থ হ�
 #: packages/admin/src/components/TaxonomySidebar.tsx:160
 msgid "Failed to fetch entry terms"
 msgstr "এন্ট্রির টার্ম আনতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/schema.ts:413
+msgid "Failed to fetch fields"
+msgstr ""
 
 #: packages/admin/src/lib/api/client.ts:357
 msgid "Failed to fetch manifest"
@@ -5581,6 +5733,27 @@ msgstr "মিডিয়া প্রোভাইডার আনতে ব্
 msgid "Failed to fetch media usage details"
 msgstr "মিডিয়া ব্যবহারের বিবরণ আনতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/menus.ts:125
+msgid "Failed to fetch menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:249
+msgid "Failed to fetch menu translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:117
+msgid "Failed to fetch menus"
+msgstr ""
+
+#: packages/admin/src/lib/api/schema.ts:525
+msgid "Failed to fetch orphaned tables"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:234
+msgid "Failed to fetch passkeys"
+msgstr ""
+
+#: packages/admin/src/lib/api/marketplace.ts:324
 #: packages/admin/src/lib/api/plugins.ts:70
 #: packages/admin/src/lib/api/plugins.ts:74
 msgid "Failed to fetch plugin"
@@ -5598,10 +5771,34 @@ msgstr "প্লাগইনগুলো আনতে ব্যর্থ হয
 msgid "Failed to fetch provider media"
 msgstr "প্রোভাইডারের মিডিয়া আনতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/content.ts:635
-#: packages/admin/src/lib/api/content.ts:640
+#: packages/admin/src/lib/api/redirects.ts:77
+msgid "Failed to fetch redirects"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:174
+msgid "Failed to fetch reference children"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:193
+msgid "Failed to fetch reference parents"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:106
+msgid "Failed to fetch relation"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:94
+msgid "Failed to fetch relations"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:641
+#: packages/admin/src/lib/api/content.ts:646
 msgid "Failed to fetch revision"
 msgstr "রিভিশন আনতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/content.ts:628
+msgid "Failed to fetch revisions"
+msgstr ""
 
 #: packages/admin/src/lib/api/sections.ts:76
 msgid "Failed to fetch section"
@@ -5619,7 +5816,16 @@ msgstr "সেটিংস আনতে ব্যর্থ হয়েছে"
 msgid "Failed to fetch setup status"
 msgstr "সেটআপের স্ট্যাটাস আনতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/taxonomies.ts:137
+msgid "Failed to fetch taxonomies"
+msgstr ""
+
+#: packages/admin/src/lib/api/taxonomies.ts:290
+msgid "Failed to fetch term translations"
+msgstr ""
+
 #: packages/admin/src/components/TaxonomySidebar.tsx:144
+#: packages/admin/src/lib/api/taxonomies.ts:196
 msgid "Failed to fetch terms"
 msgstr "টার্মগুলো আনতে ব্যর্থ হয়েছে"
 
@@ -5627,23 +5833,52 @@ msgstr "টার্মগুলো আনতে ব্যর্থ হয়ে
 msgid "Failed to fetch the site domain"
 msgstr ""
 
+#: packages/admin/src/lib/api/theme-marketplace.ts:99
+msgid "Failed to fetch theme"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:113
+msgid "Failed to fetch translations"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:375
+msgid "Failed to fetch trashed content"
+msgstr ""
+
 #: packages/admin/src/lib/api/core-update.ts:29
 msgid "Failed to fetch update status"
 msgstr ""
 
 #: packages/admin/src/lib/api/current-user.ts:22
-#: packages/admin/src/lib/api/users.ts:88
-#: packages/admin/src/lib/api/users.ts:93
+#: packages/admin/src/lib/api/users.ts:91
+#: packages/admin/src/lib/api/users.ts:96
 #: packages/admin/src/router.tsx:1127
 #: packages/admin/src/router.tsx:2263
 msgid "Failed to fetch user"
 msgstr "ব্যবহারকারী আনতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/users.ts:77
+msgid "Failed to fetch users"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:86
+msgid "Failed to fetch widget area"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:76
+msgid "Failed to fetch widget areas"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:168
+msgid "Failed to fetch widget components"
+msgstr ""
 
 #: packages/admin/src/components/ThemeMarketplaceBrowse.tsx:263
 msgid "Failed to generate preview"
 msgstr "প্রিভিউ তৈরি করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:157
+#: packages/admin/src/lib/api/theme-marketplace.ts:114
 msgid "Failed to generate preview URL"
 msgstr "প্রিভিউ URL তৈরি করতে ব্যর্থ হয়েছে"
 
@@ -5659,19 +5894,29 @@ msgstr "নিবন্ধনের বিকল্পগুলো পেতে 
 msgid "Failed to get upload URL"
 msgstr "আপলোড URL পেতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/import.ts:432
+msgid "Failed to import"
+msgstr ""
+
 #: packages/admin/src/components/WordPressImport.tsx:456
+#: packages/admin/src/lib/api/import.ts:257
 msgid "Failed to import from WordPress"
 msgstr "WordPress থেকে ইমপোর্ট করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/WordPressImport.tsx:385
-#: packages/admin/src/lib/api/import.ts:531
+#: packages/admin/src/lib/api/import.ts:534
+#: packages/admin/src/lib/api/import.ts:539
 msgid "Failed to import media"
 msgstr "মিডিয়া ইমপোর্ট করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/marketplace.ts:344
+#: packages/admin/src/lib/api/marketplace.ts:347
 #: packages/admin/src/lib/api/registry.ts:789
 msgid "Failed to install plugin"
 msgstr "প্লাগইন ইনস্টল করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/users.ts:168
+msgid "Failed to invite user"
+msgstr ""
 
 #: packages/admin/src/lib/api/byline-fields.ts:98
 msgid "Failed to list byline fields"
@@ -5800,17 +6045,23 @@ msgstr "উইজেট লোড করতে ব্যর্থ হয়ে�
 msgid "Failed to lock the entry"
 msgstr "এন্ট্রিটি লক করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/comments.ts:131
 #: packages/admin/src/router.tsx:2357
 msgid "Failed to perform bulk action"
 msgstr "একসাথে একাধিক কাজ সম্পন্ন করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/content.ts:391
+#: packages/admin/src/lib/api/content.ts:397
 msgid "Failed to permanently delete content"
 msgstr "কনটেন্ট স্থায়ীভাবে মুছতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/WordPressImport.tsx:339
+#: packages/admin/src/lib/api/import.ts:390
 msgid "Failed to prepare import"
 msgstr "ইমপোর্ট প্রস্তুত করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/import.ts:710
+msgid "Failed to probe URL"
+msgstr ""
 
 #: packages/admin/src/router.tsx:648
 #: packages/admin/src/router.tsx:1389
@@ -5820,6 +6071,10 @@ msgstr "প্রকাশ করতে ব্যর্থ হয়েছে"
 #: packages/admin/src/lib/api/byline-fields.ts:106
 msgid "Failed to read byline field usage"
 msgstr "বাইলাইন ফিল্ডের ব্যবহার পড়তে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/schema.ts:548
+msgid "Failed to register orphaned table"
+msgstr ""
 
 #: packages/admin/src/lib/api/entry-lock.ts:70
 msgid "Failed to release the entry lock"
@@ -5839,6 +6094,7 @@ msgid "Failed to rename media folder"
 msgstr "মিডিয়া ফোল্ডারের নাম পরিবর্তন করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/settings/SecuritySettings.tsx:55
+#: packages/admin/src/lib/api/users.ts:250
 msgid "Failed to rename passkey"
 msgstr "পাসকির নাম পরিবর্তন করতে ব্যর্থ হয়েছে"
 
@@ -5846,14 +6102,22 @@ msgstr "পাসকির নাম পরিবর্তন করতে ব�
 msgid "Failed to reorder byline fields"
 msgstr "বাইলাইন ফিল্ডের ক্রম পরিবর্তন করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/schema.ts:487
+#: packages/admin/src/lib/api/schema.ts:505
 msgid "Failed to reorder content types"
 msgstr "কনটেন্ট টাইপের ক্রম পরিবর্তন করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/schema.ts:470
+#: packages/admin/src/lib/api/schema.ts:488
 #: packages/admin/src/routes/byline-schema.tsx:152
 msgid "Failed to reorder fields"
 msgstr "ফিল্ডের ক্রম পরিবর্তন করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/menus.ts:236
+msgid "Failed to reorder menu items"
+msgstr ""
+
+#: packages/admin/src/lib/api/taxonomies.ts:261
+msgid "Failed to reorder terms"
+msgstr ""
 
 #: packages/admin/src/lib/api/widgets.ts:158
 msgid "Failed to reorder widgets"
@@ -5867,12 +6131,12 @@ msgstr "মিডিয়া ছবি প্রতিস্থাপন কর
 msgid "Failed to restore"
 msgstr "পুনরুদ্ধার করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/content.ts:380
+#: packages/admin/src/lib/api/content.ts:386
 msgid "Failed to restore content"
 msgstr "কনটেন্ট পুনরুদ্ধার করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/content.ts:657
-#: packages/admin/src/lib/api/content.ts:662
+#: packages/admin/src/lib/api/content.ts:663
+#: packages/admin/src/lib/api/content.ts:668
 msgid "Failed to restore revision"
 msgstr "রিভিশন পুনরুদ্ধার করতে ব্যর্থ হয়েছে"
 
@@ -5881,6 +6145,7 @@ msgid "Failed to revoke API token"
 msgstr "API টোকেন প্রত্যাহার করতে ব্যর্থ হয়েছে"
 
 #: packages/admin/src/components/WordPressImport.tsx:398
+#: packages/admin/src/lib/api/import.ts:727
 msgid "Failed to rewrite URLs"
 msgstr "URL পুনর্লিখন করতে ব্যর্থ হয়েছে"
 
@@ -5914,7 +6179,7 @@ msgstr "সময় নির্ধারণ করতে ব্যর্থ �
 msgid "Failed to send magic link"
 msgstr "ম্যাজিক লিঙ্ক পাঠাতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/users.ts:128
+#: packages/admin/src/lib/api/users.ts:134
 msgid "Failed to send recovery link"
 msgstr "পুনরুদ্ধার লিঙ্ক পাঠাতে ব্যর্থ হয়েছে"
 
@@ -5940,7 +6205,7 @@ msgstr "এক্সপোর্ট শুরু করতে ব্যর্থ
 msgid "Failed to start import"
 msgstr "ইমপোর্ট শুরু করতে ব্যর্থ হয়েছে"
 
-#: packages/admin/src/lib/api/marketplace.ts:387
+#: packages/admin/src/lib/api/marketplace.ts:390
 #: packages/admin/src/lib/api/registry.ts:1003
 msgid "Failed to uninstall plugin"
 msgstr "প্লাগইন আনইনস্টল করতে ব্যর্থ হয়েছে"
@@ -5962,24 +6227,60 @@ msgstr "আপডেট করতে ব্যর্থ হয়েছে"
 msgid "Failed to update {0}"
 msgstr "{0} আপডেট করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/users.ts:335
+msgid "Failed to update allowed domain"
+msgstr ""
+
 #: packages/admin/src/lib/api/backups.ts:46
 msgid "Failed to update backup settings"
 msgstr "ব্যাকআপ সেটিংস আপডেট করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/schema.ts:299
+msgid "Failed to update block type"
+msgstr ""
+
+#: packages/admin/src/lib/api/bylines.ts:139
+msgid "Failed to update byline"
+msgstr ""
 
 #: packages/admin/src/lib/api/byline-fields.ts:135
 msgid "Failed to update byline field"
 msgstr "বাইলাইন ফিল্ড আপডেট করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/schema.ts:390
+msgid "Failed to update collection"
+msgstr ""
+
+#: packages/admin/src/lib/api/comments.ts:104
+msgid "Failed to update comment status"
+msgstr ""
+
+#: packages/admin/src/lib/api/content.ts:330
+msgid "Failed to update content"
+msgstr ""
+
 #: packages/admin/src/components/settings/AllowedDomainsSettings.tsx:107
 msgid "Failed to update domain"
 msgstr "ডোমেইন আপডেট করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/schema.ts:455
+msgid "Failed to update field"
+msgstr ""
 
 #: packages/admin/src/lib/api/media.ts:647
 msgid "Failed to update media"
 msgstr "মিডিয়া আপডেট করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/menus.ts:153
+msgid "Failed to update menu"
+msgstr ""
+
+#: packages/admin/src/lib/api/menus.ts:202
+msgid "Failed to update menu item"
+msgstr ""
+
 #: packages/admin/src/components/PluginManager.tsx:326
-#: packages/admin/src/lib/api/marketplace.ts:370
+#: packages/admin/src/lib/api/marketplace.ts:373
 #: packages/admin/src/lib/api/registry.ts:878
 msgid "Failed to update plugin"
 msgstr "প্লাগইন আপডেট করতে ব্যর্থ হয়েছে"
@@ -5992,6 +6293,14 @@ msgstr "প্লাগইনের MCP অ্যাক্সেস আপডে
 msgid "Failed to update plugin settings"
 msgstr "প্লাগইন সেটিংস আপডেট করতে ব্যর্থ হয়েছে"
 
+#: packages/admin/src/lib/api/redirects.ts:101
+msgid "Failed to update redirect"
+msgstr ""
+
+#: packages/admin/src/lib/api/relations.ts:132
+msgid "Failed to update relation"
+msgstr ""
+
 #: packages/admin/src/lib/api/sections.ts:100
 msgid "Failed to update section"
 msgstr "সেকশন আপডেট করতে ব্যর্থ হয়েছে"
@@ -6003,6 +6312,18 @@ msgstr "সেটিংস আপডেট করতে ব্যর্থ হ�
 #: packages/admin/src/router.tsx:2316
 msgid "Failed to update status"
 msgstr "স্ট্যাটাস আপডেট করতে ব্যর্থ হয়েছে"
+
+#: packages/admin/src/lib/api/taxonomies.ts:239
+msgid "Failed to update term"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:112
+msgid "Failed to update user"
+msgstr ""
+
+#: packages/admin/src/lib/api/widgets.ts:136
+msgid "Failed to update widget"
+msgstr ""
 
 #: packages/admin/src/lib/api/transfer.ts:431
 msgid "Failed to upload a package file"
@@ -7125,6 +7446,10 @@ msgstr "আমন্ত্রণ লিঙ্ক তৈরি হয়েছে
 msgid "Invite User"
 msgstr "ব্যবহারকারীকে আমন্ত্রণ জানান"
 
+#: packages/admin/src/lib/api/users.ts:194
+msgid "Invite validation failed"
+msgstr ""
+
 #: packages/admin/src/components/users/UserList.tsx:133
 msgid "Invite your first team member"
 msgstr "আপনার প্রথম টিম সদস্যকে আমন্ত্রণ জানান"
@@ -7884,6 +8209,10 @@ msgstr "মার্কেটপ্লেস ব্রাউজ করার স
 #: packages/admin/src/components/MarketplaceMigrationBanner.tsx:14
 msgid "Marketplace configuration is deprecated"
 msgstr "মার্কেটপ্লেস কনফিগারেশন অপ্রচলিত হয়ে গেছে"
+
+#: packages/admin/src/lib/api/marketplace.ts:311
+msgid "Marketplace search failed"
+msgstr ""
 
 #: packages/admin/src/components/settings/transfer/ImportReview.tsx:339
 msgid "Matched by email"
@@ -9864,7 +10193,7 @@ msgstr "অগ্রগতি"
 msgid "Progress stopped"
 msgstr "অগ্রগতি থেমে গেছে"
 
-#: packages/admin/src/lib/api/marketplace.ts:427
+#: packages/admin/src/lib/api/marketplace.ts:430
 msgid "Propose unsaved changes to selected editor fields for your review"
 msgstr "আপনার পর্যালোচনার জন্য নির্বাচিত এডিটর ফিল্ডে অসংরক্ষিত পরিবর্তন প্রস্তাব করা"
 
@@ -9929,7 +10258,7 @@ msgstr "এখনই প্রকাশ করুন"
 msgid "Publish now?"
 msgstr "এখনই প্রকাশ করবেন?"
 
-#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:424
 msgid "Publish, unpublish, schedule, and unschedule content"
 msgstr "কনটেন্ট প্রকাশ, অপ্রকাশিত, সময় নির্ধারণ এবং নির্ধারিত সময় বাতিল করা"
 
@@ -10033,16 +10362,16 @@ msgstr "উদ্ধৃতি"
 msgid "Raw meta"
 msgstr "কাঁচা মেটা"
 
-#: packages/admin/src/lib/api/marketplace.ts:442
-#: packages/admin/src/lib/api/marketplace.ts:453
+#: packages/admin/src/lib/api/marketplace.ts:445
+#: packages/admin/src/lib/api/marketplace.ts:456
 msgid "Read and change email your site sends"
 msgstr ""
 
-#: packages/admin/src/lib/api/marketplace.ts:422
+#: packages/admin/src/lib/api/marketplace.ts:425
 msgid "Read and restore trashed content"
 msgstr "ট্র্যাশে থাকা কনটেন্ট পড়া ও পুনরুদ্ধার করা"
 
-#: packages/admin/src/lib/api/marketplace.ts:425
+#: packages/admin/src/lib/api/marketplace.ts:428
 msgid "Read collection and field definitions"
 msgstr "কালেকশন ও ফিল্ডের সংজ্ঞা পড়া"
 
@@ -10050,7 +10379,7 @@ msgstr "কালেকশন ও ফিল্ডের সংজ্ঞা প�
 msgid "Read collection schemas"
 msgstr "কালেকশন স্কিমা পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:423
+#: packages/admin/src/lib/api/marketplace.ts:426
 msgid "Read comment bodies, author email addresses, pseudonymous IP hashes, user agents, and moderation metadata"
 msgstr "মন্তব্যের মূল লেখা, লেখকের ইমেইল ঠিকানা, ছদ্মনামযুক্ত IP হ্যাশ, ইউজার এজেন্ট এবং মডারেশন মেটাডেটা পড়া"
 
@@ -10058,7 +10387,7 @@ msgstr "মন্তব্যের মূল লেখা, লেখকের �
 msgid "Read content entries"
 msgstr "কনটেন্ট এন্ট্রি পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:435
+#: packages/admin/src/lib/api/marketplace.ts:438
 msgid "Read media file contents"
 msgstr "মিডিয়া ফাইলের বিষয়বস্তু পড়া"
 
@@ -10066,19 +10395,19 @@ msgstr "মিডিয়া ফাইলের বিষয়বস্তু 
 msgid "Read media files"
 msgstr "মিডিয়া ফাইল পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:431
+#: packages/admin/src/lib/api/marketplace.ts:434
 msgid "Read public byline profiles and content credits"
 msgstr ""
 
-#: packages/admin/src/lib/api/marketplace.ts:432
+#: packages/admin/src/lib/api/marketplace.ts:435
 msgid "Read redirect rules"
 msgstr "রিডাইরেক্ট নিয়ম পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:419
+#: packages/admin/src/lib/api/marketplace.ts:422
 msgid "Read retained content revision history"
 msgstr "সংরক্ষিত কনটেন্টের রিভিশন ইতিহাস পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:426
+#: packages/admin/src/lib/api/marketplace.ts:429
 msgid "Read selected unsaved editor content after you explicitly invoke the plugin"
 msgstr "আপনি সুস্পষ্টভাবে প্লাগইন চালু করার পর নির্বাচিত অসংরক্ষিত এডিটর কনটেন্ট পড়া"
 
@@ -10086,17 +10415,17 @@ msgstr "আপনি সুস্পষ্টভাবে প্লাগইন 
 msgid "Read site settings"
 msgstr "সাইট সেটিংস পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:438
-#: packages/admin/src/lib/api/marketplace.ts:450
+#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:453
 msgid "Read user accounts"
 msgstr "ব্যবহারকারী অ্যাকাউন্ট পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:418
-#: packages/admin/src/lib/api/marketplace.ts:446
+#: packages/admin/src/lib/api/marketplace.ts:421
+#: packages/admin/src/lib/api/marketplace.ts:449
 msgid "Read your content"
 msgstr "আপনার কনটেন্ট পড়া"
 
-#: packages/admin/src/lib/api/marketplace.ts:429
+#: packages/admin/src/lib/api/marketplace.ts:432
 msgid "Read your taxonomies and terms"
 msgstr "আপনার ট্যাক্সোনমি ও টার্ম পড়া"
 
@@ -10799,7 +11128,7 @@ msgstr "প্রকাশিত সংস্করণে ফিরিয়ে 
 msgid "Review"
 msgstr "পর্যালোচনা"
 
-#: packages/admin/src/lib/api/marketplace.ts:428
+#: packages/admin/src/lib/api/marketplace.ts:431
 msgid "Review and block publishing, scheduling, and unpublishing content"
 msgstr "কনটেন্ট প্রকাশ, সময় নির্ধারণ ও অপ্রকাশিত করা পর্যালোচনা এবং আটকানো"
 
@@ -11689,7 +12018,7 @@ msgstr "আপনার ইমেইল কনফিগারেশন যাচ
 msgid "Send an invitation email to a new team member."
 msgstr "নতুন একজন টিম সদস্যকে আমন্ত্রণ ইমেইল পাঠান।"
 
-#: packages/admin/src/lib/api/marketplace.ts:441
+#: packages/admin/src/lib/api/marketplace.ts:444
 msgid "Send email through your site"
 msgstr ""
 
@@ -11964,6 +12293,14 @@ msgstr "স্বাক্ষরিত রিলিজ যাচাই করা
 #: packages/admin/src/components/MagicLinkConfirmPage.tsx:56
 msgid "Signing in failed. Please try again."
 msgstr "সাইন ইন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।"
+
+#: packages/admin/src/lib/api/users.ts:431
+msgid "Signup completion failed"
+msgstr ""
+
+#: packages/admin/src/lib/api/users.ts:377
+msgid "Signup request failed"
+msgstr ""
 
 #: packages/admin/src/components/FieldEditor.tsx:427
 msgid "Single choice from options"
@@ -12676,11 +13013,11 @@ msgstr "ইমপোর্ট চালানো যাবে, তবে আগ�
 msgid "The import can’t start until these are resolved."
 msgstr "এগুলোর সমাধান না হওয়া পর্যন্ত ইমপোর্ট শুরু করা যাবে না।"
 
-#: packages/admin/src/lib/api/import.ts:467
+#: packages/admin/src/lib/api/import.ts:470
 msgid "The import did not return a completion cursor"
 msgstr ""
 
-#: packages/admin/src/lib/api/import.ts:452
+#: packages/admin/src/lib/api/import.ts:455
 msgid "The import did not return a preparation cursor"
 msgstr ""
 
@@ -12957,6 +13294,10 @@ msgstr "থিম ID: {0}"
 #: packages/admin/src/components/ThemeMarketplaceDetail.tsx:91
 msgid "Theme not found"
 msgstr "থিম পাওয়া যায়নি"
+
+#: packages/admin/src/lib/api/theme-marketplace.ts:87
+msgid "Theme search failed"
+msgstr ""
 
 #: packages/admin/src/components/SectionEditor.tsx:205
 msgid "Theme Section"
@@ -13477,6 +13818,10 @@ msgstr "টোকেন তৈরি হয়েছে: {0}"
 msgid "Token Name"
 msgstr "টোকেনের নাম"
 
+#: packages/admin/src/lib/api/users.ts:393
+msgid "Token verification failed"
+msgstr ""
+
 #: packages/admin/src/components/editor/codeBlockLanguages.ts:55
 msgid "TOML"
 msgstr "TOML"
@@ -13967,8 +14312,8 @@ msgstr "শুরু করতে একটি ছবি আপলোড কর�
 msgid "Upload and delete media"
 msgstr "মিডিয়া আপলোড করা ও মোছা"
 
-#: packages/admin/src/lib/api/marketplace.ts:437
-#: packages/admin/src/lib/api/marketplace.ts:449
+#: packages/admin/src/lib/api/marketplace.ts:440
+#: packages/admin/src/lib/api/marketplace.ts:452
 msgid "Upload and manage media"
 msgstr "মিডিয়া আপলোড ও পরিচালনা করা"
 

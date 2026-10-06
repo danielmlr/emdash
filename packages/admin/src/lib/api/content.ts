@@ -424,7 +424,7 @@ export async function scheduleContent(
 	});
 	const data = await parseApiResponse<{ item: ContentItem; _rev?: string }>(
 		response,
-		"Failed to schedule content",
+		i18n._(msg`Failed to schedule content`),
 	);
 	return { ...data.item, _rev: data._rev };
 }
@@ -445,7 +445,7 @@ export async function unscheduleContent(
 	});
 	const data = await parseApiResponse<{ item: ContentItem; _rev?: string }>(
 		response,
-		"Failed to unschedule content",
+		i18n._(msg`Failed to unschedule content`),
 	);
 	return { ...data.item, _rev: data._rev };
 }
@@ -520,7 +520,7 @@ export async function publishContent(
 	});
 	const data = await parseApiResponse<{ item: ContentItem; _rev?: string }>(
 		response,
-		"Failed to publish content",
+		i18n._(msg`Failed to publish content`),
 	);
 	return { ...data.item, _rev: data._rev };
 }
@@ -543,7 +543,7 @@ export async function unpublishContent(
 	});
 	const data = await parseApiResponse<{ item: ContentItem; _rev?: string }>(
 		response,
-		"Failed to unpublish content",
+		i18n._(msg`Failed to unpublish content`),
 	);
 	return { ...data.item, _rev: data._rev };
 }
@@ -564,7 +564,7 @@ export async function discardDraft(
 	});
 	const data = await parseApiResponse<{ item: ContentItem; _rev?: string }>(
 		response,
-		"Failed to discard draft",
+		i18n._(msg`Failed to discard draft`),
 	);
 	return { ...data.item, _rev: data._rev };
 }

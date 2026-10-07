@@ -200,7 +200,7 @@ jobs:
 
           pnpm run --if-present "${build_filters[@]}" build
           if [ "${#test_filters[@]}" -gt 0 ]; then
-            pnpm run "${test_filters[@]}" test
+            pnpm run --workspace-concurrency=1 "${test_filters[@]}" test
           fi
           if [ "$check_registry_verification" = true ]; then
             pnpm --filter @emdash-cms/registry-verification test:package

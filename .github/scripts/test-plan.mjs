@@ -53,6 +53,7 @@ const UNIT_PACKAGE_BY_PATH = new Map([
 	["packages/registry-loader/", "@emdash-cms/registry-loader"],
 	["packages/registry-moderation/", "@emdash-cms/registry-moderation"],
 	["packages/registry-verification/", "@emdash-cms/registry-verification"],
+	["packages/upgrade-emdash/", "upgrade-emdash"],
 	["packages/workerd/", "@emdash-cms/sandbox-workerd"],
 	["packages/x402/", "@emdash-cms/x402"],
 	["apps/aggregator/", "@emdash-cms/aggregator"],

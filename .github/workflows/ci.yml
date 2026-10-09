@@ -200,6 +200,7 @@ jobs:
 
           pnpm run --if-present "${build_filters[@]}" build
           if [ "${#test_filters[@]}" -gt 0 ]; then
+            # In parallel on the four-core runner, slow tests pass vitest's 5 s timeout.
             pnpm run --workspace-concurrency=1 "${test_filters[@]}" test
           fi
           if [ "$check_registry_verification" = true ]; then

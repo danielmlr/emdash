@@ -7,7 +7,7 @@
  * - Excludes auth/user/session/token tables
  */
 
-import type { User } from "@emdash-cms/auth";
+import { hasPermission, type User } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
 import { requirePerm } from "#api/authorize.js";
@@ -91,8 +91,12 @@ export const GET: APIRoute = async ({ request, locals, url, session }) => {
 	}
 
 	try {
-		// A preview signature covers published content only.
-		const includeDrafts = !authorized && url.searchParams.get("drafts") === "true";
+		// A preview signature covers published content only, and a user gets
+		// drafts and revisions only with the permission that gates them elsewhere.
+		const includeDrafts =
+			!authorized &&
+			url.searchParams.get("drafts") === "true" &&
+			hasPermission(user, "content:read_drafts");
 		const snapshot = await generateSnapshot(emdash.db, {
 			includeDrafts,
 			origin: getPublicOrigin(url, emdash.config),

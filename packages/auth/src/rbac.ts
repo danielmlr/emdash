@@ -137,15 +137,25 @@ export const COLLECTION_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Pe
 ]);
 
 /**
- * Permissions that only the built-in Admin role holds. Holding any of them
- * amounts to control over who may sign in and what they may do, so a custom
- * role cannot be granted them.
+ * Permissions that only the built-in Admin role holds. Each of them reaches
+ * past the content model: who may sign in and how sign-in mail is delivered
+ * (`users:*`, `auth:manage_connections`, `settings:manage` through the site
+ * URL, `plugins:manage` through the email provider), the schema of every
+ * collection, or the content of every collection at once (import, backups,
+ * site transfer). A custom role cannot be granted them.
  */
 export const BUILT_IN_ADMIN_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
 	"users:read",
 	"users:invite",
 	"users:manage",
 	"auth:manage_connections",
+	"settings:manage",
+	"plugins:manage",
+	"schema:manage",
+	"import:execute",
+	"backups:manage",
+	"transfer:export",
+	"transfer:import",
 ]);
 
 /** An `_any` permission includes the matching `_own` permission. */

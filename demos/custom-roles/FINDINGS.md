@@ -8,19 +8,19 @@ to start it and which personas to sign in as.
 
 ## What the prototype builds
 
-| Area         | What it does                                                                                                                                                                                                                                                                         | Where                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| Check        | `hasPermission(actor, permission, { collection })`. A built-in role answers from the permission map as before. A custom role answers from its grants. A grant limited to collections counts only when the check names one of them.                                                   | `packages/auth/src/rbac.ts`                   |
-| Grants       | Unknown names are dropped, `_any` adds the matching `_own`, and user management (`users:*`, `auth:manage_connections`) can't be granted to a custom role.                                                                                                                            | `normalizeGrants` in `rbac.ts`                |
-| Stored level | `users.role` keeps a built-in level for code that compares numbers: the highest built-in role whose permissions the custom role holds for all collections, at least Subscriber. Changing a role rewrites the level of its users, invites and signup domains in the same transaction. | `compatibilityLevel`, `api/handlers/roles.ts` |
-| Schema       | Migration 092 adds `_emdash_roles` and nullable `role_id` columns on `users` and `auth_tokens` and `default_role_id` on `allowed_domains`, each a foreign key to the roles table.                                                                                                    | `database/migrations/092_custom_roles.ts`     |
-| Loading      | The query that loads the signed-in user joins the role, so a custom role costs no extra query.                                                                                                                                                                                       | `adapters/kysely.ts`                          |
-| REST         | Every content and revision route passes its collection to the check. Search, the dashboard, the calendar and the reference routes narrow to the collections the role may read.                                                                                                       | `astro/routes/api/**`                         |
-| MCP          | The 53 `requireRole` calls became the permission the matching REST route checks, with the tool's collection. The read tools that had no check now check their read permission.                                                                                                       | `mcp/server.ts`                               |
-| Plugins      | Plugin routes keep the caller's custom role. An editor extension is checked against the collection of the entry it runs on.                                                                                                                                                          | `plugins/http-route-dispatch.ts`              |
-| Admin API    | `GET /auth/me` returns `customRole`, `permissions` and `collections`. `/_emdash/api/admin/roles` lists, creates, updates and deletes roles. Users and invites accept a `roleId`.                                                                                                     | `astro/routes/api/**`                         |
-| Admin UI     | One `useCan` hook replaces the role numbers in the sidebar, command palette, dashboard, content list, editor, media library, calendar, comments and settings. A Roles page edits roles with a permission matrix.                                                                     | `packages/admin/src`                          |
-| Seed         | A `roles` section, applied with the rest of the structure and written by `emdash export-seed`.                                                                                                                                                                                       | `seed/*`, `cli/commands/export-seed.ts`       |
+| Area         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Where                                         |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Check        | `hasPermission(actor, permission, { collection })`. A built-in role answers from the permission map as before. A custom role answers from its grants. A grant limited to collections counts only when the check names one of them.                                                                                                                                                                                                                                                                                                                                     | `packages/auth/src/rbac.ts`                   |
+| Grants       | Unknown names are dropped, `_any` adds the matching `_own`, managing an area adds reading it, and the permissions that reach past the content model stay with the built-in Admin role: `users:*`, `auth:manage_connections`, `settings:manage`, `plugins:manage`, `schema:manage`, `import:execute`, `backups:manage` and `transfer:*`.                                                                                                                                                                                                                                | `normalizeGrants` in `rbac.ts`                |
+| Stored level | `users.role` keeps a built-in level for code that compares numbers: the highest built-in role whose permissions the custom role holds for all collections, at least Subscriber. Changing a role rewrites the level of its users, invites and signup domains in one transaction, or one atomic batch on D1; assigning a role reads the level inside the write that stores it. External-auth role sync leaves users with a custom role alone.                                                                                                                            | `compatibilityLevel`, `api/handlers/roles.ts` |
+| Schema       | Migration 092 adds `_emdash_roles` and nullable `role_id` columns on `users` and `auth_tokens` and `default_role_id` on `allowed_domains`, each a foreign key to the roles table.                                                                                                                                                                                                                                                                                                                                                                                      | `database/migrations/092_custom_roles.ts`     |
+| Loading      | The query that loads the signed-in user joins the role, so a custom role costs no extra query. While migration 092 is still pending, the lookup falls back to the plain user select and tries the join again a minute later.                                                                                                                                                                                                                                                                                                                                           | `adapters/kysely.ts`                          |
+| REST         | Every content route passes its collection to the check, including bulk tagging (per item) and dismissing a policy rejection. Search, the dashboard, the calendar and the reference routes narrow to the collections the role may read; a reference field into another collection is resolved with the caller's rights there, and a selection write into a collection the caller cannot read is refused before anything is looked up. A revision in such a collection is answered like a missing one. | `astro/routes/api/**`                         |
+| MCP          | The 53 `requireRole` calls became the permission the matching REST route checks, with the tool's collection. The read tools that had no check now check their read permission.                                                                                                                                                                                                                                                                                                                                                                                         | `mcp/server.ts`                               |
+| Plugins      | Plugin routes keep the caller's custom role. An editor extension is checked against the collection of the entry it runs on.                                                                                                                                                                                                                                                                                                                                                                                                                                            | `plugins/http-route-dispatch.ts`              |
+| Admin API    | `GET /auth/me` returns `customRole`, `permissions` and `collections`. `/_emdash/api/admin/roles` lists, creates, updates and deletes roles. Users and invites accept a `roleId`.                                                                                                                                                                                                                                                                                                                                                                                       | `astro/routes/api/**`                         |
+| Admin UI     | One `useCan` hook replaces the role numbers in the sidebar, command palette, dashboard, content list, editor, media library, calendar, comments and settings. A Roles page edits roles with a permission matrix.                                                                                                                                                                                                                                                                                                                                                       | `packages/admin/src`                          |
+| Seed         | A `roles` section, applied with the rest of the structure and written by `emdash export-seed`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `seed/*`, `cli/commands/export-seed.ts`       |
 
 ## What it shows
 
@@ -119,8 +119,10 @@ role's permissions into a new role. The page works right to left
   all collections, because edit mode shows drafts on every page. A role
   limited to some collections gets no edit mode. For built-in roles the rule
   is the same as `role >= 30`.
-- **Token scopes** for a custom role come from its grants. It never receives
-  `admin` or `mcp:tools`.
+- **Token scopes** for a custom role come from its grants: device-flow and
+  authorization-code approvals, the code exchange and token refresh clamp
+  with the actor instead of the stored level. It never receives `admin` or
+  `mcp:tools`. Personal API tokens stay with the built-in Admin role.
 - **Editor extensions** of plugins are checked against the collection of the
   entry they run on, which the host takes from its own route and the loaded
   entry. Other plugin routes have no collection, so only a site-wide grant
@@ -129,6 +131,12 @@ role's permissions into a new role. The page works right to left
   collection slug.
 - **Search treats an empty collection list as all collections**, so a role
   with no readable collection gets an empty result instead.
+- **A custom role cannot take a built-in role's slug**, so a later mapping
+  from an identity provider by slug stays unambiguous.
+- **The read-only editor** disables what writes (save, publish, schedule,
+  discard, trash, restore, translate) and keeps Preview, the settings sheet,
+  the revision list, compare and the translation links, which the server
+  allows a reader.
 
 ## Admin and server disagreed
 
@@ -141,6 +149,10 @@ server already disagree. The prototype follows the server in each case:
   The server refuses it, because an empty owner falls through to
   `content:publish_any`.
 - A Contributor was offered Save and Publish on entries they can't edit.
+- The Settings hub listed Self-Signup Domains, API Tokens, Email and Backups
+  for everyone who could open it; the Plugins entry opened a page whose first
+  request needs `plugins:read`; Duplicate was offered without the edit right
+  the server checks on the source.
 
 ## Not built
 
@@ -154,18 +166,27 @@ server already disagree. The prototype follows the server in each case:
   ownership check.
 - Settling the MCP `media_create` level, which still differs from the REST
   upload permission; the prototype kept today's behavior.
+- Site transfer import for a custom role: the import review needs the user
+  list, which only the built-in Admin may read.
+- Plugin surfaces (pages, widgets, sandboxed panels) are still offered to
+  every role and gated by their routes.
 
 ## Verification
 
-- `packages/auth`: the full suite (157 tests), 57 of them for the permission checks and custom-role semantics.
-- `packages/core`: `tests/integration/auth/custom-roles.test.ts` (13 tests)
-  and the unit, integration, MCP, seed, database, plugin and API suites the
-  change touches.
+- `packages/auth`: the full suite (158 tests), 58 of them for the permission checks and custom-role semantics.
+- `packages/core`: `tests/integration/auth/custom-roles*.test.ts` (role
+  storage, collection scope on REST and MCP, references into other
+  collections, token scopes, the level written on assignment, reserved
+  permissions, the data layer on SQLite and Postgres) and
+  `tests/unit/astro/custom-roles-*.test.ts` (external-auth sync, a pending
+  migration 092), plus the unit, integration, MCP, seed, database, plugin and
+  API suites the change touches; `tests/workerd/custom-roles-d1.test.ts` on
+  D1.
 - `packages/admin`: the sidebar, command palette, users, settings, dashboard,
   media, calendar, editor and router suites.
-- `pnpm query-counts` (SQLite): counts and query text match the snapshot.
+- `pnpm query-counts` for SQLite and D1: counts and query text match the
+  snapshots.
+- The PostgreSQL parity run of every test file the change touches, and the
+  D1 (workerd) suite.
 - Type-aware lint: no diagnostics.
 - Manual walkthrough of every persona on the demo site, in English and Arabic.
-
-Not run: the PostgreSQL parity suite, the D1 (workerd) suite and the D1
-query-count target.

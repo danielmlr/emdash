@@ -208,9 +208,13 @@ export function SortableContentSettingsSection({
 					<span className="text-base font-semibold">{label}</span>
 				</div>
 			)}
-			<fieldset disabled={disabled} className="contents">
-				{children}
-			</fieldset>
+			{disabled ? (
+				<fieldset disabled className="contents">
+					{children}
+				</fieldset>
+			) : (
+				children
+			)}
 			<button
 				type="button"
 				data-sortable-handle

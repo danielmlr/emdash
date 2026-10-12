@@ -28,6 +28,7 @@ const TRANSFER_EXEMPT_PATHS = [
 	"/_emdash/api/oauth",
 	"/_emdash/api/well-known",
 	"/_emdash/api/admin/users",
+	"/_emdash/api/admin/roles",
 	"/_emdash/api/admin/api-tokens",
 	"/_emdash/api/admin/oauth-clients",
 	"/_emdash/api/admin/allowed-domains",

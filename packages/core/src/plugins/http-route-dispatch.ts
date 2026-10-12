@@ -1,5 +1,11 @@
 import { getLocaleDir, resolveLocale } from "@emdash-cms/admin/locales";
-import { Permissions, type Permission, type RoleLevel } from "@emdash-cms/auth";
+import {
+	Permissions,
+	type Actor,
+	type Permission,
+	type PermissionResource,
+	type RoleLevel,
+} from "@emdash-cms/auth";
 import { validateContentEditorPanelInteraction } from "@emdash-cms/blocks/server";
 
 import { requirePerm, requireOwnerPerm } from "../api/authorize.js";
@@ -15,6 +21,9 @@ import { pluginRouteResponseFromWire, pluginRouteResponseToWire } from "./route-
 import { parseDeclaredPluginRouteInput, PluginRouteRequestError } from "./route-wire.js";
 import type { PluginContentCacheInvalidator, RouteMeta } from "./routes.js";
 import type { UserInfo } from "./types.js";
+
+/** The caller as the route sees it; `customRole` decides permission checks when set. */
+type RouteCaller = UserInfo & Pick<Actor, "customRole">;
 
 function editorDraftErrorResponse(error: { code: string; message: string }): Response {
 	const status =
@@ -49,26 +58,27 @@ function isPermission(value: string): value is Permission {
 function authorizePrivatePluginRouteRequest(
 	routeMeta: RouteMeta,
 	request: Request,
-	user?: UserInfo | null,
+	user?: RouteCaller | null,
 	tokenScopes?: string[],
+	resource?: PermissionResource,
 ): Response | null {
 	const permission = routeMeta.permission ?? "plugins:manage";
 	if (!isPermission(permission)) {
 		return apiError("INVALID_PLUGIN_ROUTE", "Plugin route declares an invalid permission", 500);
 	}
 
-	let permissionUser: { id: string; role: RoleLevel } | null | undefined;
+	let permissionUser: (Actor & { id: string }) | null | undefined;
 	if (user) {
 		const role = toRoleLevel(user.role);
 		if (role === null) {
 			return apiError("INVALID_USER", "Authenticated user has an invalid role", 500);
 		}
-		permissionUser = { id: user.id, role };
+		permissionUser = { id: user.id, role, customRole: user.customRole ?? null };
 	} else {
 		permissionUser = user;
 	}
 
-	const denied = requirePerm(permissionUser, permission);
+	const denied = requirePerm(permissionUser, permission, resource);
 	if (denied) return denied;
 	const scopeError = requireScope({ tokenScopes }, "admin");
 	if (scopeError) return scopeError;
@@ -83,10 +93,15 @@ export interface PluginApiRequestContext {
 	pluginId: string;
 	path: string;
 	request: Request;
-	user?: UserInfo | null;
+	user?: RouteCaller | null;
 	tokenScopes?: string[];
 	invalidateContentCache?: PluginContentCacheInvalidator;
 	editorDispatch?: PluginEditorExtensionDispatch;
+	/**
+	 * Resource the host has established for this call, never taken from the
+	 * plugin's request. Editor extensions pass the entry's collection.
+	 */
+	resource?: PermissionResource;
 }
 
 /** Dispatch a request through the production plugin-route policy boundary. */
@@ -99,13 +114,20 @@ export async function dispatchPluginApiRequest({
 	tokenScopes,
 	invalidateContentCache,
 	editorDispatch,
+	resource,
 }: PluginApiRequestContext): Promise<Response> {
 	const method = request.method.toUpperCase();
 	const routeMeta = runtime.getPluginRouteMeta(pluginId, path);
 	if (!routeMeta) return apiError("NOT_FOUND", "Plugin route not found", 404);
 
 	if (!routeMeta.public) {
-		const denied = authorizePrivatePluginRouteRequest(routeMeta, request, user, tokenScopes);
+		const denied = authorizePrivatePluginRouteRequest(
+			routeMeta,
+			request,
+			user,
+			tokenScopes,
+			resource,
+		);
 		if (denied) return denied;
 	}
 	if (routeMeta.methods && !routeMeta.methods.some((allowed) => allowed === method)) {
@@ -176,7 +198,7 @@ export interface PluginEditorExtensionApiRequestContext {
 	collection: string;
 	entryId: string;
 	request: Request;
-	user?: UserInfo | null;
+	user?: RouteCaller | null;
 	tokenScopes?: string[];
 	invalidateContentCache?: PluginContentCacheInvalidator;
 }
@@ -207,7 +229,11 @@ export async function dispatchPluginEditorExtensionApiRequest({
 			500,
 		);
 	}
-	const denied = authorizePrivatePluginRouteRequest(routeMeta, request, user, tokenScopes);
+	// The collection comes from the host's own route, the extension's
+	// collection list and the entry loaded below, never from the plugin.
+	const denied = authorizePrivatePluginRouteRequest(routeMeta, request, user, tokenScopes, {
+		collection,
+	});
 	if (denied) return denied;
 
 	const requestedLocale = new URL(request.url).searchParams.get("locale") || undefined;
@@ -226,20 +252,20 @@ export async function dispatchPluginEditorExtensionApiRequest({
 		return apiError("CONTENT_GET_ERROR", "Failed to load content item", 500);
 	}
 	const authorId = "authorId" in item && typeof item.authorId === "string" ? item.authorId : "";
-	let ownershipUser: { id: string; role: RoleLevel } | null | undefined =
-		user == null ? user : undefined;
+	let ownershipUser: (Actor & { id: string }) | null | undefined = user == null ? user : undefined;
 	if (user) {
 		const ownerRole = toRoleLevel(user.role);
 		if (ownerRole === null) {
 			return apiError("INVALID_USER", "Authenticated user has an invalid role", 500);
 		}
-		ownershipUser = { id: user.id, role: ownerRole };
+		ownershipUser = { id: user.id, role: ownerRole, customRole: user.customRole ?? null };
 	}
 	const ownershipDenied = requireOwnerPerm(
 		ownershipUser,
 		authorId,
 		"content:edit_own",
 		"content:edit_any",
+		{ collection },
 	);
 	if (ownershipDenied) return ownershipDenied;
 
@@ -339,6 +365,7 @@ export async function dispatchPluginEditorExtensionApiRequest({
 		user,
 		tokenScopes,
 		invalidateContentCache,
+		resource: { collection },
 		editorDispatch: {
 			kind,
 			policy: definition.policy,

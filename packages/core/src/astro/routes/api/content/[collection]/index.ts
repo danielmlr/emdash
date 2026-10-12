@@ -8,7 +8,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm, requireOwnerPerm } from "#api/authorize.js";
+import { requirePerm, requireOwnerPerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { parseBody, parseQuery, isParseError } from "#api/parse.js";
 import { contentListQuery, contentCreateBody } from "#api/schemas.js";
@@ -17,10 +17,12 @@ export const prerender = false;
 
 export const GET: APIRoute = async ({ params, url, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.handleContentList) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:read");
+	const denied = requirePerm(user, "content:read", { collection: params.collection });
 	if (denied) return denied;
 	const collection = params.collection!;
 	const query = parseQuery(url, contentListQuery);
@@ -29,7 +31,7 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
 	// Subscribers must only see published content; force the status filter
 	// regardless of caller-supplied value. Any user with content:read_drafts
 	// (CONTRIBUTOR+) keeps the requested filter.
-	const params_ = hasPermission(user, "content:read_drafts")
+	const params_ = hasPermission(user, "content:read_drafts", { collection: params.collection })
 		? query
 		: { ...query, status: "published" };
 
@@ -40,10 +42,12 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.handleContentCreate || !emdash?.handleContentGet) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:create");
+	const denied = requirePerm(user, "content:create", { collection: params.collection });
 	if (denied) return denied;
 	const collection = params.collection!;
 	const body = await parseBody(request, contentCreateBody);
@@ -65,13 +69,17 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 			sourceAuthor,
 			"content:edit_own",
 			"content:edit_any",
+			{ collection },
 		);
 		if (translationDenied) return translationDenied;
 	}
 
 	// Only EDITOR+ can write publishedAt / createdAt directly — incl. clearing to null.
 	const hasDateOverride = body.publishedAt !== undefined || body.createdAt !== undefined;
-	if (hasDateOverride && !hasPermission(user, "content:publish_any")) {
+	if (
+		hasDateOverride &&
+		!hasPermission(user, "content:publish_any", { collection: params.collection })
+	) {
 		return apiError(
 			"FORBIDDEN",
 			"Writing publishedAt or createdAt requires content:publish_any permission",

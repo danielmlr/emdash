@@ -4,7 +4,7 @@
  * GET /_emdash/api/search?q=query&collections=posts,pages&limit=20
  */
 
-import { hasPermission } from "@emdash-cms/auth";
+import { collectionsWithPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
 import { apiError, apiSuccess, handleError } from "#api/error.js";
@@ -37,12 +37,25 @@ export const GET: APIRoute = async ({ url, locals }) => {
 		? query.collections.split(",").map((c: string) => c.trim())
 		: undefined;
 
-	// Only users with content:read_drafts may search non-published statuses.
-	// Anonymous and subscriber requests are forced to "published".
-	const status =
-		query.status && query.status !== "published" && hasPermission(user, "content:read_drafts")
-			? query.status
-			: "published";
+	// Only users with content:read_drafts may search non-published statuses,
+	// and only in the collections where they hold it. Anonymous and
+	// subscriber requests are forced to "published".
+	let status = "published";
+	let searchCollections = collections;
+	if (query.status && query.status !== "published") {
+		const draftCollections = collectionsWithPermission(user, "content:read_drafts");
+		if (draftCollections === null) {
+			status = query.status;
+		} else {
+			const narrowed = (collections ?? draftCollections).filter((collection) =>
+				draftCollections.includes(collection),
+			);
+			if (narrowed.length > 0) {
+				status = query.status;
+				searchCollections = narrowed;
+			}
+		}
+	}
 
 	try {
 		// Verify FTS indexes are healthy on first use. At most once per worker
@@ -51,7 +64,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
 		await emdash.ensureSearchHealthy?.();
 
 		const result = await searchWithDb(emdash.db, query.q, {
-			collections,
+			collections: searchCollections,
 			status,
 			locale: query.locale,
 			limit: query.limit,

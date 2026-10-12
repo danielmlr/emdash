@@ -19,6 +19,7 @@ import mime from "mime/lite";
 import { ulid } from "ulidx";
 
 import { setReferenceSelection } from "../api/handlers/relations.js";
+import { handleRoleCreate, handleRoleUpdate } from "../api/handlers/roles.js";
 import { bindReferenceField, createFieldRelation } from "../api/handlers/schema.js";
 import { sanitizeGalleryImages } from "../content/converters/gallery.js";
 import type { DatetimeContextCache } from "../database/content-datetime.js";
@@ -291,6 +292,7 @@ async function applySeedWrites(
 		redirects: { created: 0, skipped: 0, updated: 0 },
 		widgetAreas: { created: 0, widgets: 0 },
 		sections: { created: 0, skipped: 0, updated: 0 },
+		roles: { created: 0, skipped: 0, updated: 0 },
 		settings: { applied: 0 },
 		content: { created: 0, skipped: 0, updated: 0 },
 		media: { created: 0, skipped: 0 },
@@ -1188,6 +1190,44 @@ async function applySeedWrites(
 				groupName: redirect.groupName,
 			});
 			result.redirects.created++;
+		}
+	}
+
+	// 9b. Custom roles
+	if (seed.roles) {
+		for (const role of seed.roles) {
+			const existing = await db
+				.selectFrom("_emdash_roles")
+				.select("id")
+				.where("slug", "=", role.slug)
+				.executeTakeFirst();
+			if (existing) {
+				if (onConflict === "error") {
+					throw new Error(`Conflict: role "${role.slug}" already exists`);
+				}
+				if (onConflict === "update") {
+					const updated = await handleRoleUpdate(db, existing.id, {
+						label: role.label,
+						description: role.description ?? null,
+						permissions: role.permissions ?? [],
+						collections: role.collections ?? {},
+					});
+					if (!updated.success) throw new Error(`Role "${role.slug}": ${updated.error.message}`);
+					result.roles.updated++;
+					continue;
+				}
+				result.roles.skipped++;
+				continue;
+			}
+			const created = await handleRoleCreate(db, {
+				slug: role.slug,
+				label: role.label,
+				description: role.description ?? null,
+				permissions: role.permissions ?? [],
+				collections: role.collections ?? {},
+			});
+			if (!created.success) throw new Error(`Role "${role.slug}": ${created.error.message}`);
+			result.roles.created++;
 		}
 	}
 

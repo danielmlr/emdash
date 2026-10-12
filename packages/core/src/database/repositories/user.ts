@@ -59,6 +59,7 @@ export class UserRepository {
 			email: input.email.toLowerCase(),
 			name: input.name ?? null,
 			role: UserRepository.resolveRole(input.role ?? 10),
+			role_id: null,
 			avatar_url: input.avatarUrl ?? null,
 			email_verified: 0,
 			data: input.data ? JSON.stringify(input.data) : null,

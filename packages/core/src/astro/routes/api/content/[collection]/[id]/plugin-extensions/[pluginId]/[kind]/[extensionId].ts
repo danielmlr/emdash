@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 
+import { requireCollectionAccess } from "#api/authorize.js";
 import { apiError } from "#api/error.js";
 import { dispatchPluginEditorExtensionApiRequest } from "#plugins/http-route-dispatch.js";
 
@@ -7,6 +8,8 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ params, request, locals, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash) return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 
 	const kind = params.kind;

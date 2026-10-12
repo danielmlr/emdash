@@ -4,6 +4,7 @@
  * Validates a seed file structure before applying it.
  */
 
+import { validateGrantInput } from "../api/handlers/roles.js";
 import { getI18nConfig, resolveConfiguredLocale } from "../i18n/config.js";
 import { isSiteRelativeDestination } from "../redirects/destination.js";
 import { isPattern, validateDestinationParams, validatePattern } from "../redirects/patterns.js";
@@ -19,6 +20,8 @@ import {
 } from "../schema/types.js";
 import { compileUrlPattern } from "../schema/url-pattern.js";
 import type { SeedFile, SeedMenuItem, SeedTaxonomy, ValidationResult } from "./types.js";
+
+const ROLE_SLUG_PATTERN = /^[a-z][a-z0-9_-]*$/;
 
 const COLLECTION_FIELD_SLUG_PATTERN = /^[a-z][a-z0-9_]*$/;
 /** Matches `SchemaRegistry.validateSlug`, which collection and field slugs go through. */
@@ -615,6 +618,47 @@ export function validateSeed(data: unknown): ValidationResult {
 				} else {
 					validateMenuItems(menu.items, prefix, errors, warnings);
 				}
+			}
+		}
+	}
+
+	// Validate custom roles
+	if (seed.roles) {
+		if (!Array.isArray(seed.roles)) {
+			errors.push("roles must be an array");
+		} else {
+			const roleSlugs = new Set<string>();
+			for (let i = 0; i < seed.roles.length; i++) {
+				const role: unknown = seed.roles[i];
+				const prefix = `roles[${i}]`;
+				if (!isRecord(role)) {
+					errors.push(`${prefix}: must be an object`);
+					continue;
+				}
+				if (typeof role.slug !== "string" || !ROLE_SLUG_PATTERN.test(role.slug)) {
+					errors.push(`${prefix}.slug: must start with a letter and use a-z, 0-9, - and _`);
+				} else if (roleSlugs.has(role.slug)) {
+					errors.push(`${prefix}.slug: duplicate role slug "${role.slug}"`);
+				} else {
+					roleSlugs.add(role.slug);
+				}
+				if (typeof role.label !== "string" || role.label.trim() === "") {
+					errors.push(`${prefix}: label is required`);
+				}
+				const permissions = Array.isArray(role.permissions) ? role.permissions : [];
+				const collections = isRecord(role.collections) ? role.collections : {};
+				const grantError = validateGrantInput({
+					permissions: permissions.filter((name): name is string => typeof name === "string"),
+					collections: Object.fromEntries(
+						Object.entries(collections).map(([slug, names]) => [
+							slug,
+							Array.isArray(names)
+								? names.filter((name): name is string => typeof name === "string")
+								: [],
+						]),
+					),
+				});
+				if (grantError) errors.push(`${prefix}: ${grantError}`);
 			}
 		}
 	}

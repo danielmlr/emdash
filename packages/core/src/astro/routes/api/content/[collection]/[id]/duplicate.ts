@@ -6,20 +6,22 @@
 
 import type { APIRoute } from "astro";
 
-import { requirePerm, requireOwnerPerm } from "#api/authorize.js";
+import { requirePerm, requireOwnerPerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ params, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
 	if (!emdash?.handleContentDuplicate || !emdash?.handleContentGet) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:create");
+	const denied = requirePerm(user, "content:create", { collection: params.collection });
 	if (denied) return denied;
 
 	// Fetch item to check ownership — duplicating requires read access to the source
@@ -46,7 +48,9 @@ export const POST: APIRoute = async ({ params, locals }) => {
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
 	// Duplicating requires read access to the source — check ownership-based edit permissions
 	// since content:read is flat (no own/any split). This ensures authors can only duplicate their own.
-	const readDenied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any");
+	const readDenied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any", {
+		collection: params.collection,
+	});
 	if (readDenied) return readDenied;
 
 	const resolvedId = typeof existingItem?.id === "string" ? existingItem.id : id;

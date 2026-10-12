@@ -194,6 +194,12 @@ export const ErrorCode = {
 	USER_UPDATE_ERROR: "USER_UPDATE_ERROR",
 	USER_DISABLE_ERROR: "USER_DISABLE_ERROR",
 	USER_ENABLE_ERROR: "USER_ENABLE_ERROR",
+	ROLE_LIST_ERROR: "ROLE_LIST_ERROR",
+	ROLE_GET_ERROR: "ROLE_GET_ERROR",
+	ROLE_CREATE_ERROR: "ROLE_CREATE_ERROR",
+	ROLE_UPDATE_ERROR: "ROLE_UPDATE_ERROR",
+	ROLE_DELETE_ERROR: "ROLE_DELETE_ERROR",
+	ROLE_IN_USE: "ROLE_IN_USE",
 
 	// OAuth (internal codes -- distinct from RFC OAuthErrorCode)
 	UNSUPPORTED_RESPONSE_TYPE: "UNSUPPORTED_RESPONSE_TYPE",
@@ -520,6 +526,7 @@ export function mapErrorStatus(code: string | undefined): number {
 		case ErrorCode.CREDENTIAL_EXISTS:
 		case ErrorCode.EMAIL_IN_USE:
 		case ErrorCode.USER_EXISTS:
+		case ErrorCode.ROLE_IN_USE:
 		case ErrorCode.NO_SITE_URL:
 		case ErrorCode.PLUGIN_ID_CONFLICT:
 		case ErrorCode.ALREADY_INSTALLED:

@@ -63,29 +63,43 @@ const POLICY_REJECTION_PREVIEW_LIMIT = 20;
  * Queries are intentionally lightweight — counts use indexed columns,
  * and recent items are capped at 10.
  *
- * Without `includeDrafts` (callers lacking `content:read_drafts`), only
- * published entries are counted or listed, and scheduled-publication policy
- * rejections are omitted.
+ * In collections outside `includeDrafts` (where the caller lacks
+ * `content:read_drafts`), only published entries are counted or listed, and
+ * scheduled-publication policy rejections are omitted.
  */
 export async function handleDashboardStats(
 	db: Kysely<Database>,
-	{ includeDrafts }: { includeDrafts: boolean },
+	{
+		includeDrafts,
+		readableCollections,
+	}: {
+		/** `true` for every collection, or the collections whose drafts the caller may read. */
+		includeDrafts: boolean | readonly string[];
+		/** Collections the caller may read; `null` or omitted means all. */
+		readableCollections?: readonly string[] | null;
+	},
 	now = new Date(),
 ): Promise<ApiResult<DashboardStats>> {
 	try {
+		const readable = readableCollections ?? null;
+		const draftsIn = (slug: string) =>
+			includeDrafts === true || (includeDrafts !== false && includeDrafts.includes(slug));
 		// Discover collections from the system table
-		const collections = await db
+		const allCollections = await db
 			.selectFrom("_emdash_collections")
 			.select(["slug", "label"])
 			.orderBy("slug", "asc")
 			.execute();
+		const collections = readable
+			? allCollections.filter((collection) => readable.includes(collection.slug))
+			: allCollections;
 
 		// Gather per-collection counts in parallel
 		const contentRepo = new ContentRepository(db);
 		const collectionStats: CollectionStats[] = await Promise.all(
 			collections.map(async (col) => {
 				const stats = await contentRepo.getStats(col.slug, now);
-				if (!includeDrafts) {
+				if (!draftsIn(col.slug)) {
 					return {
 						slug: col.slug,
 						label: col.label,
@@ -112,6 +126,10 @@ export async function handleDashboardStats(
 		const mediaRepo = new MediaRepository(db);
 		const userRepo = new UserRepository(db);
 		const optionsRepo = new OptionsRepository(db);
+		const rejectionCollections =
+			includeDrafts === true
+				? readable
+				: collections.filter((col) => draftsIn(col.slug)).map((col) => col.slug);
 		const [
 			mediaCount,
 			userCount,
@@ -122,8 +140,8 @@ export async function handleDashboardStats(
 			mediaRepo.count(),
 			userRepo.count(),
 			getSchedulerHealth(db, now),
-			includeDrafts ? optionsRepo.countByPrefix(SCHEDULED_POLICY_REJECTION_PREFIX) : 0,
-			includeDrafts
+			countPolicyRejections(optionsRepo, rejectionCollections),
+			rejectionCollections?.length !== 0
 				? optionsRepo.getVersionedByPrefix<ScheduledPolicyRejection>(
 						SCHEDULED_POLICY_REJECTION_PREFIX,
 						{
@@ -134,10 +152,13 @@ export async function handleDashboardStats(
 		]);
 		const policyRejections = [...versionedPolicyRejectionOptions.values()]
 			.filter(({ value }) => isScheduledPolicyRejection(value))
+			.filter(
+				({ value }) => !rejectionCollections || rejectionCollections.includes(value.collection),
+			)
 			.map(({ value, revision }) => ({ ...value, _rev: revision }));
 
 		// Recent items across all collections (last 10 updated)
-		const recentItems = await fetchRecentItems(db, collections, includeDrafts);
+		const recentItems = await fetchRecentItems(db, collections, draftsIn);
 
 		return {
 			success: true,
@@ -163,6 +184,23 @@ export async function handleDashboardStats(
 	}
 }
 
+/**
+ * Scheduled publications a content policy rejected, counted over the given
+ * collections (`null` means all); the key carries the collection.
+ */
+async function countPolicyRejections(
+	optionsRepo: OptionsRepository,
+	collections: readonly string[] | null,
+): Promise<number> {
+	if (!collections) return optionsRepo.countByPrefix(SCHEDULED_POLICY_REJECTION_PREFIX);
+	const counts = await Promise.all(
+		collections.map((slug) =>
+			optionsRepo.countByPrefix(`${SCHEDULED_POLICY_REJECTION_PREFIX}${encodeURIComponent(slug)}:`),
+		),
+	);
+	return counts.reduce((sum, count) => sum + count, 0);
+}
+
 /** Raw row shape from the UNION ALL query — all snake_case. */
 interface RecentItemRow {
 	id: string;
@@ -185,12 +223,12 @@ interface RecentItemRow {
  * `_emdash_fields` to discover which collections have one and fall back
  * to `slug` (which is always present) otherwise.
  *
- * Without `includeDrafts`, only published entries are considered.
+ * In collections outside `draftsIn`, only published entries are considered.
  */
 async function fetchRecentItems(
 	db: Kysely<Database>,
 	collections: Array<{ slug: string; label: string }>,
-	includeDrafts: boolean,
+	draftsIn: (slug: string) => boolean,
 ): Promise<RecentItem[]> {
 	if (collections.length === 0) return [];
 
@@ -203,7 +241,6 @@ async function fetchRecentItems(
 		.execute();
 
 	const collectionsWithTitle = new Set(titleFields.map((r) => r.collection_slug));
-	const statusFilter = includeDrafts ? sql`` : sql`AND status = 'published'`;
 
 	// Issue one query per collection in parallel, then merge in JS.
 	// A single UNION ALL across N collections trips D1's
@@ -215,6 +252,7 @@ async function fetchRecentItems(
 			validateIdentifier(col.slug);
 			const table = `ec_${col.slug}`;
 			const hasTitle = collectionsWithTitle.has(col.slug);
+			const statusFilter = draftsIn(col.slug) ? sql`` : sql`AND status = 'published'`;
 
 			// Use title column if it exists, otherwise fall back to slug, id.
 			// All output uses snake_case to avoid SQLite quoting issues on D1.

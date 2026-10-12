@@ -7,7 +7,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requireOwnerPerm } from "#api/authorize.js";
+import { requireOwnerPerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { claimEntryLockForWrite } from "#api/handlers/entry-lock.js";
 import { parseBody, isParseError } from "#api/parse.js";
@@ -38,6 +38,8 @@ function extractOwnership(data: unknown): { authorId: string; resolvedId: string
 
 export const POST: APIRoute = async ({ params, request, locals, url, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 	const body = await parseBody(request, contentScheduleBody);
@@ -60,7 +62,9 @@ export const POST: APIRoute = async ({ params, request, locals, url, cache }) =>
 	}
 
 	const { authorId, resolvedId } = extractOwnership(existing.data);
-	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any");
+	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any", {
+		collection: params.collection,
+	});
 	if (denied) return denied;
 
 	const refusal = await claimEntryLockForWrite(emdash.db, collection, resolvedId ?? id, user!.id, {
@@ -92,6 +96,8 @@ export const POST: APIRoute = async ({ params, request, locals, url, cache }) =>
 
 export const DELETE: APIRoute = async ({ params, locals, url, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
@@ -112,7 +118,9 @@ export const DELETE: APIRoute = async ({ params, locals, url, cache }) => {
 	}
 
 	const { authorId, resolvedId } = extractOwnership(existing.data);
-	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any");
+	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any", {
+		collection: params.collection,
+	});
 	if (denied) return denied;
 
 	// DELETE carries no body, so the lock opt-out rides on the query string.

@@ -9,7 +9,9 @@ import { Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
+import { findRoleForAssignment } from "#api/handlers/roles.js";
 import { isParseError, parseBody } from "#api/parse.js";
 import { userUpdateBody } from "#api/schemas.js";
 import { withTransaction } from "#db/transaction.js";
@@ -23,9 +25,8 @@ export const GET: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!currentUser || currentUser.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(currentUser, "users:read");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -49,6 +50,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
 			name: result.user.name,
 			avatarUrl: result.user.avatarUrl,
 			role: result.user.role,
+			customRole: summarizeCustomRole(result.user.customRole),
 			emailVerified: result.user.emailVerified,
 			disabled: result.user.disabled,
 			createdAt: result.user.createdAt.toISOString(),
@@ -80,9 +82,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!currentUser || currentUser.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(currentUser, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -102,11 +103,19 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		const body = await parseBody(request, userUpdateBody);
 		if (isParseError(body)) return body;
 
-		// Role is already validated as RoleLevel by Zod schema
-		const role = body.role;
+		// A built-in level clears any custom role; a custom role stores its
+		// compatibility level in `role`.
+		let role = body.role;
+		let roleId: string | null | undefined = body.role === undefined ? undefined : null;
+		if (body.roleId !== undefined) {
+			const customRole = await findRoleForAssignment(emdash.db, body.roleId);
+			if (!customRole) return apiError("VALIDATION_ERROR", "Unknown role", 400);
+			role = customRole.level;
+			roleId = customRole.id;
+		}
 
 		// Prevent editing own role (security: prevents self-demotion/lockout)
-		if (role !== undefined && id === currentUser.id) {
+		if (role !== undefined && id === currentUser!.id) {
 			return apiError("SELF_ROLE_CHANGE", "Cannot change your own role", 400);
 		}
 
@@ -133,6 +142,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 				name: body.name,
 				email: body.email,
 				role,
+				roleId,
 			});
 			return false;
 		});
@@ -155,6 +165,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 				name: updated!.name,
 				avatarUrl: updated!.avatarUrl,
 				role: updated!.role,
+				customRole: summarizeCustomRole(updated!.customRole),
 				emailVerified: updated!.emailVerified,
 				disabled: updated!.disabled,
 				createdAt: updated!.createdAt.toISOString(),
@@ -165,3 +176,9 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		return handleError(error, "Failed to update user", "USER_UPDATE_ERROR");
 	}
 };
+
+function summarizeCustomRole(
+	customRole: { id: string; slug: string; label: string } | null | undefined,
+): { id: string; slug: string; label: string } | null {
+	return customRole ? { id: customRole.id, slug: customRole.slug, label: customRole.label } : null;
+}

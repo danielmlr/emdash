@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, unwrapResult } from "#api/error.js";
 import { invalidateRouteCache } from "#cache/route-cache.js";
 
@@ -14,13 +14,15 @@ export const prerender = false;
 
 export const DELETE: APIRoute = async ({ params, locals, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
 	if (!emdash?.handleContentPermanentDelete) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:delete_permanent");
+	const denied = requirePerm(user, "content:delete_permanent", { collection: params.collection });
 	if (denied) return denied;
 
 	const result = await emdash.handleContentPermanentDelete(collection, id);

@@ -20,6 +20,11 @@ export const userUpdateBody = z
 		name: z.string().optional(),
 		email: z.email().optional(),
 		role: roleLevel.optional(),
+		/** Custom role id. Mutually exclusive with `role`. */
+		roleId: z.string().min(1).max(64).optional(),
+	})
+	.refine((body) => body.role === undefined || body.roleId === undefined, {
+		message: "Set either role or roleId, not both",
 	})
 	.meta({ id: "UserUpdateBody" });
 
@@ -48,6 +53,10 @@ export const userSchema = z
 		name: z.string().nullable(),
 		avatarUrl: z.string().nullable(),
 		role: z.number().int(),
+		customRole: z
+			.object({ id: z.string(), slug: z.string(), label: z.string() })
+			.nullable()
+			.optional(),
 		emailVerified: z.boolean(),
 		disabled: z.boolean(),
 		createdAt: z.string(),
@@ -72,6 +81,10 @@ export const userDetailSchema = z
 		name: z.string().nullable(),
 		avatarUrl: z.string().nullable(),
 		role: z.number().int(),
+		customRole: z
+			.object({ id: z.string(), slug: z.string(), label: z.string() })
+			.nullable()
+			.optional(),
 		emailVerified: z.boolean(),
 		disabled: z.boolean(),
 		createdAt: z.string(),

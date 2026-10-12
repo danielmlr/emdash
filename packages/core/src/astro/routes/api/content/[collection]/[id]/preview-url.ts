@@ -27,7 +27,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError, unwrapResult } from "#api/error.js";
 import { parseOptionalBody, isParseError } from "#api/parse.js";
 import { contentPreviewUrlBody } from "#api/schemas.js";
@@ -44,10 +44,12 @@ const DURATION_PATTERN = /^(\d+)([smhdw])$/;
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.db) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:read_drafts");
+	const denied = requirePerm(user, "content:read_drafts", { collection: params.collection });
 	if (denied) return denied;
 	const collection = params.collection!;
 	const id = params.id!;

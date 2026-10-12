@@ -534,6 +534,7 @@ export const NON_PORTABLE_TABLES: Readonly<Record<string, string>> = Object.free
 	auth_tokens: "auth",
 	oauth_accounts: "auth",
 	allowed_domains: "auth",
+	_emdash_roles: "auth",
 	auth_challenges: "auth",
 	_emdash_api_tokens: "auth",
 	_emdash_oauth_tokens: "auth",

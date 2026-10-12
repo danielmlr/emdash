@@ -7,7 +7,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, handleError, requireDb, unwrapResult } from "#api/error.js";
 import { handleReferenceParentsGet } from "#api/handlers/relations.js";
 import { isParseError, parseQuery } from "#api/parse.js";
@@ -17,11 +17,13 @@ export const prerender = false;
 
 export const GET: APIRoute = async ({ params, request, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const { collection, id, relation } = params;
 
 	const dbErr = requireDb(emdash?.db);
 	if (dbErr) return dbErr;
-	const denied = requirePerm(user, "content:read");
+	const denied = requirePerm(user, "content:read", { collection: params.collection });
 	if (denied) return denied;
 
 	if (!collection || !id || !relation) {
@@ -38,7 +40,11 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
 			id,
 			relation,
 			{ limit: query.limit, cursor: query.cursor },
-			hasPermission(user, "content:read_drafts"),
+			{
+				canRead: (target) => hasPermission(user, "content:read", { collection: target }),
+				canReadDrafts: (target) =>
+					hasPermission(user, "content:read_drafts", { collection: target }),
+			},
 		);
 		return unwrapResult(result);
 	} catch (error) {

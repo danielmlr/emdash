@@ -51,6 +51,7 @@ export const POST: APIRoute = async ({ request, locals, cache }) => {
 					user,
 					userId: user.id,
 					userRole: user.role,
+					customRole: user.customRole ?? null,
 					tokenScopes: locals.tokenScopes,
 					tokenId: locals.tokenId,
 					cache,

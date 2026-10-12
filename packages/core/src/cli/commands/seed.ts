@@ -278,6 +278,11 @@ export const seedCommand = defineCommand({
 			if (result.menus.created > 0 || result.menus.items > 0) {
 				consola.info(`Menus: ${result.menus.created} created, ${result.menus.items} items`);
 			}
+			if (result.roles.created > 0 || result.roles.skipped > 0 || result.roles.updated > 0) {
+				consola.info(
+					`Roles: ${result.roles.created} created, ${result.roles.skipped} skipped, ${result.roles.updated} updated`,
+				);
+			}
 			if (result.widgetAreas.created > 0 || result.widgetAreas.widgets > 0) {
 				consola.info(
 					`Widget Areas: ${result.widgetAreas.created} created, ${result.widgetAreas.widgets} widgets`,

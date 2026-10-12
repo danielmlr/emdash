@@ -9,7 +9,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, unwrapResult } from "#api/error.js";
 
 export const prerender = false;
@@ -25,10 +25,12 @@ function isPublished(t: unknown): boolean {
 
 export const GET: APIRoute = async ({ params, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.handleContentTranslations) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:read");
+	const denied = requirePerm(user, "content:read", { collection: params.collection });
 	if (denied) return denied;
 	const collection = params.collection!;
 	const id = params.id!;
@@ -37,7 +39,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
 	// Filter out non-published translations for users without read_drafts so a
 	// subscriber can't enumerate locales that aren't yet live.
-	if (result.success && !hasPermission(user, "content:read_drafts")) {
+	if (
+		result.success &&
+		!hasPermission(user, "content:read_drafts", { collection: params.collection })
+	) {
 		const data =
 			result.data && typeof result.data === "object"
 				? // eslint-disable-next-line typescript/no-unsafe-type-assertion -- handler returns unknown data; narrowed by typeof check

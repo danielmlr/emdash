@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requireOwnerPerm } from "#api/authorize.js";
+import { requireOwnerPerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { invalidateRouteCache } from "#cache/route-cache.js";
 
@@ -14,6 +14,8 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ params, locals, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
@@ -42,7 +44,9 @@ export const POST: APIRoute = async ({ params, locals, cache }) => {
 				(existingData.item as Record<string, unknown>)
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
-	const denied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any");
+	const denied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any", {
+		collection: params.collection,
+	});
 	if (denied) return denied;
 
 	const resolvedId = typeof existingItem?.id === "string" ? existingItem.id : id;

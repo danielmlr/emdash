@@ -12,7 +12,7 @@
  * for pure authorization/scope gating where a real DB adds nothing.
  */
 
-import type { RoleLevel } from "@emdash-cms/auth";
+import type { CustomRole, RoleLevel } from "@emdash-cms/auth";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { APIContext } from "astro";
@@ -70,6 +70,7 @@ function createAuthenticatedPair(authInfo: {
 	emdash: EmDashHandlers;
 	userId: string;
 	userRole: RoleLevel;
+	customRole?: CustomRole | null;
 	tokenScopes?: string[];
 	tokenId?: string;
 	cache?: APIContext["cache"];
@@ -256,6 +257,8 @@ export interface ConnectMcpOptions {
 	db: Kysely<Database>;
 	userId: string;
 	userRole: RoleLevel;
+	/** The caller's custom role, as the MCP route passes `user.customRole`. */
+	customRole?: CustomRole | null;
 	tokenScopes?: string[];
 	/** Id of the token the caller authenticated with, as the MCP route passes it. */
 	tokenId?: string;
@@ -285,6 +288,7 @@ export async function connectMcpHarness(opts: ConnectMcpOptions): Promise<McpHar
 		emdash: handlers,
 		userId: opts.userId,
 		userRole: opts.userRole,
+		customRole: opts.customRole ?? null,
 		tokenScopes: opts.tokenScopes,
 		tokenId: opts.tokenId,
 		cache: opts.cache,

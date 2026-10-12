@@ -7,7 +7,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePerm, requirePermInAnyCollection } from "#api/authorize.js";
 import { apiError, unwrapResult } from "#api/error.js";
 
 export const prerender = false;
@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
 	const { emdash, user } = locals;
 	const revisionId = params.revisionId!;
 
-	const denied = requirePerm(user, "content:read_drafts");
+	const denied = requirePermInAnyCollection(user, "content:read_drafts");
 	if (denied) return denied;
 
 	if (!emdash?.handleRevisionGet) {
@@ -24,6 +24,12 @@ export const GET: APIRoute = async ({ params, locals }) => {
 	}
 
 	const result = await emdash.handleRevisionGet(revisionId);
+	if (result.success) {
+		const scopeDenied = requirePerm(user, "content:read_drafts", {
+			collection: result.data?.item?.collection,
+		});
+		if (scopeDenied) return scopeDenied;
+	}
 
 	return unwrapResult(result);
 };

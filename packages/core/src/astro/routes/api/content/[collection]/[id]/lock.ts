@@ -8,7 +8,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requireEntryEditPerm } from "#api/authorize.js";
+import { requireCollectionAccess, requireEntryEditPerm } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import {
 	handleEntryLockAcquire,
@@ -36,6 +36,8 @@ async function resolveEntry(
 	locale: string | undefined,
 ): Promise<ResolvedEntry | Response> {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.handleContentGet) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
@@ -60,7 +62,11 @@ async function resolveEntry(
 				(existingData.item as Record<string, unknown>)
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
-	const denied = requireEntryEditPerm(user, { authorId, status: existingItem?.status });
+	const denied = requireEntryEditPerm(
+		user,
+		{ authorId, status: existingItem?.status },
+		{ collection },
+	);
 	if (denied) return denied;
 
 	return {

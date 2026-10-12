@@ -56,7 +56,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 	const authorId = existing.data?.item?.authorId ?? "";
 
 	// Check ownership: authors can only restore their own content, editors+ can restore any
-	const denied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any");
+	const denied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any", {
+		collection,
+	});
 	if (denied) return denied;
 
 	const refusal = await claimEntryLockForWrite(emdash.db, collection, entryId, user!.id, {

@@ -11,6 +11,7 @@ import type { APIRoute } from "astro";
 
 import {
 	entryEditAccess,
+	requireCollectionAccess,
 	requireEntryEditPerm,
 	requireOwnerPerm,
 	requirePerm,
@@ -25,22 +26,27 @@ export const prerender = false;
 
 export const GET: APIRoute = async ({ params, url, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	if (!emdash?.handleContentGet) {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
-	const denied = requirePerm(user, "content:read");
+	const denied = requirePerm(user, "content:read", { collection: params.collection });
 	if (denied) return denied;
 	const collection = params.collection!;
 	const id = params.id!;
 	const locale = url.searchParams.get("locale") || undefined;
 
 	const result = await emdash.handleContentGet(collection, id, locale, {
-		includeDrafts: hasPermission(user, "content:read_drafts"),
+		includeDrafts: hasPermission(user, "content:read_drafts", { collection: params.collection }),
 	});
 
 	// Hide non-published items from users without content:read_drafts. Return
 	// 404 (not 403) so subscribers can't enumerate draft IDs by status code.
-	if (result.success && !hasPermission(user, "content:read_drafts")) {
+	if (
+		result.success &&
+		!hasPermission(user, "content:read_drafts", { collection: params.collection })
+	) {
 		const data =
 			result.data && typeof result.data === "object"
 				? // eslint-disable-next-line typescript/no-unsafe-type-assertion -- handler returns unknown data; narrowed by typeof check
@@ -74,6 +80,8 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
 
 export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 	const locale = new URL(request.url).searchParams.get("locale") || undefined;
@@ -107,16 +115,20 @@ export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
 	const entry = { authorId, status: existingItem?.status };
-	const editDenied = requireEntryEditPerm(user, entry);
+	const editDenied = requireEntryEditPerm(user, entry, { collection: params.collection });
 	if (editDenied) return editDenied;
 	// A draft-only grant covers the entry only while it is a draft. Conditioning
 	// the save on the checked revision makes it fail if the entry is published
 	// between this check and the write.
 	const checkedRev = typeof existingData?._rev === "string" ? existingData._rev : undefined;
-	const rev = entryEditAccess(user, entry) === "draft" ? (body._rev ?? checkedRev) : body._rev;
+	const rev =
+		entryEditAccess(user, entry, { collection: params.collection }) === "draft" ? (body._rev ?? checkedRev) : body._rev;
 
 	// Only EDITOR+ can write publishedAt directly — incl. clearing to null.
-	if (body.publishedAt !== undefined && !hasPermission(user, "content:publish_any")) {
+	if (
+		body.publishedAt !== undefined &&
+		!hasPermission(user, "content:publish_any", { collection: params.collection })
+	) {
 		return apiError(
 			"FORBIDDEN",
 			"Writing publishedAt requires content:publish_any permission",
@@ -138,7 +150,9 @@ export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 
 	// Only allow authorId changes if user has content:edit_any permission (editor+)
 	const canChangeAuthor =
-		body.authorId !== undefined && user && hasPermission(user, "content:edit_any");
+		body.authorId !== undefined &&
+		user &&
+		hasPermission(user, "content:edit_any", { collection: params.collection });
 	const { overrideLock: _overrideLock, ...writeBody } = canChangeAuthor
 		? body
 		: { ...body, authorId: undefined };
@@ -164,6 +178,8 @@ export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 
 export const DELETE: APIRoute = async ({ params, locals, url, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
@@ -195,7 +211,13 @@ export const DELETE: APIRoute = async ({ params, locals, url, cache }) => {
 				(deleteData.item as Record<string, unknown>)
 			: deleteData;
 	const authorId = typeof deleteItem?.authorId === "string" ? deleteItem.authorId : "";
-	const deleteDenied = requireOwnerPerm(user, authorId, "content:delete_own", "content:delete_any");
+	const deleteDenied = requireOwnerPerm(
+		user,
+		authorId,
+		"content:delete_own",
+		"content:delete_any",
+		{ collection: params.collection },
+	);
 	if (deleteDenied) return deleteDenied;
 
 	// Use the resolved ID (handles slug → ID resolution)

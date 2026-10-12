@@ -13,6 +13,7 @@ export * from "./search.js";
 export * from "./import.js";
 export * from "./setup.js";
 export * from "./users.js";
+export * from "./roles.js";
 export * from "./widgets.js";
 export * from "./redirects.js";
 export * from "./bylines.js";

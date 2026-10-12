@@ -5,6 +5,7 @@
  * Used by the admin UI to display user info in the header.
  */
 
+import { effectivePermissions } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
 export const prerender = false;
@@ -38,12 +39,21 @@ export const GET: APIRoute = async ({ locals }) => {
 	// session expiry / rotation.
 	const isFirstLogin = !userData?.welcomeDismissed;
 
+	// The admin decides what to offer from these; the server still checks
+	// every request.
+	const { permissions, collections } = effectivePermissions(user);
+
 	// Return safe user info (no sensitive data)
 	return apiSuccess({
 		id: user.id,
 		email: user.email,
 		name: user.name,
 		role: user.role,
+		customRole: user.customRole
+			? { id: user.customRole.id, slug: user.customRole.slug, label: user.customRole.label }
+			: null,
+		permissions,
+		collections,
 		avatarUrl: user.avatarUrl,
 		isFirstLogin,
 	});

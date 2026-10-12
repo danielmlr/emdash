@@ -733,6 +733,17 @@ export function injectCoreRoutes(
 		entrypoint: resolveRoute("api/admin/users/index.ts"),
 	});
 
+	// Custom roles
+	injectRoute({
+		pattern: "/_emdash/api/admin/roles",
+		entrypoint: resolveRoute("api/admin/roles/index.ts"),
+	});
+
+	injectRoute({
+		pattern: "/_emdash/api/admin/roles/[id]",
+		entrypoint: resolveRoute("api/admin/roles/[id].ts"),
+	});
+
 	// Bylines routes
 	injectRoute({
 		pattern: "/_emdash/api/admin/bylines",

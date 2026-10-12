@@ -10,9 +10,10 @@ import type { APIRoute } from "astro";
 
 export const prerender = false;
 
-import { Role, roleFromLevel } from "@emdash-cms/auth";
+import { roleFromLevel } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { isParseError, parseBody } from "#api/parse.js";
 import { allowedDomainUpdateBody } from "#api/schemas.js";
@@ -32,9 +33,8 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 		return apiError("VALIDATION_ERROR", "Domain is required", 400);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -90,9 +90,8 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 		return apiError("VALIDATION_ERROR", "Domain is required", 400);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

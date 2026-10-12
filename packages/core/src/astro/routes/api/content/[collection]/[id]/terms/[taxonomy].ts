@@ -7,7 +7,12 @@
 
 import type { APIRoute } from "astro";
 
-import { requireAnyPerm, requireEntryEditPerm, requirePerm } from "#api/authorize.js";
+import {
+	requireAnyPerm,
+	requireCollectionAccess,
+	requireEntryEditPerm,
+	requirePerm,
+} from "#api/authorize.js";
 import { apiError, apiSuccess, handleError, requireDb } from "#api/error.js";
 import { parseBody, isParseError } from "#api/parse.js";
 import { contentTermsBody } from "#api/schemas.js";
@@ -64,11 +69,13 @@ function assignmentResponse(assignments: TaxonomyAssignmentResolution[], entryLo
  */
 export const GET: APIRoute = async ({ params, locals }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const { collection, id, taxonomy } = params;
 
 	const dbErr = requireDb(emdash?.db);
 	if (dbErr) return dbErr;
-	const denied = requirePerm(user, "content:read");
+	const denied = requirePerm(user, "content:read", { collection: params.collection });
 	if (denied) return denied;
 
 	if (!collection || !id || !taxonomy) {
@@ -104,6 +111,8 @@ export const GET: APIRoute = async ({ params, locals }) => {
  */
 export const POST: APIRoute = async ({ params, request, locals, cache }) => {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const { collection, id, taxonomy } = params;
 
 	if (!collection || !id || !taxonomy) {
@@ -112,7 +121,9 @@ export const POST: APIRoute = async ({ params, request, locals, cache }) => {
 
 	const dbErr = requireDb(emdash?.db);
 	if (dbErr) return dbErr;
-	const denied = requireAnyPerm(user, ["content:edit_own", "content:edit_own_drafts"]);
+	const denied = requireAnyPerm(user, ["content:edit_own", "content:edit_own_drafts"], {
+		collection: params.collection,
+	});
 	if (denied) return denied;
 
 	if (!emdash.handleContentGet) {
@@ -142,7 +153,11 @@ export const POST: APIRoute = async ({ params, request, locals, cache }) => {
 				(existingData.item as Record<string, unknown>)
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
-	const editDenied = requireEntryEditPerm(user, { authorId, status: existingItem?.status });
+	const editDenied = requireEntryEditPerm(
+		user,
+		{ authorId, status: existingItem?.status },
+		{ collection: params.collection },
+	);
 	if (editDenied) return editDenied;
 
 	// Resolve the canonical content ID from the handler result.

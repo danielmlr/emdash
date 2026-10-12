@@ -7,10 +7,11 @@
  */
 
 import { getMagicLinkEmailStrings } from "@emdash-cms/admin/locales/emails";
-import { Role, sendMagicLink, type MagicLinkConfig } from "@emdash-cms/auth";
+import { sendMagicLink, type MagicLinkConfig } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { resolveEmailLocale } from "#api/email-locale.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { getSiteBaseUrl } from "#api/site-url.js";
@@ -25,9 +26,8 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
 		return apiError("NOT_CONFIGURED", "Database not configured", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:manage");
+	if (denied) return denied;
 
 	const { id } = params;
 

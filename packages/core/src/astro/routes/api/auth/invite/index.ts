@@ -17,8 +17,10 @@ import { getInviteEmailStrings } from "@emdash-cms/admin/locales/emails";
 import { createInvite, InviteError, Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { requirePerm } from "#api/authorize.js";
 import { resolveEmailLocale } from "#api/email-locale.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
+import { findRoleForAssignment } from "#api/handlers/roles.js";
 import { isParseError, parseBody } from "#api/parse.js";
 import { inviteCreateBody } from "#api/schemas.js";
 import { getSiteBaseUrl } from "#api/site-url.js";
@@ -31,9 +33,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:invite");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -41,8 +42,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		const body = await parseBody(request, inviteCreateBody);
 		if (isParseError(body)) return body;
 
-		// Default to AUTHOR role if not specified (Zod validates the level)
-		const role = body.role ?? Role.AUTHOR;
+		// Default to AUTHOR role if not specified (Zod validates the level).
+		// A custom role stores its compatibility level beside its id.
+		let role = body.role ?? Role.AUTHOR;
+		let roleId: string | null = null;
+		if (body.roleId !== undefined) {
+			const customRole = await findRoleForAssignment(emdash.db, body.roleId);
+			if (!customRole) return apiError("VALIDATION_ERROR", "Unknown role", 400);
+			role = customRole.level;
+			roleId = customRole.id;
+		}
 
 		// Get site config for invite email
 		const options = new OptionsRepository(emdash.db);
@@ -78,7 +87,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 			adapter,
 			body.email,
 			role,
-			user.id,
+			user!.id,
+			roleId,
 		);
 
 		if (emailSend) {

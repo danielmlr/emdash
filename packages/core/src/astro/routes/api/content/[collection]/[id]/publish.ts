@@ -13,7 +13,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import type { APIContext, APIRoute } from "astro";
 
-import { requireOwnerPerm } from "#api/authorize.js";
+import { requireOwnerPerm, requireCollectionAccess } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { claimEntryLockForWrite } from "#api/handlers/entry-lock.js";
 import { isParseError, parseOptionalBody } from "#api/parse.js";
@@ -27,6 +27,8 @@ export async function publishContent(
 	originSource: "api" | "visual-editor",
 ): Promise<Response> {
 	const { emdash, user } = locals;
+	const collectionDenied = requireCollectionAccess(user, params.collection);
+	if (collectionDenied) return collectionDenied;
 	const collection = params.collection!;
 	const id = params.id!;
 
@@ -62,7 +64,9 @@ export async function publishContent(
 				(existingData.item as Record<string, unknown>)
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
-	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any");
+	const denied = requireOwnerPerm(user, authorId, "content:publish_own", "content:publish_any", {
+		collection: params.collection,
+	});
 	if (denied) return denied;
 
 	// Schema narrows `publishedAt` to `string | undefined`; null is rejected
@@ -71,7 +75,10 @@ export async function publishContent(
 
 	// Backdating overwrites historical record — gate behind publish_any
 	// regardless of ownership.
-	if (publishedAt !== undefined && !hasPermission(user, "content:publish_any")) {
+	if (
+		publishedAt !== undefined &&
+		!hasPermission(user, "content:publish_any", { collection: params.collection })
+	) {
 		return apiError(
 			"FORBIDDEN",
 			"Setting publishedAt requires content:publish_any permission",

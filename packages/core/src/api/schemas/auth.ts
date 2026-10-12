@@ -57,6 +57,11 @@ export const inviteCreateBody = z
 	.object({
 		email: z.email(),
 		role: roleLevel.optional(),
+		/** Custom role id. Mutually exclusive with `role`. */
+		roleId: z.string().min(1).max(64).optional(),
+	})
+	.refine((body) => body.role === undefined || body.roleId === undefined, {
+		message: "Set either role or roleId, not both",
 	})
 	.meta({ id: "InviteCreateBody" });
 

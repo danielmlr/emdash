@@ -9,6 +9,7 @@
  *
  * Usage:
  * - GET with redirect: /_emdash/api/auth/dev-bypass?redirect=/_emdash/admin
+ * - Sign in as an existing user: ?as=<email>
  * - POST for API: Returns JSON with user info
  *
  * For agent/browser testing, navigate to:
@@ -31,6 +32,48 @@ const DEV_USER_NAME = "Dev Admin";
 // RBAC role levels (matching @emdash-cms/auth)
 const ROLE_ADMIN = 50;
 
+function respond(
+	url: URL,
+	user: { id: string; email: string; name: string; role: number },
+): Response {
+	// Check for redirect parameter
+	const redirect = url.searchParams.get("redirect");
+
+	if (redirect) {
+		// Validate redirect is a safe local path (prevent open redirect via //evil.com or /\evil.com)
+		if (!isSafeRedirect(redirect)) {
+			return apiError("INVALID_REDIRECT", "Redirect must be a local path", 400);
+		}
+
+		// Return an HTML page with meta-refresh redirect
+		// This ensures the session is fully saved before redirect
+		const safeRedirect = escapeHtml(redirect);
+		const html = `<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="refresh" content="0;url=${safeRedirect}">
+</head>
+<body>Redirecting...</body>
+</html>`;
+		return new Response(html, {
+			status: 200,
+			headers: { "Content-Type": "text/html" },
+		});
+	}
+
+	// Return JSON response
+	return apiSuccess({
+		success: true,
+		message: "Dev session created",
+		user: {
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			role: user.role,
+		},
+	});
+}
+
 async function handleDevBypass(context: Parameters<APIRoute>[0]): Promise<Response> {
 	// CRITICAL: Only allow in development mode
 	if (!import.meta.env.DEV) {
@@ -45,6 +88,23 @@ async function handleDevBypass(context: Parameters<APIRoute>[0]): Promise<Respon
 	}
 
 	try {
+		const asEmail = url.searchParams.get("as");
+		if (asEmail) {
+			const target = await emdash.db
+				.selectFrom("users")
+				.select(["id", "email", "name", "role"])
+				.where("email", "=", asEmail.toLowerCase())
+				.executeTakeFirst();
+			if (!target) return apiError("NOT_FOUND", "No user with that email", 404);
+			if (session) session.set("user", { id: target.id });
+			return respond(url, {
+				id: target.id,
+				email: target.email,
+				name: target.name ?? target.email,
+				role: target.role,
+			});
+		}
+
 		// Find or create dev user (direct DB access to avoid @emdash-cms/auth import issues in dev)
 		const existingUser = await emdash.db
 			.selectFrom("users")
@@ -89,42 +149,7 @@ async function handleDevBypass(context: Parameters<APIRoute>[0]): Promise<Respon
 			session.set("user", { id: user.id });
 		}
 
-		// Check for redirect parameter
-		const redirect = url.searchParams.get("redirect");
-
-		if (redirect) {
-			// Validate redirect is a safe local path (prevent open redirect via //evil.com or /\evil.com)
-			if (!isSafeRedirect(redirect)) {
-				return apiError("INVALID_REDIRECT", "Redirect must be a local path", 400);
-			}
-
-			// Return an HTML page with meta-refresh redirect
-			// This ensures the session is fully saved before redirect
-			const safeRedirect = escapeHtml(redirect);
-			const html = `<!DOCTYPE html>
-<html>
-<head>
-	<meta http-equiv="refresh" content="0;url=${safeRedirect}">
-</head>
-<body>Redirecting...</body>
-</html>`;
-			return new Response(html, {
-				status: 200,
-				headers: { "Content-Type": "text/html" },
-			});
-		}
-
-		// Return JSON response
-		return apiSuccess({
-			success: true,
-			message: "Dev session created",
-			user: {
-				id: user.id,
-				email: user.email,
-				name: user.name,
-				role: user.role,
-			},
-		});
+		return respond(url, user);
 	} catch (error) {
 		return handleError(error, "Dev bypass setup failed", "DEV_BYPASS_ERROR");
 	}

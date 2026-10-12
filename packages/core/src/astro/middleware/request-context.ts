@@ -15,6 +15,7 @@
  */
 
 import { loadVisualEditingToolbarLabels } from "@emdash-cms/admin/locales/server";
+import { hasPermission } from "@emdash-cms/auth/rbac";
 import type { APIContext } from "astro";
 import { defineMiddleware } from "astro:middleware";
 // @ts-ignore - virtual module
@@ -183,9 +184,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return next();
 	}
 
-	// Check for authenticated editor (role >= 30)
+	// Edit mode serves drafts in every collection, so it needs both
+	// permissions site-wide; a role limited to some collections gets none.
 	const { user } = context.locals;
-	const isEditor = !!user && user.role >= 30;
+	const isEditor =
+		!!user && hasPermission(user, "content:edit_own") && hasPermission(user, "content:read_drafts");
 
 	// Playground mode: the playground middleware (from @emdash-cms/cloudflare) stashes
 	// the per-session DO database on locals.__playgroundDb. We set it via ALS here

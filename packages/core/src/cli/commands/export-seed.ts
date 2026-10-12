@@ -6,6 +6,7 @@
 
 import { resolve } from "node:path";
 
+import { parseGrants } from "@emdash-cms/auth/adapters/kysely";
 import { defineCommand } from "citty";
 import consola from "consola";
 import type { Kysely } from "kysely";
@@ -39,6 +40,7 @@ import type {
 	SeedMenu,
 	SeedMenuItem,
 	SeedRedirect,
+	SeedRole,
 	SeedSection,
 	SeedWidgetArea,
 	SeedWidget,
@@ -236,6 +238,11 @@ export async function exportSeed(
 	}
 
 	seed.widgetAreas = await exportWidgetAreas(db);
+
+	const roles = await exportRoles(db);
+	if (roles.length > 0) {
+		seed.roles = roles;
+	}
 
 	const sections = await exportSections(db, warn);
 	if (sections.length > 0) {
@@ -912,6 +919,25 @@ async function exportRedirects(
 
 function isSeedSectionSource(source: string): source is NonNullable<SeedSection["source"]> {
 	return source === "theme" || source === "user" || source === "import";
+}
+
+/**
+ * Export custom roles. Collection-scoped grants keep their collection slugs.
+ */
+async function exportRoles(db: Kysely<Database>): Promise<SeedRole[]> {
+	const rows = await db
+		.selectFrom("_emdash_roles")
+		.select(["slug", "label", "description", "grants"])
+		.orderBy("slug")
+		.execute();
+	return rows.map((row) => {
+		const grants = parseGrants(row.grants);
+		const role: SeedRole = { slug: row.slug, label: row.label };
+		if (row.description) role.description = row.description;
+		if (grants.permissions.length > 0) role.permissions = grants.permissions;
+		if (Object.keys(grants.collections).length > 0) role.collections = grants.collections;
+		return role;
+	});
 }
 
 /** Section slugs a seed accepts. The WordPress importer can store others. */

@@ -66,6 +66,9 @@ export interface SeedFile {
 	/** Bylines used for presentation credits */
 	bylines?: SeedByline[];
 
+	/** Custom roles: named permission sets, optionally limited to collections */
+	roles?: SeedRole[];
+
 	/** Sample content (organized by collection) */
 	content?: Record<string, SeedContentEntry[]>;
 }
@@ -353,6 +356,19 @@ export interface SeedContentEntry {
 	translationOf?: string;
 }
 
+/**
+ * A custom role. Matched by `slug` on re-apply.
+ */
+export interface SeedRole {
+	slug: string;
+	label: string;
+	description?: string;
+	/** Permission names that apply site-wide */
+	permissions?: string[];
+	/** Content permission names per collection slug */
+	collections?: Record<string, string[]>;
+}
+
 export interface SeedBylineCredit {
 	/** Seed byline ID from root `bylines[]` */
 	byline: string;
@@ -415,6 +431,7 @@ export interface SeedApplyResult {
 	redirects: { created: number; skipped: number; updated: number };
 	widgetAreas: { created: number; widgets: number };
 	sections: { created: number; skipped: number; updated: number };
+	roles: { created: number; skipped: number; updated: number };
 	settings: { applied: number };
 	content: { created: number; skipped: number; updated: number };
 	media: { created: number; skipped: number };

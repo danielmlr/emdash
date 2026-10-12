@@ -292,6 +292,7 @@ export interface UserTable {
 	name: string | null;
 	avatar_url: string | null;
 	role: number; // RoleLevel: 10=SUBSCRIBER, 20=CONTRIBUTOR, 30=AUTHOR, 40=EDITOR, 50=ADMIN
+	role_id: string | null; // _emdash_roles.id; role then holds the compatibility level
 	email_verified: number; // 0 or 1
 	data: string | null; // JSON
 	disabled: Generated<number>; // 0 or 1
@@ -319,6 +320,7 @@ export interface AuthTokenTable {
 	email: string | null;
 	type: string; // 'magic_link' | 'email_verify' | 'invite' | 'recovery'
 	role: number | null; // For invites
+	role_id: string | null; // Custom role for invites
 	invited_by: string | null;
 	expires_at: string;
 	created_at: Generated<string>;
@@ -334,8 +336,19 @@ export interface OAuthAccountTable {
 export interface AllowedDomainTable {
 	domain: string;
 	default_role: number;
+	default_role_id: string | null;
 	enabled: number; // 0 or 1
 	created_at: Generated<string>;
+}
+
+export interface RoleTable {
+	id: string;
+	slug: string;
+	label: string;
+	description: string | null;
+	grants: string; // JSON RoleGrants
+	created_at: string;
+	updated_at: string;
 }
 
 export interface AuthChallengeTable {
@@ -781,6 +794,7 @@ export interface Database {
 	auth_tokens: AuthTokenTable;
 	oauth_accounts: OAuthAccountTable;
 	allowed_domains: AllowedDomainTable;
+	_emdash_roles: RoleTable;
 	auth_challenges: AuthChallengeTable;
 	options: OptionTable;
 	audit_logs: AuditLogTable;

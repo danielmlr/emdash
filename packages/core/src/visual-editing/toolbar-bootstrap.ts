@@ -110,7 +110,8 @@ export function renderToolbarBootstrap(): string {
     .then(function(r) { return r.ok ? r.json() : null; })
     .then(function(body) {
       var user = body && body.data;
-      if (user && user.role >= 30) {
+      var held = (user && user.permissions) || [];
+      if (user && held.indexOf("content:edit_own") !== -1 && held.indexOf("content:read_drafts") !== -1) {
         var u = new URL(location.href);
         u.searchParams.set("${EDIT_PARAM}", "1");
         location.href = u.toString();

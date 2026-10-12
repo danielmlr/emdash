@@ -38,6 +38,8 @@ export interface CalendarEntriesParams {
 	to: string;
 	cursor?: string;
 	limit: number;
+	/** Collections the caller may read drafts in; `null` or omitted means all. */
+	collections?: readonly string[] | null;
 }
 
 const KINDS: readonly CalendarEntryKind[] = ["published", "scheduled"];
@@ -200,7 +202,10 @@ export async function handleCalendarEntries(
 ): Promise<ApiResult<CalendarEntriesResponse>> {
 	try {
 		const cursor = params.cursor ? decodeCalendarCursor(params.cursor) : undefined;
-		const streams = await loadStreams(db);
+		const allowed = params.collections ?? null;
+		const streams = (await loadStreams(db)).filter(
+			(stream) => !allowed || allowed.includes(stream.collection),
+		);
 		const results = await Promise.all(
 			streams.map(async (stream) => {
 				const rows = await queryStream(db, stream, params, cursor);

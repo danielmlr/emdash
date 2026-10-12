@@ -519,13 +519,30 @@ async function stagedPageFor(
 	return pageStagedGroups(groups, options.page);
 }
 
+/** What the caller may see on each side of a relation. */
+export interface ReferenceAccess {
+	canRead(collection: string): boolean;
+	canReadDrafts(collection: string): boolean;
+}
+
+function sideAccess(access: boolean | ReferenceAccess, anchor: string, other: string) {
+	if (typeof access === "boolean") {
+		return { readOther: true, anchorDrafts: access, otherDrafts: access };
+	}
+	return {
+		readOther: access.canRead(other),
+		anchorDrafts: access.canReadDrafts(anchor),
+		otherDrafts: access.canReadDrafts(other),
+	};
+}
+
 export async function handleReferenceChildrenGet(
 	db: Kysely<Database>,
 	collection: string,
 	entryId: string,
 	relation: string,
 	page: PageOptions = {},
-	includeDrafts = false,
+	access: boolean | ReferenceAccess = false,
 ): Promise<ApiResult<{ children: EntryRef[]; nextCursor?: string }>> {
 	try {
 		const repo = new RelationRepository(db);
@@ -543,14 +560,20 @@ export async function handleReferenceChildrenGet(
 				},
 			};
 		}
+		const { readOther, anchorDrafts, otherDrafts } = sideAccess(
+			access,
+			collection,
+			rel.childCollection,
+		);
 
 		const entry = await content.findByIdOrSlug(collection, entryId);
 		// A caller without draft access must not anchor on a non-published entry —
 		// return NOT_FOUND (not 403) so they can't probe draft ids by status code,
 		// mirroring the single-item content read.
-		if (!entry?.translationGroup || (!includeDrafts && entry.status !== "published")) {
+		if (!entry?.translationGroup || (!anchorDrafts && entry.status !== "published")) {
 			return { success: false, error: { code: "NOT_FOUND", message: "Content entry not found" } };
 		}
+		if (!readOther) return { success: true, data: { children: [] } };
 
 		const titleField = await getReferenceTitleField(db, rel.childCollection);
 
@@ -562,7 +585,7 @@ export async function handleReferenceChildrenGet(
 			relationSlug: rel.slug,
 			side: "parent",
 			draftRevisionId: entry.draftRevisionId,
-			includeDrafts,
+			includeDrafts: anchorDrafts,
 			page,
 		});
 		if (staged) {
@@ -571,7 +594,7 @@ export async function handleReferenceChildrenGet(
 				rel.childCollection,
 				staged.groups,
 				entry.locale,
-				includeDrafts,
+				otherDrafts,
 				titleField,
 			);
 			return { success: true, data: { children, nextCursor: staged.nextCursor } };
@@ -584,7 +607,7 @@ export async function handleReferenceChildrenGet(
 			edges.items,
 			(e) => e.childGroup,
 			entry.locale,
-			includeDrafts,
+			otherDrafts,
 			titleField,
 		);
 		return { success: true, data: { children, nextCursor: edges.nextCursor } };
@@ -892,7 +915,7 @@ export async function handleReferenceParentsGet(
 	entryId: string,
 	relation: string,
 	page: PageOptions = {},
-	includeDrafts = false,
+	access: boolean | ReferenceAccess = false,
 ): Promise<ApiResult<{ parents: EntryRef[]; nextCursor?: string }>> {
 	try {
 		const repo = new RelationRepository(db);
@@ -910,13 +933,19 @@ export async function handleReferenceParentsGet(
 				},
 			};
 		}
+		const { readOther, anchorDrafts, otherDrafts } = sideAccess(
+			access,
+			collection,
+			rel.parentCollection,
+		);
 
 		const entry = await content.findByIdOrSlug(collection, entryId);
 		// Same draft-anchor guard as the children read: a non-draft-reader anchoring
 		// on an unpublished entry gets NOT_FOUND, not its backlinks.
-		if (!entry?.translationGroup || (!includeDrafts && entry.status !== "published")) {
+		if (!entry?.translationGroup || (!anchorDrafts && entry.status !== "published")) {
 			return { success: false, error: { code: "NOT_FOUND", message: "Content entry not found" } };
 		}
+		if (!readOther) return { success: true, data: { parents: [] } };
 
 		const titleField = await getReferenceTitleField(db, rel.parentCollection);
 
@@ -928,7 +957,7 @@ export async function handleReferenceParentsGet(
 			relationSlug: rel.slug,
 			side: "child",
 			draftRevisionId: entry.draftRevisionId,
-			includeDrafts,
+			includeDrafts: anchorDrafts,
 			page,
 		});
 		if (staged) {
@@ -937,7 +966,7 @@ export async function handleReferenceParentsGet(
 				rel.parentCollection,
 				staged.groups,
 				entry.locale,
-				includeDrafts,
+				otherDrafts,
 				titleField,
 			);
 			return { success: true, data: { parents, nextCursor: staged.nextCursor } };
@@ -950,7 +979,7 @@ export async function handleReferenceParentsGet(
 			edges.items,
 			(e) => e.parentGroup,
 			entry.locale,
-			includeDrafts,
+			otherDrafts,
 			titleField,
 		);
 		return { success: true, data: { parents, nextCursor: edges.nextCursor } };

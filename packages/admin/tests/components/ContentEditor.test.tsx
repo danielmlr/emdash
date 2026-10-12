@@ -3349,6 +3349,28 @@ describe("ContentEditor", () => {
 			await expect.element(exit).not.toBeDisabled();
 		});
 
+		it("keeps Preview and the settings sheet usable while the entry is read-only", async () => {
+			const media = installMatchMedia(true);
+			try {
+				const screen = await renderEditor({
+					isNew: false,
+					item: makeItem({ status: "draft" }),
+					readOnly: true,
+					supportsPreview: true,
+					onPublish: vi.fn(),
+				});
+
+				await expect.element(screen.getByRole("button", { name: "Preview" })).not.toBeDisabled();
+				await expect.element(screen.getByRole("button", { name: "Settings" })).not.toBeDisabled();
+				await expect.element(screen.getByRole("button", { name: "Save" }).first()).toBeDisabled();
+				await expect
+					.element(screen.getByRole("button", { name: "Publish now", exact: true }).first())
+					.toBeDisabled();
+			} finally {
+				media.restore();
+			}
+		});
+
 		it("does not offer to save over a newer version while the entry is read-only", async () => {
 			const screen = await renderEditor({
 				isNew: false,

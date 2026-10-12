@@ -740,6 +740,12 @@ export interface ContentSettingsPanelProps {
 	collection: string;
 	item?: ContentItem | null;
 	isNew?: boolean;
+	/**
+	 * The entry cannot be changed by this user right now: every control that
+	 * writes is disabled, while reading, previewing, revisions and
+	 * translation links stay usable.
+	 */
+	readOnly?: boolean;
 	manifest?: AdminManifest | null;
 	/** Locale this entry is bound to (URL `?locale=` for new entries). */
 	entryLocale?: string | null;
@@ -805,6 +811,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 	collection,
 	item,
 	isNew,
+	readOnly = false,
 	manifest,
 	entryLocale,
 	slug,
@@ -953,7 +960,12 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 				userId={isNew ? undefined : currentUser?.id}
 				onSortingChange={setIsReorderingSections}
 			>
-				<SortableContentSettingsSection id="publish" label={t`Publish`} hidden={isNew}>
+				<SortableContentSettingsSection
+					id="publish"
+					label={t`Publish`}
+					hidden={isNew}
+					disabled={readOnly}
+				>
 					<div className="p-4">
 						<Text as="h3" DANGEROUS_className="mb-4 font-semibold">
 							{t`Publish`}
@@ -1077,7 +1089,11 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 					</div>
 				</SortableContentSettingsSection>
 
-				<SortableContentSettingsSection id="url-language" label={t`URL & language`}>
+				<SortableContentSettingsSection
+					id="url-language"
+					label={t`URL & language`}
+					disabled={readOnly}
+				>
 					<div className="p-4">
 						<Text as="h3" DANGEROUS_className="mb-4 font-semibold">
 							{t`URL & language`}
@@ -1127,7 +1143,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 				</SortableContentSettingsSection>
 
 				{can(currentUser, "content:edit_any", { collection }) && users && users.length > 0 && (
-					<SortableContentSettingsSection id="ownership" label={t`Ownership`}>
+					<SortableContentSettingsSection id="ownership" label={t`Ownership`} disabled={readOnly}>
 						<div className="p-4">
 							<Text as="h3" DANGEROUS_className="mb-4 font-semibold">
 								{t`Ownership`}
@@ -1142,7 +1158,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 				)}
 
 				{can(currentUser, "bylines:manage") && (
-					<SortableContentSettingsSection id="bylines" label={t`Bylines`}>
+					<SortableContentSettingsSection id="bylines" label={t`Bylines`} disabled={readOnly}>
 						<div className="p-4">
 							<div className="mb-4 flex items-center gap-1.5 pe-24">
 								<Text as="h3" DANGEROUS_className="font-semibold">
@@ -1205,7 +1221,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 										search: { locale: tr.locale },
 									})
 								}
-								onCreate={onTranslate}
+								onCreate={readOnly ? undefined : onTranslate}
 							/>
 						</div>
 					</SortableContentSettingsSection>
@@ -1213,7 +1229,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 
 				{/* Do not register an empty sortable row when this collection has no taxonomies. */}
 				{item && hasApplicableTaxonomies && (
-					<SortableContentSettingsSection id="taxonomies" label={t`Taxonomies`}>
+					<SortableContentSettingsSection id="taxonomies" label={t`Taxonomies`} disabled={readOnly}>
 						<TaxonomySidebar
 							className="p-4"
 							collection={collection}
@@ -1226,7 +1242,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 				)}
 
 				{hasSeo && !isNew && onSeoChange && (
-					<SortableContentSettingsSection id="seo" label={t`SEO`}>
+					<SortableContentSettingsSection id="seo" label={t`SEO`} disabled={readOnly}>
 						<div className="p-4">
 							<Text as="h3" DANGEROUS_className="mb-4 font-semibold">
 								{t`SEO`}
@@ -1362,7 +1378,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 									type="button"
 									variant="ghost"
 									className="w-full bg-kumo-danger/10 text-kumo-danger hover:bg-kumo-danger/10 hover:text-kumo-danger"
-									disabled={isDeleting}
+									disabled={isDeleting || readOnly}
 									icon={isDeleting ? <Loader size="sm" /> : <Trash />}
 								>
 									{t`Move to Trash`}

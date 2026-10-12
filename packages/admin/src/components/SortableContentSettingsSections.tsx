@@ -43,6 +43,8 @@ export interface SortableContentSettingsSectionProps {
 	hidden?: boolean;
 	/** Leaves room for an existing disclosure chevron at the inline end. */
 	disclosure?: boolean;
+	/** Disables every form control in the section; the drag handle stays usable. */
+	disabled?: boolean;
 	children: React.ReactNode;
 	/** Internal state supplied by the sortable group while any section is moving. */
 	isSorting?: boolean;
@@ -170,6 +172,7 @@ export function SortableContentSettingsSection({
 	id,
 	label,
 	disclosure = false,
+	disabled = false,
 	children,
 	isSorting = false,
 }: SortableContentSettingsSectionProps) {
@@ -205,7 +208,9 @@ export function SortableContentSettingsSection({
 					<span className="text-base font-semibold">{label}</span>
 				</div>
 			)}
-			{children}
+			<fieldset disabled={disabled} className="contents">
+				{children}
+			</fieldset>
 			<button
 				type="button"
 				data-sortable-handle

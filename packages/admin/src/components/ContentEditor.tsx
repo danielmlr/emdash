@@ -1583,11 +1583,11 @@ export function ContentEditor({
 					</Badge>
 				)}
 			</div>
-			{/* The distraction-free toggle stays outside the disabled fieldset:
-			    it changes the view, not the entry, and a reader must be able to
-			    leave the overlay. */}
+			{/* Read-only disables the controls that write; Preview, the settings
+			    sheet and the distraction-free toggle only change the view, so a
+			    reader keeps them. */}
 			<div className="ms-0.5 flex flex-wrap items-center justify-end gap-1.5 sm:ms-1.5">
-				<fieldset disabled={readOnly} className="contents">
+				<>
 					{!isDistractionFree && item && sandboxedEditorActions.length > 0 ? (
 						<SandboxedContentEditorActions
 							actions={sandboxedEditorActions}
@@ -1595,7 +1595,7 @@ export function ContentEditor({
 							entryId={item.id}
 							locale={item.locale ?? entryLocale}
 							isMobile={isBelowLg}
-							disabled={Boolean(isSaving || isAutosaving) || isViewing}
+							disabled={Boolean(isSaving || isAutosaving) || isViewing || readOnly}
 							hasUnsavedChanges={isDirty}
 							onEntryRefresh={onEntryRefresh}
 							captureDraft={captureEditorDraft}
@@ -1613,7 +1613,7 @@ export function ContentEditor({
 						hasPendingChanges={hasPendingChanges}
 						publishingState={publishingState}
 						publishingPending={publishingPending}
-						publishDisabled={hasSaveConflict || isViewing}
+						publishDisabled={hasSaveConflict || isViewing || readOnly}
 						liveViewUrl={liveViewUrl}
 						supportsPreview={supportsPreview}
 						isLoadingPreview={isLoadingPreview}
@@ -1625,7 +1625,7 @@ export function ContentEditor({
 							// The settings panel holds these outside distraction-free mode.
 							isDistractionFree && !isNew ? (
 								<>
-									{supportsDrafts && hasPendingChanges && onDiscardDraft && (
+									{supportsDrafts && hasPendingChanges && onDiscardDraft && !readOnly && (
 										<DiscardDraftDialog
 											onDiscard={onDiscardDraft}
 											triggerVariant="outline"
@@ -1639,7 +1639,7 @@ export function ContentEditor({
 										canSchedule={canSchedule}
 										isScheduling={isScheduling}
 										isUnscheduling={isUnscheduling}
-										disabled={publishingPending || hasSaveConflict || isViewing}
+										disabled={publishingPending || hasSaveConflict || isViewing || readOnly}
 										onOpenSchedule={onSchedule ? handleOpenSchedule : undefined}
 										onUnschedule={onUnschedule ? handleUnschedule : undefined}
 										inline
@@ -1651,7 +1651,7 @@ export function ContentEditor({
 					{!isDistractionFree && isBelowLg && (
 						<MobileSettingsButton buttonRef={settingsButtonRef} />
 					)}
-				</fieldset>
+				</>
 				<Button
 					variant="ghost"
 					shape="square"
@@ -1879,68 +1879,67 @@ export function ContentEditor({
 						aria-label={t`Settings`}
 						className={cn(isDistractionFree && "hidden")}
 					>
-						<fieldset disabled={readOnly} className="contents">
-							<div
-								className="flex-1 overflow-y-auto overflow-x-hidden bg-kumo-base"
-								style={isBelowLg ? { paddingTop: ADMIN_HEADER_HEIGHT_PX } : undefined}
-							>
-								{isBelowLg && blockSidebarPanel?.type !== "image" && (
-									<div className="flex justify-end px-4 pt-3">
-										<MobileSettingsCloseButton />
-									</div>
-								)}
-								<RevisionViewProvider value={supportsRevisions ? revisionView.context : null}>
-									<ContentSettingsPanel
-										collection={collection}
-										item={item}
-										isNew={isNew}
-										manifest={manifest}
-										entryLocale={entryLocale}
-										slug={slug}
-										onSlugChange={handleSlugChange}
-										status={status}
-										supportsDrafts={supportsDrafts}
-										isLive={isLive}
-										hasPendingChanges={hasPendingChanges}
-										publishingState={publishingState}
-										publishingDisabled={publishingPending || hasSaveConflict || isViewing}
-										canSchedule={canSchedule}
-										isScheduling={isScheduling}
-										isUnscheduling={isUnscheduling}
-										onOpenSchedule={onSchedule ? handleOpenSchedule : undefined}
-										onUnschedule={onUnschedule ? handleUnschedule : undefined}
-										supportsRevisions={supportsRevisions}
-										onPublishedAtChange={onPublishedAtChange ? handlePublishedAtChange : undefined}
-										isUpdatingPublishedAt={isUpdatingPublishedAt}
-										onDiscardDraft={onDiscardDraft}
-										onDelete={onDelete}
-										isDeleting={isDeleting}
-										currentUser={currentUser}
-										users={users}
-										onAuthorChange={onAuthorChange}
-										activeBylines={activeBylines}
-										inferredByline={resolvedItemBylines.inferredByline}
-										availableBylines={availableBylines}
-										availableBylinesLoaded={availableBylinesLoaded}
-										onBylinesChange={handleBylinesChange}
-										onQuickCreateByline={onQuickCreateByline}
-										onQuickEditByline={onQuickEditByline}
-										i18n={i18n}
-										translations={translations}
-										onTranslate={onTranslate}
-										hasSeo={hasSeo}
-										onSeoChange={onSeoChange ? handleSeoChange : undefined}
-										portableTextEditor={portableTextEditor}
-										blockSidebarPanel={blockSidebarPanel}
-										onBlockSidebarClose={handleBlockSidebarClose}
-										onBlockSidebarDelete={handleBlockSidebarDelete}
-										captureEditorDraft={captureEditorDraft}
-										onEditorDraftResponse={handleEditorDraftResponse}
-										onEntryRefresh={onEntryRefresh}
-									/>
-								</RevisionViewProvider>
-							</div>
-						</fieldset>
+						<div
+							className="flex-1 overflow-y-auto overflow-x-hidden bg-kumo-base"
+							style={isBelowLg ? { paddingTop: ADMIN_HEADER_HEIGHT_PX } : undefined}
+						>
+							{isBelowLg && blockSidebarPanel?.type !== "image" && (
+								<div className="flex justify-end px-4 pt-3">
+									<MobileSettingsCloseButton />
+								</div>
+							)}
+							<RevisionViewProvider value={supportsRevisions ? revisionView.context : null}>
+								<ContentSettingsPanel
+									collection={collection}
+									item={item}
+									isNew={isNew}
+									readOnly={readOnly}
+									manifest={manifest}
+									entryLocale={entryLocale}
+									slug={slug}
+									onSlugChange={handleSlugChange}
+									status={status}
+									supportsDrafts={supportsDrafts}
+									isLive={isLive}
+									hasPendingChanges={hasPendingChanges}
+									publishingState={publishingState}
+									publishingDisabled={publishingPending || hasSaveConflict || isViewing}
+									canSchedule={canSchedule}
+									isScheduling={isScheduling}
+									isUnscheduling={isUnscheduling}
+									onOpenSchedule={onSchedule ? handleOpenSchedule : undefined}
+									onUnschedule={onUnschedule ? handleUnschedule : undefined}
+									supportsRevisions={supportsRevisions}
+									onPublishedAtChange={onPublishedAtChange ? handlePublishedAtChange : undefined}
+									isUpdatingPublishedAt={isUpdatingPublishedAt}
+									onDiscardDraft={onDiscardDraft}
+									onDelete={onDelete}
+									isDeleting={isDeleting}
+									currentUser={currentUser}
+									users={users}
+									onAuthorChange={onAuthorChange}
+									activeBylines={activeBylines}
+									inferredByline={resolvedItemBylines.inferredByline}
+									availableBylines={availableBylines}
+									availableBylinesLoaded={availableBylinesLoaded}
+									onBylinesChange={handleBylinesChange}
+									onQuickCreateByline={onQuickCreateByline}
+									onQuickEditByline={onQuickEditByline}
+									i18n={i18n}
+									translations={translations}
+									onTranslate={onTranslate}
+									hasSeo={hasSeo}
+									onSeoChange={onSeoChange ? handleSeoChange : undefined}
+									portableTextEditor={portableTextEditor}
+									blockSidebarPanel={blockSidebarPanel}
+									onBlockSidebarClose={handleBlockSidebarClose}
+									onBlockSidebarDelete={handleBlockSidebarDelete}
+									captureEditorDraft={captureEditorDraft}
+									onEditorDraftResponse={handleEditorDraftResponse}
+									onEntryRefresh={onEntryRefresh}
+								/>
+							</RevisionViewProvider>
+						</div>
 						{!isBelowLg && <ContentEditorSettingsResizeHandle panelId={settingsPanelId} />}
 					</Sidebar>
 				</div>

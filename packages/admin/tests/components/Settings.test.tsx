@@ -129,6 +129,20 @@ describe("Settings", () => {
 		expect(editor.getByRole("link", { name: /Media usage tracking/ }).query()).toBeNull();
 	});
 
+	it("offers only the rows whose pages the role can open", async () => {
+		currentUser.role = 40;
+		const screen = await render(
+			<Wrapper>
+				<Settings />
+			</Wrapper>,
+		);
+		await expect.element(screen.getByRole("link", { name: /General/ })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /API Tokens/ }).query()).toBeNull();
+		expect(screen.getByRole("link", { name: /Backups/ }).query()).toBeNull();
+		expect(screen.getByRole("link", { name: /^Email/ }).query()).toBeNull();
+		expect(screen.getByText("Self-Signup Domains").query()).toBeNull();
+	});
+
 	it("groups settings into clear semantic sections", async () => {
 		const screen = await render(
 			<Wrapper>

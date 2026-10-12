@@ -30,12 +30,19 @@ export const GET: APIRoute = async ({ url, locals }) => {
 	try {
 		const adapter = createKyselyAdapter(emdash.db);
 		const invite = await validateInvite(adapter, token);
+		const customRole = invite.roleId
+			? await emdash.db
+					.selectFrom("_emdash_roles")
+					.select("label")
+					.where("id", "=", invite.roleId)
+					.executeTakeFirst()
+			: undefined;
 
 		return apiSuccess({
 			success: true,
 			email: invite.email,
 			role: invite.role,
-			roleName: roleFromLevel(invite.role),
+			roleName: customRole?.label ?? roleFromLevel(invite.role),
 		});
 	} catch (error) {
 		if (error instanceof InviteError) {

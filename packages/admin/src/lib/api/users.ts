@@ -66,12 +66,14 @@ export interface UpdateUserInput {
 export async function fetchUsers(options?: {
 	search?: string;
 	role?: number;
+	roleId?: string;
 	cursor?: string;
 	limit?: number;
 }): Promise<FindManyResult<UserListItem>> {
 	const params = new URLSearchParams();
 	if (options?.search) params.set("search", options.search);
 	if (options?.role !== undefined) params.set("role", String(options.role));
+	if (options?.roleId !== undefined) params.set("roleId", options.roleId);
 	if (options?.cursor) params.set("cursor", options.cursor);
 	if (options?.limit) params.set("limit", String(options.limit));
 

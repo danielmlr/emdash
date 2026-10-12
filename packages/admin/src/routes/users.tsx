@@ -29,6 +29,7 @@ import {
 	fetchManifest,
 	type UpdateUserInput,
 } from "../lib/api";
+import { useRoles } from "../lib/api/roles.js";
 
 /**
  * Debounce hook for search input
@@ -51,7 +52,7 @@ export function UsersPage() {
 
 	// State
 	const [searchQuery, setSearchQuery] = React.useState("");
-	const [roleFilter, setRoleFilter] = React.useState<number | undefined>();
+	const [roleFilter, setRoleFilter] = React.useState<string | undefined>();
 	const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
 	const [isDetailOpen, setIsDetailOpen] = React.useState(false);
 	const [isInviteOpen, setIsInviteOpen] = React.useState(false);
@@ -66,13 +67,18 @@ export function UsersPage() {
 
 	// Queries
 	const { data: manifest } = useQuery({ queryKey: ["manifest"], queryFn: fetchManifest });
+	const customRoles = useRoles(true).data?.items ?? [];
+	const pendingRoleLabel =
+		pendingSaveData?.roleId !== undefined
+			? (customRoles.find((role) => role.id === pendingSaveData.roleId)?.label ?? t`Custom role`)
+			: getRoleLabel(pendingSaveData?.role ?? 0);
 
 	const usersQuery = useInfiniteQuery({
 		queryKey: ["users", debouncedSearch, roleFilter],
 		queryFn: ({ pageParam }) =>
 			fetchUsers({
 				search: debouncedSearch || undefined,
-				role: roleFilter,
+				...(roleFilter ? parseRoleKey(roleFilter) : {}),
 				cursor: pageParam,
 			}),
 		initialPageParam: undefined as string | undefined,
@@ -157,9 +163,12 @@ export function UsersPage() {
 
 		// Check for role demotion — require confirmation.
 		// Guard: only check when user data is loaded (currentRole defined).
-		// Assigning a custom role always counts: its level is at most Editor.
+		// A custom role counts by the built-in level it is stored at.
 		const currentRole = userDetailQuery.data?.role;
-		const newLevel = data.roleId !== undefined ? 0 : data.role;
+		const newLevel =
+			data.roleId !== undefined
+				? (customRoles.find((role) => role.id === data.roleId)?.compatibilityLevel ?? 0)
+				: data.role;
 		if (newLevel !== undefined && currentRole !== undefined && newLevel < currentRole) {
 			setPendingSaveData(data);
 			setShowDemoteConfirm(true);
@@ -305,9 +314,10 @@ export function UsersPage() {
 				description={
 					<Trans>
 						Change <strong>{selectedUser?.name || selectedUser?.email}</strong> from{" "}
-						<strong>{getRoleLabel(selectedUser?.role ?? 0)}</strong> to{" "}
-						<strong>{getRoleLabel(pendingSaveData?.role ?? 0)}</strong>? They will lose access to
-						higher-level features.
+						<strong>
+							{selectedUser?.customRole?.label ?? getRoleLabel(selectedUser?.role ?? 0)}
+						</strong>{" "}
+						to <strong>{pendingRoleLabel}</strong>? They will lose access to higher-level features.
 					</Trans>
 				}
 				confirmLabel={t`Demote User`}

@@ -274,6 +274,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 		async getUsers(options?: {
 			search?: string;
 			role?: number;
+			roleId?: string;
 			cursor?: string;
 			limit?: number;
 		}): Promise<{
@@ -317,6 +318,9 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 
 			if (options?.role !== undefined) {
 				query = query.where("users.role", "=", options.role);
+			}
+			if (options?.roleId !== undefined) {
+				query = query.where("users.role_id", "=", options.roleId);
 			}
 
 			if (options?.cursor) {

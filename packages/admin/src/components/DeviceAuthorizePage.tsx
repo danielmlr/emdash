@@ -29,6 +29,7 @@ interface UserInfo {
 	email: string;
 	name: string | null;
 	role: number;
+	customRole?: { label: string } | null;
 }
 
 interface DeviceCodeScopes {
@@ -252,7 +253,9 @@ export function DeviceAuthorizePage() {
 								</div>
 								<div className="min-w-0">
 									<p className="text-sm font-medium truncate">{user.name || user.email}</p>
-									<p className="text-xs text-kumo-subtle">{ROLE_NAMES[user.role] || t`User`}</p>
+									<p className="text-xs text-kumo-subtle">
+										{user.customRole?.label || ROLE_NAMES[user.role] || t`User`}
+									</p>
 								</div>
 							</div>
 

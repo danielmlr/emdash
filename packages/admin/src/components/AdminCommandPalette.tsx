@@ -233,7 +233,7 @@ export function buildNavItems(
 			title: msg`Plugins`,
 			to: "/plugins-manager",
 			icon: ADMIN_NAV_ICONS.plugins,
-			permission: "plugins:manage",
+			permission: "plugins:read",
 			keywords: ["extensions", "add-ons"],
 		},
 		{

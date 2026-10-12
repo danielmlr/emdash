@@ -35,6 +35,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
 		const result = await adapter.getUsers({
 			search: query.search,
 			role: query.role ? parseInt(query.role, 10) : undefined,
+			roleId: query.roleId,
 			cursor: query.cursor,
 			limit: query.limit,
 		});

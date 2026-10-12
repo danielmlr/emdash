@@ -40,6 +40,13 @@ export function Settings() {
 	const showMediaUsageSettings = can(currentUser, "schema:manage");
 	const showTransferSettings =
 		can(currentUser, "transfer:export") || can(currentUser, "transfer:import");
+	// Each row is offered only when its page's first request would succeed.
+	const showSiteSettings = can(currentUser, "settings:read");
+	const showSignupDomains = can(currentUser, "users:read");
+	const showApiTokens = can(currentUser, "users:manage");
+	const showEmailSettings = can(currentUser, "settings:manage");
+	const showBackups = can(currentUser, "backups:manage");
+	const showEmailSection = showEmailSettings || showBackups || showTransferSettings;
 	const selectedLocale = SUPPORTED_LOCALES.find((option) => option.code === locale) ?? null;
 
 	return (
@@ -49,26 +56,28 @@ export function Settings() {
 			</header>
 
 			<div className="mt-6 grid gap-8">
-				<SettingsSection title={t`Site`}>
-					<SettingsNavRow
-						to="/settings/general"
-						icon={<Gear className="h-5 w-5" />}
-						title={t`General`}
-						description={t`Site identity, logo, favicon, and reading preferences`}
-					/>
-					<SettingsNavRow
-						to="/settings/social"
-						icon={<ShareNetwork className="h-5 w-5" />}
-						title={t`Social Links`}
-						description={t`Social media profile links`}
-					/>
-					<SettingsNavRow
-						to="/settings/seo"
-						icon={<MagnifyingGlass className="h-5 w-5" />}
-						title={t`SEO`}
-						description={t`Search engine optimization and verification`}
-					/>
-				</SettingsSection>
+				{showSiteSettings ? (
+					<SettingsSection title={t`Site`}>
+						<SettingsNavRow
+							to="/settings/general"
+							icon={<Gear className="h-5 w-5" />}
+							title={t`General`}
+							description={t`Site identity, logo, favicon, and reading preferences`}
+						/>
+						<SettingsNavRow
+							to="/settings/social"
+							icon={<ShareNetwork className="h-5 w-5" />}
+							title={t`Social Links`}
+							description={t`Social media profile links`}
+						/>
+						<SettingsNavRow
+							to="/settings/seo"
+							icon={<MagnifyingGlass className="h-5 w-5" />}
+							title={t`SEO`}
+							description={t`Search engine optimization and verification`}
+						/>
+					</SettingsSection>
+				) : null}
 
 				{showMediaUsageSettings ? (
 					<SettingsSection title={t`Media`}>
@@ -89,46 +98,56 @@ export function Settings() {
 							title={t`Security`}
 							description={t`Manage your passkeys and authentication`}
 						/>
-						<SettingsNavRow
-							to="/settings/allowed-domains"
-							icon={<Globe className="h-5 w-5" />}
-							title={t`Self-Signup Domains`}
-							description={t`Allow users from specific domains to sign up`}
-						/>
+						{showSignupDomains ? (
+							<SettingsNavRow
+								to="/settings/allowed-domains"
+								icon={<Globe className="h-5 w-5" />}
+								title={t`Self-Signup Domains`}
+								description={t`Allow users from specific domains to sign up`}
+							/>
+						) : null}
 					</SettingsSection>
 				)}
 
-				<SettingsSection title={t`API Tokens`}>
-					<SettingsNavRow
-						to="/settings/api-tokens"
-						icon={<Key className="h-5 w-5" />}
-						title={t`API Tokens`}
-						description={t`Create personal access tokens for programmatic API access`}
-					/>
-				</SettingsSection>
-
-				<SettingsSection title={t`Email Settings`}>
-					<SettingsNavRow
-						to="/settings/email"
-						icon={<Envelope className="h-5 w-5" />}
-						title={t`Email`}
-						description={t`View email provider status and send test emails`}
-					/>
-					<SettingsNavRow
-						to="/settings/backups"
-						icon={<DownloadSimple className="h-5 w-5" />}
-						title={t`Backups`}
-						description={t`Download backups and schedule automatic backups to storage`}
-					/>
-					{showTransferSettings ? (
+				{showApiTokens ? (
+					<SettingsSection title={t`API Tokens`}>
 						<SettingsNavRow
-							to="/settings/transfer"
-							icon={<ArrowsLeftRight className="h-5 w-5" />}
-							title={t`Transfer`}
-							description={t`Move this site to another EmDash installation, or import a site package`}
+							to="/settings/api-tokens"
+							icon={<Key className="h-5 w-5" />}
+							title={t`API Tokens`}
+							description={t`Create personal access tokens for programmatic API access`}
 						/>
-					) : null}
-				</SettingsSection>
+					</SettingsSection>
+				) : null}
+
+				{showEmailSection ? (
+					<SettingsSection title={t`Email Settings`}>
+						{showEmailSettings ? (
+							<SettingsNavRow
+								to="/settings/email"
+								icon={<Envelope className="h-5 w-5" />}
+								title={t`Email`}
+								description={t`View email provider status and send test emails`}
+							/>
+						) : null}
+						{showBackups ? (
+							<SettingsNavRow
+								to="/settings/backups"
+								icon={<DownloadSimple className="h-5 w-5" />}
+								title={t`Backups`}
+								description={t`Download backups and schedule automatic backups to storage`}
+							/>
+						) : null}
+						{showTransferSettings ? (
+							<SettingsNavRow
+								to="/settings/transfer"
+								icon={<ArrowsLeftRight className="h-5 w-5" />}
+								title={t`Transfer`}
+								description={t`Move this site to another EmDash installation, or import a site package`}
+							/>
+						) : null}
+					</SettingsSection>
+				) : null}
 
 				{SUPPORTED_LOCALES.length > 1 && (
 					<SettingsSection title={t`Language`}>

@@ -841,7 +841,7 @@ function ContentListPage() {
 					: undefined
 			}
 			onDuplicate={
-				can(currentUser, "content:create", { collection })
+				can(currentUser, "content:create", { collection }) && canEditHere
 					? (id) => duplicateMutation.mutate(id)
 					: undefined
 			}

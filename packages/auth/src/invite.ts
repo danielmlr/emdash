@@ -207,7 +207,7 @@ export async function createInvite(
 export async function validateInvite(
 	adapter: AuthAdapter,
 	token: string,
-): Promise<{ email: string; role: RoleLevel }> {
+): Promise<{ email: string; role: RoleLevel; roleId: string | null }> {
 	const hash = hashToken(token);
 
 	const authToken = await adapter.getToken(hash, "invite");
@@ -227,6 +227,7 @@ export async function validateInvite(
 	return {
 		email: authToken.email,
 		role: authToken.role,
+		roleId: authToken.roleId ?? null,
 	};
 }
 

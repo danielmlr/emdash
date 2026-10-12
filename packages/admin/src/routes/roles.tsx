@@ -62,6 +62,7 @@ export function RolesPage() {
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["roles"] }),
 				queryClient.invalidateQueries({ queryKey: ["users"] }),
+				queryClient.invalidateQueries({ queryKey: ["currentUser"] }),
 			]);
 		},
 	});

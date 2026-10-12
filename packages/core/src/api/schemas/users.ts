@@ -10,6 +10,8 @@ export const usersListQuery = z
 	.object({
 		search: z.string().optional(),
 		role: z.string().optional(),
+		/** Custom role id to filter by. */
+		roleId: z.string().max(64).optional(),
 		cursor: z.string().max(2048).optional(),
 		limit: z.coerce.number().int().min(1).max(100).optional().default(50),
 	})

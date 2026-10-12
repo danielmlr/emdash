@@ -7,16 +7,17 @@ import type { UserListItem } from "../../lib/api";
 import { cn, formatDate } from "../../lib/utils.js";
 import { TableToolbar, TableToolbarSearch } from "../TableToolbar.js";
 import { RoleBadge } from "./RoleBadge";
-import { useRolesConfig } from "./useRolesConfig.js";
+import { useRoleOptions } from "./useRolesConfig.js";
 
 export interface UserListProps {
 	users: UserListItem[];
 	isLoading?: boolean;
 	hasMore?: boolean;
 	searchQuery: string;
-	roleFilter: number | undefined;
+	/** A role picker key: a built-in level or `custom:<id>`; undefined for all roles. */
+	roleFilter: string | undefined;
 	onSearchChange: (query: string) => void;
-	onRoleFilterChange: (role: number | undefined) => void;
+	onRoleFilterChange: (roleKey: string | undefined) => void;
 	onSelectUser: (id: string) => void;
 	onInviteUser: () => void;
 	onLoadMore?: () => void;
@@ -38,14 +39,17 @@ export function UserList({
 	onLoadMore,
 }: UserListProps) {
 	const { t } = useLingui();
-	const { roles, roleLabels } = useRolesConfig();
+	const { options: roleOptions, labels: roleLabels } = useRoleOptions({ enabled: true });
 	const roleFilterSelectItems = React.useMemo(
 		() => ({ all: t`All roles`, ...roleLabels }),
 		[t, roleLabels],
 	);
 	const roleFilterSelectOptions = React.useMemo(
-		() => [{ value: "all", label: t`All roles` }, ...roles],
-		[t, roles],
+		() => [
+			{ value: "all", label: t`All roles` },
+			...roleOptions.map((option) => ({ value: option.key, label: option.label })),
+		],
+		[t, roleOptions],
 	);
 
 	return (
@@ -67,9 +71,9 @@ export function UserList({
 				/>
 				<Select
 					size="sm"
-					value={roleFilter?.toString() ?? "all"}
+					value={roleFilter ?? "all"}
 					onValueChange={(value) =>
-						onRoleFilterChange(value === "all" || value === null ? undefined : parseInt(value, 10))
+						onRoleFilterChange(value === "all" || value === null ? undefined : value)
 					}
 					items={roleFilterSelectItems}
 					aria-label={t`Filter by role`}

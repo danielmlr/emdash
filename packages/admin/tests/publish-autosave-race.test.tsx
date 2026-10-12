@@ -67,6 +67,8 @@ interface RecordedRequest {
 }
 
 interface MockServerOptions {
+	/** The signed-in user; an Editor unless a test needs more. */
+	currentUser?: ReturnType<typeof builtInUser>;
 	initialBylines?: ContentItem["bylines"];
 	initialScheduledAt?: string;
 	omitScheduleChangeRevision?: boolean;
@@ -116,7 +118,7 @@ function createMockServer(options: MockServerOptions = {}) {
 			return jsonResponse({ data: MANIFEST });
 		}
 		if (method === "GET" && url === "/_emdash/api/auth/me") {
-			return jsonResponse({ data: builtInUser(50, "user_1") });
+			return jsonResponse({ data: options.currentUser ?? builtInUser(40, "user_1") });
 		}
 		if (method === "GET" && url.startsWith("/_emdash/api/bylines")) {
 			return jsonResponse({ data: { items: [] } });
@@ -894,7 +896,10 @@ describe("ContentEditPage actions during a save conflict", () => {
 	// handler. A save without a token is a blind write and goes through.
 	function createSharedEntryServer(
 		overrides: Partial<RevisionedContentItem> = {},
-		options: { holdFirstSave?: Promise<unknown> } = {},
+		options: {
+			holdFirstSave?: Promise<unknown>;
+			currentUser?: ReturnType<typeof builtInUser>;
+		} = {},
 	) {
 		const entry = {
 			rev: "rev-initial",
@@ -903,6 +908,7 @@ describe("ContentEditPage actions during a save conflict", () => {
 		let saves = 0;
 		const storedItem = () => makeItem({ ...overrides, _rev: entry.rev, data: entry.data });
 		const mock = createMockServer({
+			currentUser: options.currentUser,
 			onContentGet: () => contentResponse(storedItem()),
 			onPut: async (request, index) => {
 				if (index === 0) await options.holdFirstSave;
@@ -1096,7 +1102,8 @@ describe("ContentEditPage actions during a save conflict", () => {
 	});
 
 	it("keeps the conflict when the author changes, so a later edit cannot overwrite", async () => {
-		server = createSharedEntryServer();
+		// The author picker loads the user list, which only an Admin may read.
+		server = createSharedEntryServer({}, { currentUser: builtInUser(50, "user_1") });
 		serveOneOtherUser();
 		const screen = await renderEditPage();
 		await enterConflict(screen);

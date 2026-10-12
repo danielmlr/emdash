@@ -509,7 +509,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			to: "/plugins-manager",
 			label: t`Plugins`,
 			icon: ADMIN_NAV_ICONS.plugins,
-			permission: "plugins:manage",
+			permission: "plugins:read",
 		},
 	];
 
@@ -641,7 +641,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				</KumoSidebar.Group>
 
 				{/* Content — collections + media */}
-				{visibleContent.length > 1 && (
+				{visibleContent.length > 0 && (
 					<KumoSidebar.Group>
 						<KumoSidebar.GroupLabel>{t`Content`}</KumoSidebar.GroupLabel>
 						<KumoSidebar.Menu>{renderNavEntries(visibleContent)}</KumoSidebar.Menu>

@@ -15,13 +15,24 @@ export const CONTENT_PERMISSION_COLUMNS = [
 	"content:delete_permanent",
 ] as const;
 
-/** `_any` permissions and the `_own` permission each one includes. */
+/**
+ * Permissions and the permission each one includes: `_any` includes `_own`,
+ * and managing an area includes reading it. Mirrors the server's rule.
+ */
 export const ANY_INCLUDES_OWN: Readonly<Record<string, string>> = {
 	"content:edit_any": "content:edit_own",
 	"content:delete_any": "content:delete_own",
 	"content:publish_any": "content:publish_own",
 	"media:edit_any": "media:edit_own",
 	"media:delete_any": "media:delete_own",
+	"taxonomies:manage": "taxonomies:read",
+	"comments:moderate": "comments:read",
+	"menus:manage": "menus:read",
+	"bylines:manage": "bylines:read",
+	"widgets:manage": "widgets:read",
+	"sections:manage": "sections:read",
+	"redirects:manage": "redirects:read",
+	"search:manage": "search:read",
 };
 
 const AREA_LABELS: Record<string, MessageDescriptor> = {

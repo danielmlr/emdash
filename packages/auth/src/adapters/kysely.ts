@@ -5,6 +5,7 @@
 import type { Kysely, Insertable, Selectable, Updateable } from "kysely";
 import { ulid } from "ulidx";
 
+import { normalizeGrants, type CustomRole } from "../rbac.js";
 import {
 	Role,
 	toRoleLevel,
@@ -35,6 +36,7 @@ export interface AuthTables {
 	auth_tokens: AuthTokenTable;
 	oauth_accounts: OAuthAccountTable;
 	allowed_domains: AllowedDomainTable;
+	_emdash_roles: RoleTable;
 }
 
 interface UserTable {
@@ -43,6 +45,7 @@ interface UserTable {
 	name: string | null;
 	avatar_url: string | null;
 	role: number;
+	role_id: string | null;
 	email_verified: number;
 	disabled: number;
 	data: string | null;
@@ -70,6 +73,7 @@ interface AuthTokenTable {
 	email: string | null;
 	type: string;
 	role: number | null;
+	role_id: string | null;
 	invited_by: string | null;
 	expires_at: string;
 	created_at: string;
@@ -85,8 +89,27 @@ interface OAuthAccountTable {
 interface AllowedDomainTable {
 	domain: string;
 	default_role: number;
+	default_role_id: string | null;
 	enabled: number;
 	created_at: string;
+}
+
+interface RoleTable {
+	id: string;
+	slug: string;
+	label: string;
+	description: string | null;
+	/** JSON-encoded {@link RoleGrants} */
+	grants: string;
+	created_at: string;
+	updated_at: string;
+}
+
+/** Columns selected from `_emdash_roles` alongside a user row. */
+interface CustomRoleColumns {
+	custom_role_slug: string | null;
+	custom_role_label: string | null;
+	custom_role_grants: string | null;
 }
 
 // ============================================================================
@@ -98,22 +121,33 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 	// eslint-disable-next-line typescript/no-unsafe-type-assertion -- generic Kysely<T extends AuthTables> narrowed to concrete AuthTables for internal queries
 	const kdb = db as unknown as Kysely<AuthTables>;
 
+	// The custom role arrives in the same query as the user, so resolving a
+	// custom role costs no additional round trip.
+	const selectUsersWithCustomRole = () =>
+		kdb
+			.selectFrom("users")
+			.leftJoin("_emdash_roles", "_emdash_roles.id", "users.role_id")
+			.selectAll("users")
+			.select([
+				"_emdash_roles.slug as custom_role_slug",
+				"_emdash_roles.label as custom_role_label",
+				"_emdash_roles.grants as custom_role_grants",
+			]);
+
 	return {
 		// ========================================================================
 		// Users
 		// ========================================================================
 
 		async getUserById(id: string): Promise<User | null> {
-			const row = await kdb.selectFrom("users").selectAll().where("id", "=", id).executeTakeFirst();
+			const row = await selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst();
 
 			return row ? rowToUser(row) : null;
 		},
 
 		async getUserByEmail(email: string): Promise<User | null> {
-			const row = await kdb
-				.selectFrom("users")
-				.selectAll()
-				.where("email", "=", email.toLowerCase())
+			const row = await selectUsersWithCustomRole()
+				.where("users.email", "=", email.toLowerCase())
 				.executeTakeFirst();
 
 			return row ? rowToUser(row) : null;
@@ -129,6 +163,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 				name: user.name ?? null,
 				avatar_url: user.avatarUrl ?? null,
 				role: user.role ?? Role.SUBSCRIBER,
+				role_id: user.roleId ?? null,
 				email_verified: user.emailVerified ? 1 : 0,
 				disabled: 0,
 				data: user.data ? JSON.stringify(user.data) : null,
@@ -138,12 +173,20 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 
 			await kdb.insertInto("users").values(row).execute();
 
+			if (row.role_id) {
+				const created = await selectUsersWithCustomRole()
+					.where("users.id", "=", id)
+					.executeTakeFirstOrThrow();
+				return rowToUser(created);
+			}
+
 			return {
 				id,
 				email: row.email,
 				name: user.name ?? null,
 				avatarUrl: user.avatarUrl ?? null,
 				role: toRoleLevel(row.role),
+				customRole: null,
 				emailVerified: row.email_verified === 1,
 				disabled: false,
 				data: user.data ?? null,
@@ -161,6 +204,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			if (data.name !== undefined) update.name = data.name;
 			if (data.avatarUrl !== undefined) update.avatar_url = data.avatarUrl;
 			if (data.role !== undefined) update.role = data.role;
+			if (data.roleId !== undefined) update.role_id = data.roleId;
 			if (data.emailVerified !== undefined) update.email_verified = data.emailVerified ? 1 : 0;
 			if (data.disabled !== undefined) update.disabled = data.disabled ? 1 : 0;
 			if (data.data !== undefined) update.data = data.data ? JSON.stringify(data.data) : null;
@@ -201,10 +245,14 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			let query = kdb
 				.selectFrom("users")
 				.leftJoin("credentials", "users.id", "credentials.user_id")
+				.leftJoin("_emdash_roles", "_emdash_roles.id", "users.role_id")
 				.selectAll("users")
 				.select((eb) => [
 					eb.fn.count<number>("credentials.id").as("credential_count"),
 					eb.fn.max("credentials.last_used_at").as("last_login"),
+					eb.fn.max("_emdash_roles.slug").as("custom_role_slug"),
+					eb.fn.max("_emdash_roles.label").as("custom_role_label"),
+					eb.fn.max("_emdash_roles.grants").as("custom_role_grants"),
 				])
 				.groupBy("users.id")
 				.orderBy("users.created_at", "desc")
@@ -261,16 +309,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 
 			const hasMore = rows.length > limit;
 			const items = rows.slice(0, limit).map((row) => ({
-				id: row.id,
-				email: row.email,
-				name: row.name,
-				avatarUrl: row.avatar_url,
-				role: toRoleLevel(row.role),
-				emailVerified: row.email_verified === 1,
-				disabled: row.disabled === 1,
-				data: row.data ? JSON.parse(row.data) : null,
-				createdAt: new Date(row.created_at),
-				updatedAt: new Date(row.updated_at),
+				...rowToUser(row),
 				lastLogin: row.last_login ? new Date(row.last_login) : null,
 				credentialCount: row.credential_count ?? 0,
 				oauthProviders: oauthByUser.get(row.id) ?? [],
@@ -288,11 +327,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			oauthAccounts: OAuthAccount[];
 			lastLogin: Date | null;
 		} | null> {
-			const user = await kdb
-				.selectFrom("users")
-				.selectAll()
-				.where("id", "=", id)
-				.executeTakeFirst();
+			const user = await selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst();
 
 			if (!user) return null;
 
@@ -429,6 +464,7 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 				email: token.email ?? null,
 				type: token.type,
 				role: token.role ?? null,
+				role_id: token.roleId ?? null,
 				invited_by: token.invitedBy ?? null,
 				expires_at: token.expiresAt.toISOString(),
 				created_at: new Date().toISOString(),
@@ -596,19 +632,64 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 // Row converters
 // ============================================================================
 
-function rowToUser(row: Selectable<UserTable>): User {
+function rowToUser(row: Selectable<UserTable> & Partial<CustomRoleColumns>): User {
 	return {
 		id: row.id,
 		email: row.email,
 		name: row.name,
 		avatarUrl: row.avatar_url,
 		role: toRoleLevel(row.role),
+		customRole: rowToCustomRole(row),
 		emailVerified: row.email_verified === 1,
 		disabled: row.disabled === 1,
 		data: row.data ? JSON.parse(row.data) : null,
 		createdAt: new Date(row.created_at),
 		updatedAt: new Date(row.updated_at),
 	};
+}
+
+/**
+ * A user whose role reference points at no role row gets a custom role with
+ * no grants, never the built-in level stored beside it.
+ */
+function rowToCustomRole(
+	row: Pick<UserTable, "role_id"> & Partial<CustomRoleColumns>,
+): CustomRole | null {
+	if (!row.role_id) return null;
+	return {
+		id: row.role_id,
+		slug: row.custom_role_slug ?? "",
+		label: row.custom_role_label ?? "",
+		grants: parseGrants(row.custom_role_grants ?? null),
+	};
+}
+
+export function parseGrants(json: string | null): CustomRole["grants"] {
+	if (!json) return { permissions: [], collections: {} };
+	try {
+		const parsed: unknown = JSON.parse(json);
+		if (!parsed || typeof parsed !== "object") return { permissions: [], collections: {} };
+		const { permissions, collections } = parsed as {
+			permissions?: unknown;
+			collections?: unknown;
+		};
+		return normalizeGrants({
+			permissions: Array.isArray(permissions)
+				? permissions.filter((p): p is string => typeof p === "string")
+				: [],
+			collections:
+				collections && typeof collections === "object"
+					? Object.fromEntries(
+							Object.entries(collections).map(([slug, names]) => [
+								slug,
+								Array.isArray(names) ? names.filter((p): p is string => typeof p === "string") : [],
+							]),
+						)
+					: {},
+		});
+	} catch {
+		return { permissions: [], collections: {} };
+	}
 }
 
 function rowToCredential(row: Selectable<CredentialTable>): Credential {
@@ -634,6 +715,7 @@ function rowToAuthToken(row: Selectable<AuthTokenTable>): AuthToken {
 		email: row.email,
 		type: toTokenType(row.type),
 		role: row.role != null ? toRoleLevel(row.role) : null,
+		roleId: row.role_id ?? null,
 		invitedBy: row.invited_by,
 		expiresAt: new Date(row.expires_at),
 		createdAt: new Date(row.created_at),
@@ -653,6 +735,7 @@ function rowToAllowedDomain(row: Selectable<AllowedDomainTable>): AllowedDomain 
 	return {
 		domain: row.domain,
 		defaultRole: toRoleLevel(row.default_role),
+		defaultRoleId: row.default_role_id ?? null,
 		enabled: row.enabled === 1,
 		createdAt: new Date(row.created_at),
 	};
@@ -670,6 +753,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   avatar_url TEXT,
   role INTEGER NOT NULL DEFAULT 10,
+  role_id TEXT,
   email_verified INTEGER NOT NULL DEFAULT 0,
   disabled INTEGER NOT NULL DEFAULT 0,
   data TEXT,
@@ -703,6 +787,7 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
   email TEXT,
   type TEXT NOT NULL,
   role INTEGER,
+  role_id TEXT,
   invited_by TEXT REFERENCES users(id),
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL
@@ -725,7 +810,19 @@ CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user ON oauth_accounts(user_id);
 CREATE TABLE IF NOT EXISTS allowed_domains (
   domain TEXT PRIMARY KEY,
   default_role INTEGER NOT NULL DEFAULT 20,
+  default_role_id TEXT,
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
+);
+
+-- Custom roles
+CREATE TABLE IF NOT EXISTS _emdash_roles (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  label TEXT NOT NULL,
+  description TEXT,
+  grants TEXT NOT NULL DEFAULT '{"permissions":[],"collections":{}}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 `;

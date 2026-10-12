@@ -38,14 +38,32 @@ export {
 // RBAC
 export {
 	Permissions,
+	ALL_PERMISSIONS,
+	COLLECTION_SCOPED_PERMISSIONS,
+	BUILT_IN_ADMIN_ONLY_PERMISSIONS,
+	isPermission,
 	hasPermission,
+	hasPermissionInAnyCollection,
+	hasCollectionAccess,
+	collectionsWithPermission,
+	narrowCollections,
 	requirePermission,
 	canActOnOwn,
 	requirePermissionOnResource,
+	permissionsForRole,
+	effectivePermissions,
+	normalizeGrants,
+	compatibilityLevel,
 	PermissionError,
 	scopesForRole,
+	scopesForActor,
 	clampScopes,
+	clampScopesForActor,
 	type Permission,
+	type Actor,
+	type CustomRole,
+	type RoleGrants,
+	type PermissionResource,
 } from "./rbac.js";
 
 // Tokens

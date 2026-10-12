@@ -88,6 +88,7 @@ export async function createInviteToken(
 	email: string,
 	role: RoleLevel,
 	invitedBy: string,
+	roleId: string | null = null,
 ): Promise<InviteTokenResult> {
 	// Check if user already exists
 	const existing = await adapter.getUserByEmail(email);
@@ -104,6 +105,7 @@ export async function createInviteToken(
 		email,
 		type: "invite",
 		role,
+		roleId,
 		invitedBy,
 		expiresAt: new Date(Date.now() + TOKEN_EXPIRY_MS),
 	});
@@ -180,8 +182,9 @@ export async function createInvite(
 	email: string,
 	role: RoleLevel,
 	invitedBy: string,
+	roleId: string | null = null,
 ): Promise<InviteTokenResult> {
-	const result = await createInviteToken(config, adapter, email, role, invitedBy);
+	const result = await createInviteToken(config, adapter, email, role, invitedBy, roleId);
 
 	// Send email if a sender is configured
 	if (config.email) {
@@ -255,6 +258,7 @@ export async function completeInvite(
 		name: userData.name,
 		avatarUrl: userData.avatarUrl,
 		role: authToken.role,
+		roleId: authToken.roleId ?? null,
 		emailVerified: true, // Email verified by accepting invite
 	});
 

@@ -3,6 +3,7 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
 	entry: [
 		"src/index.ts",
+		"src/rbac.ts",
 		"src/passkey/index.ts",
 		"src/adapters/kysely.ts",
 		"src/oauth/providers/github.ts",

@@ -110,28 +110,179 @@ export const Permissions = {
 
 export type Permission = keyof typeof Permissions;
 
+export const ALL_PERMISSIONS: readonly Permission[] = Object.freeze(
+	// eslint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys loses the key type; the keys are Permission by construction
+	Object.keys(Permissions) as Permission[],
+);
+
+export function isPermission(value: string): value is Permission {
+	return Object.hasOwn(Permissions, value);
+}
+
 /**
- * Check if a user has a specific permission
+ * Content permissions a custom role may hold for chosen collections only.
+ * Every other permission is site-wide.
+ */
+export const COLLECTION_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+	"content:read",
+	"content:read_drafts",
+	"content:create",
+	"content:edit_own",
+	"content:edit_any",
+	"content:delete_own",
+	"content:delete_any",
+	"content:delete_permanent",
+	"content:publish_own",
+	"content:publish_any",
+]);
+
+/**
+ * Permissions that only the built-in Admin role holds. Holding any of them
+ * amounts to control over who may sign in and what they may do, so a custom
+ * role cannot be granted them.
+ */
+export const BUILT_IN_ADMIN_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+	"users:read",
+	"users:invite",
+	"users:manage",
+	"auth:manage_connections",
+]);
+
+/** An `_any` permission includes the matching `_own` permission. */
+const ANY_IMPLIES_OWN: ReadonlyArray<readonly [Permission, Permission]> = [
+	["content:edit_any", "content:edit_own"],
+	["content:delete_any", "content:delete_own"],
+	["content:publish_any", "content:publish_own"],
+	["media:edit_any", "media:edit_own"],
+	["media:delete_any", "media:delete_own"],
+];
+
+/**
+ * The permissions a custom role holds. `permissions` apply site-wide;
+ * `collections` holds content permissions that apply only to the named
+ * collection.
+ */
+export interface RoleGrants {
+	permissions: Permission[];
+	collections: Record<string, Permission[]>;
+}
+
+export interface CustomRole {
+	id: string;
+	slug: string;
+	label: string;
+	grants: RoleGrants;
+}
+
+/**
+ * What a permission check receives. `role` is the built-in level. When
+ * `customRole` is set, its grants decide and `role` only carries the
+ * compatibility level for code that still compares numbers.
+ */
+export interface Actor {
+	role: RoleLevel;
+	customRole?: { grants: RoleGrants } | null;
+}
+
+export interface PermissionResource {
+	/** Slug of the collection the operation targets. */
+	collection?: string;
+}
+
+/**
+ * Check if a user has a specific permission.
+ *
+ * A grant scoped to collections satisfies the check only when `resource`
+ * names one of those collections. A check that names no collection is
+ * satisfied only by a site-wide grant.
  */
 export function hasPermission(
-	user: { role: RoleLevel } | null | undefined,
+	user: Actor | null | undefined,
+	permission: Permission,
+	resource?: PermissionResource,
+): boolean {
+	if (!user) return false;
+	const grants = user.customRole?.grants;
+	if (!grants) return user.role >= Permissions[permission];
+	if (grants.permissions.includes(permission)) return true;
+	const collection = resource?.collection;
+	if (collection === undefined || !Object.hasOwn(grants.collections, collection)) return false;
+	return grants.collections[collection]?.includes(permission) ?? false;
+}
+
+/**
+ * True when the user holds `permission` site-wide or for at least one
+ * collection. For navigation and other places that ask "anywhere?", never
+ * for authorizing an operation on a resource.
+ */
+export function hasPermissionInAnyCollection(
+	user: Actor | null | undefined,
 	permission: Permission,
 ): boolean {
 	if (!user) return false;
-	return user.role >= Permissions[permission];
+	const grants = user.customRole?.grants;
+	if (!grants) return user.role >= Permissions[permission];
+	if (grants.permissions.includes(permission)) return true;
+	return Object.values(grants.collections).some((scoped) => scoped.includes(permission));
+}
+
+/**
+ * True when the user holds at least one content permission in `collection`.
+ * Every built-in role passes, because each holds `content:read` everywhere.
+ */
+export function hasCollectionAccess(user: Actor | null | undefined, collection: string): boolean {
+	for (const permission of COLLECTION_SCOPED_PERMISSIONS) {
+		if (hasPermission(user, permission, { collection })) return true;
+	}
+	return false;
+}
+
+/**
+ * The collections in which the user holds `permission`, or `null` when the
+ * user holds it in every collection. Reads that cross collections (search,
+ * dashboard, calendar) narrow their collection list with it.
+ */
+export function collectionsWithPermission(
+	user: Actor | null | undefined,
+	permission: Permission,
+): string[] | null {
+	if (!user) return [];
+	const grants = user.customRole?.grants;
+	if (!grants) return user.role >= Permissions[permission] ? null : [];
+	if (grants.permissions.includes(permission)) return null;
+	return Object.entries(grants.collections)
+		.filter(([, scoped]) => scoped.includes(permission))
+		.map(([collection]) => collection);
+}
+
+/**
+ * Narrow a requested collection list (`undefined` meaning all) to the
+ * collections in which the user holds `permission`. An empty result means
+ * none: callers must not pass it on where an empty list means "all".
+ */
+export function narrowCollections(
+	user: Actor | null | undefined,
+	permission: Permission,
+	requested: readonly string[] | undefined,
+): string[] | undefined {
+	const allowed = collectionsWithPermission(user, permission);
+	if (allowed === null) return requested ? [...requested] : undefined;
+	if (!requested || requested.length === 0) return allowed;
+	return requested.filter((collection) => allowed.includes(collection));
 }
 
 /**
  * Require a permission, throwing if not met
  */
 export function requirePermission(
-	user: { role: RoleLevel } | null | undefined,
+	user: Actor | null | undefined,
 	permission: Permission,
-): asserts user is { role: RoleLevel } {
+	resource?: PermissionResource,
+): asserts user is Actor {
 	if (!user) {
 		throw new PermissionError("unauthorized", "Authentication required");
 	}
-	if (!hasPermission(user, permission)) {
+	if (!hasPermission(user, permission, resource)) {
 		throw new PermissionError("forbidden", `Missing permission: ${permission}`);
 	}
 }
@@ -140,10 +291,11 @@ export function requirePermission(
  * Check if user can perform action on a resource they own
  */
 export function canActOnOwn(
-	user: { role: RoleLevel; id: string } | null | undefined,
+	user: (Actor & { id: string }) | null | undefined,
 	ownerId: string,
 	ownPermission: Permission,
 	anyPermission: Permission,
+	resource?: PermissionResource,
 ): boolean {
 	if (!user) return false;
 	// Defense in depth: an empty-string ownerId means "no recorded owner"
@@ -152,26 +304,104 @@ export function canActOnOwn(
 	// ownerId are "", treating them as a match would accidentally grant
 	// edit-own — fall through to the any-permission check instead.
 	if (ownerId !== "" && user.id === ownerId) {
-		return hasPermission(user, ownPermission);
+		return hasPermission(user, ownPermission, resource);
 	}
-	return hasPermission(user, anyPermission);
+	return hasPermission(user, anyPermission, resource);
 }
 
 /**
  * Require permission on a resource, checking ownership
  */
 export function requirePermissionOnResource(
-	user: { role: RoleLevel; id: string } | null | undefined,
+	user: (Actor & { id: string }) | null | undefined,
 	ownerId: string,
 	ownPermission: Permission,
 	anyPermission: Permission,
-): asserts user is { role: RoleLevel; id: string } {
+	resource?: PermissionResource,
+): asserts user is Actor & { id: string } {
 	if (!user) {
 		throw new PermissionError("unauthorized", "Authentication required");
 	}
-	if (!canActOnOwn(user, ownerId, ownPermission, anyPermission)) {
+	if (!canActOnOwn(user, ownerId, ownPermission, anyPermission, resource)) {
 		throw new PermissionError("forbidden", `Missing permission: ${anyPermission}`);
 	}
+}
+
+/** The permissions a built-in role holds. */
+export function permissionsForRole(role: RoleLevel): Permission[] {
+	return ALL_PERMISSIONS.filter((permission) => role >= Permissions[permission]);
+}
+
+/**
+ * The permissions a user holds: site-wide names and per-collection content
+ * names. A built-in role holds everything site-wide.
+ */
+export function effectivePermissions(user: Actor): RoleGrants {
+	const grants = user.customRole?.grants;
+	if (!grants) return { permissions: permissionsForRole(user.role), collections: {} };
+	return grants;
+}
+
+const COLLECTION_SLUG_PATTERN = /^[a-z][a-z0-9_]*$/;
+
+/**
+ * Bring stored or submitted grants into the shape checks rely on.
+ *
+ * Unknown names are dropped, as are names a custom role may not hold and
+ * collection-scoped names that are not content permissions. Every `_any`
+ * grant gains its `_own` counterpart in the same scope, and a scoped grant
+ * that is also held site-wide is dropped from the scope.
+ */
+export function normalizeGrants(input: {
+	permissions?: readonly string[];
+	collections?: Readonly<Record<string, readonly string[]>>;
+}): RoleGrants {
+	const siteWide = withOwnCounterparts(
+		(input.permissions ?? []).filter(
+			(name): name is Permission =>
+				isPermission(name) && !BUILT_IN_ADMIN_ONLY_PERMISSIONS.has(name),
+		),
+	);
+	const collections: Record<string, Permission[]> = {};
+	for (const [collection, names] of Object.entries(input.collections ?? {})) {
+		if (!COLLECTION_SLUG_PATTERN.test(collection)) continue;
+		const scoped = withOwnCounterparts(
+			names.filter(
+				(name): name is Permission => isPermission(name) && COLLECTION_SCOPED_PERMISSIONS.has(name),
+			),
+		).filter((name) => !siteWide.includes(name));
+		if (scoped.length > 0) collections[collection] = scoped;
+	}
+	return { permissions: siteWide, collections };
+}
+
+function withOwnCounterparts(names: readonly Permission[]): Permission[] {
+	const set = new Set(names);
+	for (const [any, own] of ANY_IMPLIES_OWN) {
+		if (set.has(any)) set.add(own);
+	}
+	return ALL_PERMISSIONS.filter((permission) => set.has(permission));
+}
+
+const LEVELS_HIGH_TO_LOW: readonly RoleLevel[] = [
+	Role.ADMIN,
+	Role.EDITOR,
+	Role.AUTHOR,
+	Role.CONTRIBUTOR,
+];
+
+/**
+ * The built-in level stored in `users.role` for a user with a custom role:
+ * the highest built-in role whose permissions the custom role holds
+ * site-wide. Code that compares role numbers then grants no more than the
+ * custom role, except that the lowest storable level is Subscriber.
+ */
+export function compatibilityLevel(grants: RoleGrants): RoleLevel {
+	const held = new Set(grants.permissions);
+	for (const level of LEVELS_HIGH_TO_LOW) {
+		if (permissionsForRole(level).every((permission) => held.has(permission))) return level;
+	}
+	return Role.SUBSCRIBER;
 }
 
 export class PermissionError extends Error {
@@ -243,4 +473,49 @@ export function clampScopes(requested: string[], role: RoleLevel): string[] {
 	return requested.filter(
 		(scope) => allowed.has(scope) || (scope.startsWith("mcp:tools:") && role >= Role.SUBSCRIBER),
 	);
+}
+
+/**
+ * The permission a custom role must hold, site-wide or for at least one
+ * collection, to receive each API token scope. `null` scopes are reserved
+ * for built-in roles.
+ */
+const SCOPE_PERMISSION: Record<Exclude<ApiTokenScope, `mcp:tools:${string}`>, Permission | null> = {
+	"content:read": "content:read",
+	"content:write": "content:create",
+	"media:read": "media:read",
+	"media:write": "media:upload",
+	"schema:read": "schema:read",
+	"schema:write": "schema:manage",
+	"taxonomies:manage": "taxonomies:manage",
+	"menus:manage": "menus:manage",
+	"settings:read": "settings:read",
+	"settings:manage": "settings:manage",
+	"mcp:tools": null,
+	"transfer:export": "transfer:export",
+	"transfer:analyze": "transfer:import",
+	"transfer:execute": "transfer:import",
+	admin: null,
+};
+
+/**
+ * Like {@link scopesForRole}, for a user who may hold a custom role. A token
+ * scope never widens what the role grants: checks still run against the
+ * role's grants, including its collection scope.
+ */
+export function scopesForActor(actor: Actor): ApiTokenScope[] {
+	if (!actor.customRole) return scopesForRole(actor.role);
+	// eslint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries loses tuple types; SCOPE_PERMISSION keys are ApiTokenScope by construction
+	const entries = Object.entries(SCOPE_PERMISSION) as [ApiTokenScope, Permission | null][];
+	return entries.reduce<ApiTokenScope[]>((acc, [scope, permission]) => {
+		if (permission && hasPermissionInAnyCollection(actor, permission)) acc.push(scope);
+		return acc;
+	}, []);
+}
+
+/** Like {@link clampScopes}, for a user who may hold a custom role. */
+export function clampScopesForActor(requested: string[], actor: Actor): string[] {
+	if (!actor.customRole) return clampScopes(requested, actor.role);
+	const allowed = new Set<string>(scopesForActor(actor));
+	return requested.filter((scope) => allowed.has(scope) || scope.startsWith("mcp:tools:"));
 }

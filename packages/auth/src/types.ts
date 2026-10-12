@@ -2,6 +2,8 @@
  * Core types for @emdash-cms/auth
  */
 
+import type { CustomRole } from "./rbac.js";
+
 // ============================================================================
 // Roles & Permissions
 // ============================================================================
@@ -74,7 +76,13 @@ export interface User {
 	email: string;
 	name: string | null;
 	avatarUrl: string | null;
+	/**
+	 * Built-in role level. For a user with a custom role, the compatibility
+	 * level derived from the role's grants.
+	 */
 	role: RoleLevel;
+	/** The user's custom role, or null when `role` is the user's role. */
+	customRole?: CustomRole | null;
 	emailVerified: boolean;
 	disabled: boolean;
 	data: Record<string, unknown> | null;
@@ -87,6 +95,8 @@ export interface NewUser {
 	name?: string | null;
 	avatarUrl?: string | null;
 	role?: RoleLevel;
+	/** Custom role id. `role` must then hold its compatibility level. */
+	roleId?: string | null;
 	emailVerified?: boolean;
 	data?: Record<string, unknown> | null;
 }
@@ -96,6 +106,8 @@ export interface UpdateUser {
 	name?: string | null;
 	avatarUrl?: string | null;
 	role?: RoleLevel;
+	/** Custom role id; `null` returns the user to the built-in `role`. */
+	roleId?: string | null;
 	emailVerified?: boolean;
 	disabled?: boolean;
 	data?: Record<string, unknown> | null;
@@ -164,6 +176,7 @@ export interface AuthToken {
 	email: string | null; // For pre-user tokens
 	type: TokenType;
 	role: RoleLevel | null; // For invites
+	roleId?: string | null; // Custom role for invites
 	invitedBy: string | null;
 	expiresAt: Date;
 	createdAt: Date;
@@ -175,6 +188,7 @@ export interface NewAuthToken {
 	email?: string | null;
 	type: TokenType;
 	role?: RoleLevel | null;
+	roleId?: string | null;
 	invitedBy?: string | null;
 	expiresAt: Date;
 }
@@ -232,6 +246,8 @@ export interface OAuthClient {
 export interface AllowedDomain {
 	domain: string;
 	defaultRole: RoleLevel;
+	/** Custom role given to users who sign up through this domain. */
+	defaultRoleId?: string | null;
 	enabled: boolean;
 	createdAt: Date;
 }

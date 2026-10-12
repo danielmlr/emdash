@@ -96,6 +96,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 		locale: body.locale,
 		translationOf: body.translationOf,
 		actor,
+		referenceAccess: {
+			canLink: (target) => hasPermission(user, "content:read", { collection: target }),
+		},
 	});
 
 	return unwrapResult(result, 201);

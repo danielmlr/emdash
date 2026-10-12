@@ -39,6 +39,8 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
 
 	const result = await emdash.handleContentGet(collection, id, locale, {
 		includeDrafts: hasPermission(user, "content:read_drafts", { collection: params.collection }),
+		canRead: (target) => hasPermission(user, "content:read", { collection: target }),
+		canReadDrafts: (target) => hasPermission(user, "content:read_drafts", { collection: target }),
 	});
 
 	// Hide non-published items from users without content:read_drafts. Return
@@ -165,6 +167,9 @@ export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 		locale,
 		_rev: rev,
 		actor,
+		referenceAccess: {
+			canLink: (target) => hasPermission(user, "content:read", { collection: target }),
+		},
 	});
 
 	if (!result.success) return unwrapResult(result);

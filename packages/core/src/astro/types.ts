@@ -322,7 +322,11 @@ export interface EmDashHandlers {
 		collection: string,
 		id: string,
 		locale?: string,
-		referenceOptions?: { includeDrafts: boolean },
+		referenceOptions?: {
+			includeDrafts: boolean;
+			canRead?: (collection: string) => boolean;
+			canReadDrafts?: (collection: string) => boolean;
+		},
 	) => Promise<
 		HandlerResponse<{
 			item: {
@@ -352,6 +356,7 @@ export interface EmDashHandlers {
 			migrateBlocks?: boolean;
 			replaceBlocks?: boolean;
 			actor?: { id: string; role: number };
+			referenceAccess?: { canLink: (collection: string) => boolean };
 		},
 	) => Promise<HandlerResponse>;
 
@@ -379,6 +384,7 @@ export interface EmDashHandlers {
 			migrateBlocks?: boolean;
 			replaceBlocks?: boolean;
 			actor?: { id: string; role: number };
+			referenceAccess?: { canLink: (collection: string) => boolean };
 		},
 	) => Promise<HandlerResponse>;
 

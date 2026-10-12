@@ -65,6 +65,7 @@ import {
 	resolveReferenceSelectionTargets,
 	type ResolvedReferenceTargets,
 	writeReferenceSelection,
+	type ReferenceLinkAccess,
 } from "./relations.js";
 import {
 	applyStagedReferences,
@@ -379,12 +380,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * published one, and a caller that reads an entry should not have to take a
  * field of a thousand entries to find out.
  */
+export interface ReferenceHydrationOptions {
+	/** Whether the caller may see the entry's own staged (draft) selection. */
+	includeDrafts: boolean;
+	/** Whether the caller may read entries of a target collection; omitted means yes. */
+	canRead?: (collection: string) => boolean;
+	/** Whether the caller may see drafts of a target collection; omitted means `includeDrafts`. */
+	canReadDrafts?: (collection: string) => boolean;
+}
+
 async function hydrateReferences(
 	db: Kysely<Database>,
 	collection: string,
 	item: ContentItem,
-	includeDrafts: boolean,
+	options: ReferenceHydrationOptions,
 ): Promise<void> {
+	const { includeDrafts } = options;
 	if (!item.translationGroup) return;
 
 	const collectionRow = await db
@@ -435,6 +446,16 @@ async function hydrateReferences(
 		// `data` and there are no links to resolve.
 		if (!relation || !targetCollection) continue;
 
+		// The target collection decides what the caller may see of it, as the
+		// edge routes decide for the far side of a relation.
+		if (options.canRead && !options.canRead(targetCollection)) {
+			references[field.slug] = { children: [] };
+			continue;
+		}
+		const targetDrafts = options.canReadDrafts
+			? options.canReadDrafts(targetCollection)
+			: includeDrafts;
+
 		const stagedGroups = staged?.[field.slug];
 		if (stagedGroups) {
 			// Paged like the links below it: the REST contract promises one page and
@@ -447,7 +468,7 @@ async function hydrateReferences(
 					targetCollection,
 					page.groups,
 					item.locale,
-					includeDrafts,
+					targetDrafts,
 					await getReferenceTitleField(db, targetCollection),
 				),
 				...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
@@ -467,7 +488,7 @@ async function hydrateReferences(
 			edges.items,
 			(e) => (onChildSide ? e.parentGroup : e.childGroup),
 			item.locale,
-			includeDrafts,
+			targetDrafts,
 			await getReferenceTitleField(db, targetCollection),
 		);
 		references[field.slug] = {
@@ -1099,7 +1120,7 @@ export async function handleContentGet(
 	collection: string,
 	id: string,
 	locale?: string,
-	referenceOptions?: { includeDrafts: boolean },
+	referenceOptions?: ReferenceHydrationOptions,
 ): Promise<ApiResult<ContentResponse>> {
 	try {
 		const repo = new ContentRepository(db);
@@ -1127,7 +1148,7 @@ export async function handleContentGet(
 		// `referenceOptions`, since it can leak draft child ids/slugs — see
 		// `hydrateReferences`'s doc comment.
 		if (referenceOptions) {
-			await hydrateReferences(db, collection, item, referenceOptions.includeDrafts);
+			await hydrateReferences(db, collection, item, referenceOptions);
 		}
 
 		return {
@@ -1220,6 +1241,7 @@ export async function handleContentCreate(
 		createdAt?: string | null;
 		publishedAt?: string | null;
 	},
+	options: { referenceAccess?: ReferenceLinkAccess } = {},
 ): Promise<ApiResult<ContentResponse>> {
 	try {
 		const hasSeo = await collectionHasSeo(db, collection);
@@ -1287,6 +1309,7 @@ export async function handleContentCreate(
 						fieldSlug,
 						selectedIds,
 						entryGroup,
+						options.referenceAccess,
 					);
 					if (!resolved.success) {
 						throw Object.assign(new Error(resolved.error.message), {
@@ -1501,6 +1524,7 @@ export async function handleContentUpdate(
 		references?: Record<string, string[]>;
 		publishedAt?: string | null;
 	},
+	options: { referenceAccess?: ReferenceLinkAccess } = {},
 ): Promise<ApiResult<ContentResponse>> {
 	try {
 		const hasSeo = await collectionHasSeo(db, collection);
@@ -1600,6 +1624,7 @@ export async function handleContentUpdate(
 						resolvedId,
 						fieldSlug,
 						selectedIds,
+						options.referenceAccess,
 					);
 					if (!resolved.success) {
 						throw Object.assign(new Error(resolved.error.message), {

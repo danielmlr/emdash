@@ -28,7 +28,7 @@ import {
 	handleMediaUpload as uploadMedia,
 	type MediaUploadInput,
 } from "./api/handlers/media-upload.js";
-import { resolveReferenceSelection } from "./api/handlers/relations.js";
+import { resolveReferenceSelection, type ReferenceLinkAccess } from "./api/handlers/relations.js";
 import {
 	liveReferenceSelection,
 	mergeStagedReferenceBaselines,
@@ -202,7 +202,11 @@ interface PageContributions {
 
 import { after } from "./after.js";
 import { maybeRunScheduledBackup } from "./api/handlers/backup.js";
-import { changedStoragelessDataKeys, storagelessDataKeyError } from "./api/handlers/content.js";
+import {
+	changedStoragelessDataKeys,
+	storagelessDataKeyError,
+	type ReferenceHydrationOptions,
+} from "./api/handlers/content.js";
 import { loadBundleFromR2 } from "./api/handlers/marketplace.js";
 import {
 	runSystemCleanup,
@@ -3377,7 +3381,7 @@ export class EmDashRuntime {
 		collection: string,
 		id: string,
 		locale?: string,
-		referenceOptions?: { includeDrafts: boolean },
+		referenceOptions?: ReferenceHydrationOptions,
 	) {
 		const result = await handleContentGet(this.db, collection, id, locale, referenceOptions);
 		return this.hydrateDraftData(result);
@@ -3478,6 +3482,8 @@ export class EmDashRuntime {
 			taxonomies?: Record<string, string[]>;
 			references?: Record<string, string[]>;
 			actor?: ActorInfo;
+			/** Which far collections the caller may select entries from. */
+			referenceAccess?: ReferenceLinkAccess;
 			migrateBlocks?: boolean;
 			replaceBlocks?: boolean;
 		},
@@ -3634,17 +3640,23 @@ export class EmDashRuntime {
 		// Create the content
 		const {
 			actor: _discardedActor,
+			referenceAccess,
 			migrateBlocks: _discardedMigrateBlocks,
 			replaceBlocks: _discardedReplaceBlocks,
 			...contentBody
 		} = body;
-		const result = await handleContentCreate(this.db, collection, {
-			...contentBody,
-			data: processedData,
-			locale,
-			authorId: body.authorId,
-			bylines: body.bylines,
-		});
+		const result = await handleContentCreate(
+			this.db,
+			collection,
+			{
+				...contentBody,
+				data: processedData,
+				locale,
+				authorId: body.authorId,
+				bylines: body.bylines,
+			},
+			{ referenceAccess },
+		);
 		if (result.success && result.data) {
 			await this.refreshContentUsageAfterSuccessfulWrite(collection, [result.data.item.id]);
 		}
@@ -3692,6 +3704,8 @@ export class EmDashRuntime {
 			 * passed to content hooks; never changes entry ownership.
 			 */
 			actor?: ActorInfo;
+			/** Which far collections the caller may select entries from. */
+			referenceAccess?: ReferenceLinkAccess;
 			migrateBlocks?: boolean;
 			replaceBlocks?: boolean;
 		},
@@ -3725,6 +3739,7 @@ export class EmDashRuntime {
 		const {
 			_rev: _discardedRev,
 			actor: _discardedActor,
+			referenceAccess,
 			migrateBlocks,
 			replaceBlocks,
 			...bodyWithoutRev
@@ -3880,6 +3895,7 @@ export class EmDashRuntime {
 							resolvedId,
 							fieldSlug,
 							selectedIds,
+							referenceAccess,
 						);
 						if (!resolved.success) {
 							return { success: false as const, error: resolved.error };
@@ -4055,15 +4071,21 @@ export class EmDashRuntime {
 		const result =
 			usesDraftRevisions && !liveMetaTouched
 				? await handleContentGet(this.db, collection, resolvedId)
-				: await handleContentUpdate(this.db, collection, resolvedId, {
-						...bodyWithoutRev,
-						_rev: draftStorageChanged ? undefined : body._rev,
-						data: usesDraftRevisions ? undefined : processedData,
-						slug: usesDraftRevisions ? undefined : bodyWithoutRev.slug,
-						references: usesDraftRevisions ? undefined : bodyWithoutRev.references,
-						authorId: bodyWithoutRev.authorId,
-						bylines: bodyWithoutRev.bylines,
-					});
+				: await handleContentUpdate(
+						this.db,
+						collection,
+						resolvedId,
+						{
+							...bodyWithoutRev,
+							_rev: draftStorageChanged ? undefined : body._rev,
+							data: usesDraftRevisions ? undefined : processedData,
+							slug: usesDraftRevisions ? undefined : bodyWithoutRev.slug,
+							references: usesDraftRevisions ? undefined : bodyWithoutRev.references,
+							authorId: bodyWithoutRev.authorId,
+							bylines: bodyWithoutRev.bylines,
+						},
+						{ referenceAccess },
+					);
 
 		const liveContentChanged = usesDraftRevisions
 			? liveMetaTouched

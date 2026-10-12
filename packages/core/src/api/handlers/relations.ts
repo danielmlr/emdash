@@ -519,6 +519,11 @@ async function stagedPageFor(
 	return pageStagedGroups(groups, options.page);
 }
 
+/** Who may select entries from the far collection of a relation. */
+export interface ReferenceLinkAccess {
+	canLink(collection: string): boolean;
+}
+
 /** What the caller may see on each side of a relation. */
 export interface ReferenceAccess {
 	canRead(collection: string): boolean;
@@ -657,6 +662,7 @@ async function resolveReferenceTargets(
 	constraints: ReferenceFieldConstraints,
 	selectedIds: string[],
 	entryGroup: string | null,
+	access?: ReferenceLinkAccess,
 ): Promise<ApiResult<ResolvedReferenceTargets>> {
 	const repo = new RelationRepository(db);
 	const content = new ContentRepository(db);
@@ -673,6 +679,17 @@ async function resolveReferenceTargets(
 			error: {
 				code: "VALIDATION_ERROR",
 				message: `Entry is not the ${side} side of this relation`,
+			},
+		};
+	}
+	// Refused before any selected id is looked up, so the answer is the same
+	// whether or not the selection exists in a collection the caller cannot read.
+	if (access && !access.canLink(otherCollection)) {
+		return {
+			success: false,
+			error: {
+				code: "FORBIDDEN",
+				message: `No permission to select entries from ${otherCollection}`,
 			},
 		};
 	}
@@ -775,6 +792,7 @@ async function resolveReferenceSide(
 	entryId: string,
 	constraints: ReferenceFieldConstraints,
 	selectedIds: string[],
+	access?: ReferenceLinkAccess,
 ): Promise<ApiResult<ReferenceSelectionWrite>> {
 	const entry = await new ContentRepository(db).findByIdOrSlug(collection, entryId);
 	if (!entry?.translationGroup) {
@@ -787,6 +805,7 @@ async function resolveReferenceSide(
 		constraints,
 		selectedIds,
 		entry.translationGroup,
+		access,
 	);
 	if (!resolved.success) return resolved;
 	return { success: true, data: { ...resolved.data, entryGroup: entry.translationGroup } };
@@ -870,10 +889,11 @@ export async function resolveReferenceSelection(
 	entryId: string,
 	fieldSlug: string,
 	selectedIds: string[],
+	access?: ReferenceLinkAccess,
 ): Promise<ApiResult<ReferenceSelectionWrite>> {
 	const constraints = (await referenceFieldConstraints(db, collection)).get(fieldSlug);
 	if (!constraints) return notAReferenceField(fieldSlug, collection);
-	return resolveReferenceSide(db, collection, entryId, constraints, selectedIds);
+	return resolveReferenceSide(db, collection, entryId, constraints, selectedIds, access);
 }
 
 /**
@@ -893,10 +913,11 @@ export async function resolveReferenceSelectionTargets(
 	fieldSlug: string,
 	selectedIds: string[],
 	entryGroup: string | null,
+	access?: ReferenceLinkAccess,
 ): Promise<ApiResult<ResolvedReferenceTargets>> {
 	const constraints = (await referenceFieldConstraints(db, collection)).get(fieldSlug);
 	if (!constraints) return notAReferenceField(fieldSlug, collection);
-	return resolveReferenceTargets(db, collection, constraints, selectedIds, entryGroup);
+	return resolveReferenceTargets(db, collection, constraints, selectedIds, entryGroup, access);
 }
 
 function notAReferenceField(fieldSlug: string, collection: string): ApiResult<never> {

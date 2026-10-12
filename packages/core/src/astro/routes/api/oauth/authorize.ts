@@ -307,7 +307,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 	}
 
 	// User approved — process the authorization
-	const result = await handleAuthorizationApproval(emdash.db, user.id, user.role, {
+	const result = await handleAuthorizationApproval(emdash.db, user.id, user, {
 		response_type: field("response_type", "code"),
 		client_id: field("client_id"),
 		redirect_uri: redirectUri,

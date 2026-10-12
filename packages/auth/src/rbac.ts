@@ -523,6 +523,14 @@ export function scopesForActor(actor: Actor): ApiTokenScope[] {
 	}, []);
 }
 
+/**
+ * Accept either a bare built-in level or an actor, so a caller that only
+ * knows the level keeps working while one that loaded the user passes it on.
+ */
+export function toActor(value: RoleLevel | Actor): Actor {
+	return typeof value === "number" ? { role: value } : value;
+}
+
 /** Like {@link clampScopes}, for a user who may hold a custom role. */
 export function clampScopesForActor(requested: string[], actor: Actor): string[] {
 	if (!actor.customRole) return clampScopes(requested, actor.role);

@@ -590,8 +590,10 @@ async function handleExternalAuth(
 				updates.name = newName;
 			}
 
-			// Sync role if enabled
-			if (externalConfig.syncRoles && user.role !== authResult.role) {
+			// Sync role if enabled. A custom role is assigned in EmDash and its
+			// level column holds the role's compatibility level, so the provider's
+			// level applies to built-in roles only.
+			if (externalConfig.syncRoles && !user.customRole && user.role !== authResult.role) {
 				newRole = authResult.role;
 				updates.role = newRole;
 			}

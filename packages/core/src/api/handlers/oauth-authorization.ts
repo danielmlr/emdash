@@ -8,7 +8,13 @@
  * utilities. Token infrastructure is shared with the device flow.
  */
 
-import { clampScopes, computeS256Challenge, secureCompare } from "@emdash-cms/auth";
+import {
+	clampScopesForActor,
+	computeS256Challenge,
+	secureCompare,
+	toActor,
+	type Actor,
+} from "@emdash-cms/auth";
 import type { RoleLevel } from "@emdash-cms/auth";
 import { generateCodeVerifier } from "arctic";
 import type { Kysely } from "kysely";
@@ -107,7 +113,7 @@ function normalizeScopes(requested?: string): string[] {
 export async function handleAuthorizationApproval(
 	db: Kysely<Database>,
 	userId: string,
-	userRole: RoleLevel,
+	userRole: RoleLevel | Actor,
 	params: AuthorizationParams,
 ): Promise<ApiResult<{ redirect_url: string }>> {
 	try {
@@ -171,8 +177,8 @@ export async function handleAuthorizationApproval(
 			};
 		}
 
-		// Validate scopes, then clamp to user's role
-		const userScopes = clampScopes(normalizeScopes(params.scope), userRole);
+		// Validate scopes, then clamp to what the user's role or grants allow
+		const userScopes = clampScopesForActor(normalizeScopes(params.scope), toActor(userRole));
 
 		// SEC-41: Intersect with client's registered scopes (if restricted).
 		// A client registered with scopes: ["content:read"] should never receive
@@ -328,9 +334,9 @@ export async function handleAuthorizationCodeExchange(
 			};
 		}
 
-		// Re-clamp scopes against the user's current role
+		// Re-clamp scopes against the user's current role and grants
 		const storedScopes = JSON.parse(row.scopes) as string[];
-		let scopes = clampScopes(storedScopes, userInfo.role);
+		let scopes = clampScopesForActor(storedScopes, userInfo);
 
 		// Intersect with client's registered scopes (if restricted)
 		const client = await lookupOAuthClient(db, row.client_id);

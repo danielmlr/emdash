@@ -43,7 +43,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
 		const query = parseQuery(url, lookupSchema);
 		if (isParseError(query)) return query;
 
-		const result = await handleDeviceCodeLookup(emdash.db, user.role, query);
+		const result = await handleDeviceCodeLookup(emdash.db, user, query);
 		return unwrapResult(result);
 	} catch (error) {
 		return handleError(error, "Failed to look up device code", "DEVICE_CODE_LOOKUP_ERROR");
@@ -66,7 +66,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		const body = await parseBody(request, authorizeSchema);
 		if (isParseError(body)) return body;
 
-		const result = await handleDeviceAuthorize(emdash.db, user.id, user.role, body);
+		const result = await handleDeviceAuthorize(emdash.db, user.id, user, body);
 		return unwrapResult(result);
 	} catch (error) {
 		return handleError(error, "Failed to authorize device", "AUTHORIZE_ERROR");

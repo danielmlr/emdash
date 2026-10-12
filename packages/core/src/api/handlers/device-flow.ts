@@ -9,7 +9,7 @@
  * Uses arctic for code generation and @emdash-cms/auth for token utilities.
  */
 
-import { clampScopes } from "@emdash-cms/auth";
+import { clampScopesForActor, toActor, type Actor } from "@emdash-cms/auth";
 import type { RoleLevel } from "@emdash-cms/auth";
 import { generateCodeVerifier } from "arctic";
 import type { Kysely, Selectable } from "kysely";
@@ -116,12 +116,12 @@ function normalizeScopes(requested?: string[]): string[] {
 }
 
 /**
- * Scopes an approval by a user with `role` would grant:
- * requested_scopes ∩ scopesForRole(role). Approval and the approval-page
- * lookup must agree, so both go through here.
+ * Scopes an approval by `actor` would grant: the requested scopes clamped to
+ * what the actor's role or custom-role grants allow. Approval and the
+ * approval-page lookup must agree, so both go through here.
  */
-function grantableScopes(requested: string[], role: RoleLevel): string[] {
-	return clampScopes(requested, role);
+function grantableScopes(requested: string[], actor: RoleLevel | Actor): string[] {
+	return clampScopesForActor(requested, toActor(actor));
 }
 
 /** Find a pending device code by user code, ignoring hyphens and case. Does not check expiry. */
@@ -428,7 +428,7 @@ export async function handleDeviceTokenExchange(
  */
 export async function handleDeviceCodeLookup(
 	db: Kysely<Database>,
-	userRole: RoleLevel,
+	userRole: RoleLevel | Actor,
 	input: { user_code: string },
 ): Promise<ApiResult<{ requestedScopes: string[]; grantedScopes: string[] }>> {
 	try {
@@ -475,7 +475,7 @@ export async function handleDeviceCodeLookup(
 export async function handleDeviceAuthorize(
 	db: Kysely<Database>,
 	userId: string,
-	userRole: RoleLevel,
+	userRole: RoleLevel | Actor,
 	input: {
 		user_code: string;
 		action?: "approve" | "deny";
@@ -634,7 +634,7 @@ export async function handleTokenRefresh(
 		// Revalidate stored scopes against the user's current role.
 		// A demoted user's refresh token may carry stale elevated scopes.
 		const storedScopes = JSON.parse(row.scopes) as string[];
-		let scopes = clampScopes(storedScopes, userInfo.role);
+		let scopes = clampScopesForActor(storedScopes, userInfo);
 
 		// SEC-41: Intersect with the client's registered scopes (if any).
 		// Same check as the approval path — a client registered with limited

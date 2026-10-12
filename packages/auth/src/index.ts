@@ -59,6 +59,7 @@ export {
 	scopesForActor,
 	clampScopes,
 	clampScopesForActor,
+	toActor,
 	type Permission,
 	type Actor,
 	type CustomRole,

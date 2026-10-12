@@ -14,7 +14,7 @@ import type { APIRoute } from "astro";
 export const prerender = false;
 
 import { getInviteEmailStrings } from "@emdash-cms/admin/locales/emails";
-import { createInvite, InviteError, Role } from "@emdash-cms/auth";
+import { buildInviteEmail, createInviteToken, InviteError, Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
 import { requirePerm } from "#api/authorize.js";
@@ -25,6 +25,7 @@ import { isParseError, parseBody } from "#api/parse.js";
 import { inviteCreateBody } from "#api/schemas.js";
 import { getSiteBaseUrl } from "#api/site-url.js";
 import { OptionsRepository } from "#db/repositories/options.js";
+import { withTransaction } from "#db/transaction.js";
 
 export const POST: APIRoute = async ({ request, locals }) => {
 	const { emdash, user } = locals;
@@ -35,8 +36,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 	const denied = requirePerm(user, "users:invite");
 	if (denied) return denied;
-
-	const adapter = createKyselyAdapter(emdash.db);
 
 	try {
 		const body = await parseBody(request, inviteCreateBody);
@@ -76,20 +75,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
 			? await getInviteEmailStrings(emailLocale, siteName)
 			: undefined;
 
-		const result = await createInvite(
-			{
-				baseUrl,
-				siteName,
-				email: emailSend,
-				emailStrings,
-				emailLocale,
-			},
-			adapter,
-			body.email,
-			role,
-			user!.id,
-			roleId,
-		);
+		// The level is read again inside the write that stores the invite, so a
+		// role edit that commits after the check above cannot leave the invite at
+		// a level the role no longer holds. The email goes out once the row is in.
+		const result = await withTransaction(emdash.db, async (trx) => {
+			let level = role;
+			if (roleId) {
+				const current = await findRoleForAssignment(trx, roleId, { forUpdate: true });
+				if (!current) return null;
+				level = current.level;
+			}
+			return createInviteToken(
+				{ baseUrl },
+				createKyselyAdapter(trx),
+				body.email,
+				level,
+				user!.id,
+				roleId,
+			);
+		});
+		if (!result) return apiError("VALIDATION_ERROR", "Unknown role", 400);
+		if (emailSend) {
+			await emailSend(
+				buildInviteEmail(result.url, body.email, siteName, emailStrings, emailLocale),
+			);
+		}
 
 		if (emailSend) {
 			// Email was sent

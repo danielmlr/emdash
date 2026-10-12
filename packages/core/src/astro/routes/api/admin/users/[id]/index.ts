@@ -132,28 +132,41 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		const isDemotingAdmin =
 			role !== undefined && role < Role.ADMIN && targetUser.role === Role.ADMIN;
 
-		const lastAdminBlocked = await withTransaction(emdash.db, async (trx) => {
-			const trxAdapter = createKyselyAdapter(trx);
-			if (isDemotingAdmin) {
-				const adminCount = await trxAdapter.countAdmins();
-				if (adminCount <= 1) return true;
-			}
-			await trxAdapter.updateUser(id, {
-				name: body.name,
-				email: body.email,
-				role,
-				roleId,
-			});
-			return false;
-		});
+		const blocked = await withTransaction(
+			emdash.db,
+			async (trx): Promise<"last-admin" | "unknown-role" | null> => {
+				const trxAdapter = createKyselyAdapter(trx);
+				if (isDemotingAdmin) {
+					const adminCount = await trxAdapter.countAdmins();
+					if (adminCount <= 1) return "last-admin";
+				}
+				// The level is read again here, inside the write, so a role edit
+				// that commits between the check above and this write cannot leave
+				// the user at a level the role no longer holds.
+				let level = role;
+				if (roleId) {
+					const current = await findRoleForAssignment(trx, roleId, { forUpdate: true });
+					if (!current) return "unknown-role";
+					level = current.level;
+				}
+				await trxAdapter.updateUser(id, {
+					name: body.name,
+					email: body.email,
+					role: level,
+					roleId,
+				});
+				return null;
+			},
+		);
 
-		if (lastAdminBlocked) {
+		if (blocked === "last-admin") {
 			return apiError(
 				"LAST_ADMIN",
 				"Cannot demote the last admin. Promote another user first.",
 				400,
 			);
 		}
+		if (blocked === "unknown-role") return apiError("VALIDATION_ERROR", "Unknown role", 400);
 
 		// Fetch updated user
 		const updated = await adapter.getUserById(id);

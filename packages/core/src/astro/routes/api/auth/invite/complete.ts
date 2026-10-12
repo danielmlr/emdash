@@ -21,6 +21,7 @@ import { getConfiguredAllowedOrigins, validateAllowedOrigins } from "#auth/allow
 import { createChallengeStore } from "#auth/challenge-store.js";
 import { getPasskeyConfig } from "#auth/passkey-config.js";
 import { OptionsRepository } from "#db/repositories/options.js";
+import { withTransaction } from "#db/transaction.js";
 
 import { sessionUnavailableError } from "../../../../session-user.js";
 
@@ -35,8 +36,6 @@ export const POST: APIRoute = async ({ request, locals, session }) => {
 	try {
 		const body = await parseBody(request, inviteCompleteBody);
 		if (isParseError(body)) return body;
-
-		const adapter = createKyselyAdapter(emdash.db);
 
 		// Get passkey config
 		const url = new URL(request.url);
@@ -57,13 +56,16 @@ export const POST: APIRoute = async ({ request, locals, session }) => {
 			challengeStore,
 		);
 
-		// Complete the invite - creates the user
-		const user = await completeInvite(adapter, body.token, {
-			name: body.name,
+		// The invite is consumed and the user created in one transaction, so a
+		// role deleted in between cannot leave a used-up invite and no user.
+		const user = await withTransaction(emdash.db, async (trx) => {
+			const trxAdapter = createKyselyAdapter(trx);
+			const created = await completeInvite(trxAdapter, body.token, {
+				name: body.name,
+			});
+			await registerPasskey(trxAdapter, created.id, verified, "Initial passkey");
+			return created;
 		});
-
-		// Register the passkey for the new user
-		await registerPasskey(adapter, user.id, verified, "Initial passkey");
 
 		session.set("user", { id: user.id });
 

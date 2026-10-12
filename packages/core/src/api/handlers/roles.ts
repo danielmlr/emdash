@@ -23,6 +23,7 @@ import { parseGrants } from "@emdash-cms/auth/adapters/kysely";
 import type { Kysely } from "kysely";
 import { ulid } from "ulidx";
 
+import { executeAtomicBatchIfSupported, isPostgres } from "../../database/dialect-helpers.js";
 import { withTransaction } from "../../database/transaction.js";
 import type { Database } from "../../database/types.js";
 import type { ApiResult } from "../types.js";
@@ -189,8 +190,9 @@ export async function handleRoleCreate(
 }
 
 /**
- * Updates the role and, in the same transaction, the compatibility level of
- * every user, invite and signup domain that references it.
+ * Updates the role and the compatibility level of every user, invite and
+ * signup domain that references it, in one transaction or, where the
+ * backend has none, one atomic batch.
  */
 export async function handleRoleUpdate(
 	db: Kysely<Database>,
@@ -201,11 +203,10 @@ export async function handleRoleUpdate(
 	if (invalid) return { success: false, error: { code: "VALIDATION_ERROR", message: invalid } };
 	try {
 		const updated = await withTransaction(db, async (trx) => {
-			const row = await trx
-				.selectFrom("_emdash_roles")
-				.selectAll()
-				.where("id", "=", id)
-				.executeTakeFirst();
+			let select = trx.selectFrom("_emdash_roles").selectAll().where("id", "=", id);
+			// Serializes with an assignment that reads the level inside its own write.
+			if (isPostgres(trx)) select = select.forUpdate();
+			const row = await select.executeTakeFirst();
 			if (!row) return null;
 			const current = parseGrants(row.grants);
 			const grants: RoleGrants = normalizeGrants({
@@ -220,23 +221,30 @@ export async function handleRoleUpdate(
 				grants: JSON.stringify(grants),
 				updated_at: new Date().toISOString(),
 			};
-			await trx
-				.updateTable("_emdash_roles")
-				.set({
-					label: next.label,
-					description: next.description,
-					grants: next.grants,
-					updated_at: next.updated_at,
-				})
-				.where("id", "=", id)
-				.execute();
-			await trx.updateTable("users").set({ role: level }).where("role_id", "=", id).execute();
-			await trx.updateTable("auth_tokens").set({ role: level }).where("role_id", "=", id).execute();
-			await trx
-				.updateTable("allowed_domains")
-				.set({ default_role: level })
-				.where("default_role_id", "=", id)
-				.execute();
+			const writes = [
+				trx
+					.updateTable("_emdash_roles")
+					.set({
+						label: next.label,
+						description: next.description,
+						grants: next.grants,
+						updated_at: next.updated_at,
+					})
+					.where("id", "=", id),
+				trx.updateTable("users").set({ role: level }).where("role_id", "=", id),
+				trx.updateTable("auth_tokens").set({ role: level }).where("role_id", "=", id),
+				trx
+					.updateTable("allowed_domains")
+					.set({ default_role: level })
+					.where("default_role_id", "=", id),
+			];
+			const batched = await executeAtomicBatchIfSupported(trx, writes);
+			if (!batched) {
+				for (const write of writes) {
+					// oxlint-disable-next-line no-await-in-loop -- the role row first, then the rows that mirror its level
+					await write.execute();
+				}
+			}
 			return next;
 		});
 		if (!updated)
@@ -264,9 +272,15 @@ export async function handleRoleDelete(
 				.where("id", "=", id)
 				.executeTakeFirst();
 			if (!row) return { success: false, error: { code: "NOT_FOUND", message: "Role not found" } };
+			const now = new Date().toISOString();
 			const [user, invite, domain] = await Promise.all([
 				trx.selectFrom("users").select("id").where("role_id", "=", id).executeTakeFirst(),
-				trx.selectFrom("auth_tokens").select("hash").where("role_id", "=", id).executeTakeFirst(),
+				trx
+					.selectFrom("auth_tokens")
+					.select("hash")
+					.where("role_id", "=", id)
+					.where("expires_at", ">", now)
+					.executeTakeFirst(),
 				trx
 					.selectFrom("allowed_domains")
 					.select("domain")
@@ -282,6 +296,12 @@ export async function handleRoleDelete(
 					},
 				};
 			}
+			// Expired invites still point at the role and would stop the foreign key.
+			await trx
+				.deleteFrom("auth_tokens")
+				.where("role_id", "=", id)
+				.where("expires_at", "<=", now)
+				.execute();
 			await trx.deleteFrom("_emdash_roles").where("id", "=", id).execute();
 			return { success: true, data: { deleted: true } };
 		});
@@ -293,16 +313,19 @@ export async function handleRoleDelete(
 	}
 }
 
-/** Load a role by id for assignment. */
+/**
+ * Load a role by id for assignment. Inside the transaction that writes the
+ * assignment, `forUpdate` holds the row against a concurrent role edit so
+ * the level written is the one the grants are worth at commit.
+ */
 export async function findRoleForAssignment(
 	db: Kysely<Database>,
 	id: string,
+	options: { forUpdate?: boolean } = {},
 ): Promise<{ id: string; level: RoleLevel } | null> {
-	const row = await db
-		.selectFrom("_emdash_roles")
-		.select(["id", "grants"])
-		.where("id", "=", id)
-		.executeTakeFirst();
+	let select = db.selectFrom("_emdash_roles").select(["id", "grants"]).where("id", "=", id);
+	if (options.forUpdate && isPostgres(db)) select = select.forUpdate();
+	const row = await select.executeTakeFirst();
 	if (!row) return null;
 	return { id: row.id, level: compatibilityLevel(parseGrants(row.grants)) };
 }

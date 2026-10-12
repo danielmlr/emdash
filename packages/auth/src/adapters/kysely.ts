@@ -116,6 +116,46 @@ interface CustomRoleColumns {
 // Adapter implementation
 // ============================================================================
 
+type UserRow = Selectable<UserTable> & Partial<CustomRoleColumns>;
+
+/**
+ * A build that knows custom roles can serve requests before migration 092
+ * has created `_emdash_roles` (migration mode `manual`). The role join then
+ * fails on every signed-in request; the plain user select stands in for a
+ * minute before the join is tried again, so one failed query per process
+ * and minute is all that period costs. No row can reference a role before
+ * the table exists, so the plain select answers the same.
+ */
+const ROLE_JOIN_FAILED_AT = Symbol.for("emdash:auth:role-join-failed-at");
+const ROLE_JOIN_RETRY_MS = 60_000;
+
+function roleJoinUnavailable(): boolean {
+	const failedAt = (globalThis as Record<symbol, unknown>)[ROLE_JOIN_FAILED_AT];
+	return typeof failedAt === "number" && Date.now() - failedAt < ROLE_JOIN_RETRY_MS;
+}
+
+function isMissingRolesTable(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return (
+		message.includes("_emdash_roles") &&
+		(message.includes("no such table") || message.includes("does not exist"))
+	);
+}
+
+async function withRoleJoinFallback<T>(
+	joined: () => Promise<T>,
+	plain: () => Promise<T>,
+): Promise<T> {
+	if (roleJoinUnavailable()) return plain();
+	try {
+		return await joined();
+	} catch (error) {
+		if (!isMissingRolesTable(error)) throw error;
+		(globalThis as Record<symbol, unknown>)[ROLE_JOIN_FAILED_AT] = Date.now();
+		return plain();
+	}
+}
+
 export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAdapter {
 	// Type cast to work with generic Kysely instance
 	// eslint-disable-next-line typescript/no-unsafe-type-assertion -- generic Kysely<T extends AuthTables> narrowed to concrete AuthTables for internal queries
@@ -140,15 +180,21 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 		// ========================================================================
 
 		async getUserById(id: string): Promise<User | null> {
-			const row = await selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst();
+			const row = await withRoleJoinFallback<UserRow | undefined>(
+				() => selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst(),
+				() => kdb.selectFrom("users").selectAll().where("id", "=", id).executeTakeFirst(),
+			);
 
 			return row ? rowToUser(row) : null;
 		},
 
 		async getUserByEmail(email: string): Promise<User | null> {
-			const row = await selectUsersWithCustomRole()
-				.where("users.email", "=", email.toLowerCase())
-				.executeTakeFirst();
+			const normalized = email.toLowerCase();
+			const row = await withRoleJoinFallback<UserRow | undefined>(
+				() => selectUsersWithCustomRole().where("users.email", "=", normalized).executeTakeFirst(),
+				() =>
+					kdb.selectFrom("users").selectAll().where("email", "=", normalized).executeTakeFirst(),
+			);
 
 			return row ? rowToUser(row) : null;
 		},
@@ -327,7 +373,10 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			oauthAccounts: OAuthAccount[];
 			lastLogin: Date | null;
 		} | null> {
-			const user = await selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst();
+			const user = await withRoleJoinFallback<UserRow | undefined>(
+				() => selectUsersWithCustomRole().where("users.id", "=", id).executeTakeFirst(),
+				() => kdb.selectFrom("users").selectAll().where("id", "=", id).executeTakeFirst(),
+			);
 
 			if (!user) return null;
 

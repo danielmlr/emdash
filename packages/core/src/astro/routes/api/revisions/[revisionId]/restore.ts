@@ -6,9 +6,10 @@
  * Optional JSON body: { overrideLock?: boolean }
  */
 
+import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requireOwnerPerm } from "#api/authorize.js";
+import { requireOwnerPerm, requirePermInAnyCollection } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { claimEntryLockForWrite } from "#api/handlers/entry-lock.js";
 import { isParseError, parseOptionalBody } from "#api/parse.js";
@@ -25,6 +26,8 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 	if (!emdash?.handleRevisionRestore || !emdash?.handleRevisionGet || !emdash?.handleContentGet) {
 		return apiError("NOT_CONFIGURED", "EmDash not configured", 500);
 	}
+	const precheck = requirePermInAnyCollection(user, "content:edit_own");
+	if (precheck) return precheck;
 
 	// Fetch the revision to discover which content entry it belongs to
 	const revision = await emdash.handleRevisionGet(revisionId);
@@ -41,6 +44,11 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
 	if (!collection || !entryId) {
 		return apiError("INVALID_REVISION", "Revision is missing collection or entry reference", 400);
+	}
+	// Same answer as for a missing revision when the caller may not see this
+	// collection's drafts, so ids cannot be probed across collections.
+	if (!hasPermission(user, "content:read_drafts", { collection })) {
+		return apiError("NOT_FOUND", `Revision not found: ${revisionId}`, 404);
 	}
 
 	// Fetch the content entry to check ownership

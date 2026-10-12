@@ -41,6 +41,7 @@ export {
 	ALL_PERMISSIONS,
 	COLLECTION_SCOPED_PERMISSIONS,
 	BUILT_IN_ADMIN_ONLY_PERMISSIONS,
+	BUILT_IN_ROLE_SLUGS,
 	isPermission,
 	hasPermission,
 	hasPermissionInAnyCollection,

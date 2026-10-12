@@ -9,7 +9,7 @@ export const prerender = false;
 
 export const DELETE: APIRoute = async ({ params, locals, url }) => {
 	const { emdash, user } = locals;
-	const denied = requirePerm(user, "content:publish_any");
+	const denied = requirePerm(user, "content:publish_any", { collection: params.collection });
 	if (denied) return denied;
 	if (!emdash?.db) return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 

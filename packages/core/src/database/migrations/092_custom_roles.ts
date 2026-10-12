@@ -2,6 +2,40 @@ import type { Kysely } from "kysely";
 
 import { columnExists } from "../dialect-helpers.js";
 
+const DUPLICATE_COLUMN_RE = /(?:duplicate column|column .* already exists|already exists.*column)/i;
+
+function deepErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return [error.message, deepErrorMessage(error.cause)].filter(Boolean).join(" ");
+	}
+	return typeof error === "string" ? error : "";
+}
+
+/**
+ * Two processes can both see the column missing and both try to add it; the
+ * one that loses the race gets a duplicate-column error and must not fail
+ * the migration when the column is there.
+ */
+async function addColumnIfMissing(
+	db: Kysely<unknown>,
+	table: string,
+	column: string,
+	addColumn: () => Promise<void>,
+): Promise<void> {
+	if (await columnExists(db, table, column)) return;
+	try {
+		await addColumn();
+	} catch (error) {
+		if (
+			DUPLICATE_COLUMN_RE.test(deepErrorMessage(error)) &&
+			(await columnExists(db, table, column))
+		) {
+			return;
+		}
+		throw error;
+	}
+}
+
 /**
  * Custom roles: named permission sets that users, invites and signup domains
  * can reference. A NULL reference means the built-in level in the existing
@@ -26,12 +60,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 		["allowed_domains", "default_role_id", "idx_allowed_domains_default_role_id"],
 	];
 	for (const [table, column, index] of references) {
-		if (!(await columnExists(db, table, column))) {
-			await db.schema
+		await addColumnIfMissing(db, table, column, () =>
+			db.schema
 				.alterTable(table)
 				.addColumn(column, "text", (col) => col.references("_emdash_roles.id"))
-				.execute();
-		}
+				.execute(),
+		);
 		await db.schema.createIndex(index).ifNotExists().on(table).column(column).execute();
 	}
 }

@@ -137,6 +137,16 @@ describe("custom roles", () => {
 			expect(grants.collections).toEqual({ jobs: ["content:edit_own", "content:edit_any"] });
 		});
 
+		it("includes the read permission of every area the role manages", () => {
+			const grants = normalizeGrants({ permissions: ["menus:manage", "comments:moderate"] });
+			expect(grants.permissions).toEqual([
+				"comments:read",
+				"comments:moderate",
+				"menus:read",
+				"menus:manage",
+			]);
+		});
+
 		it("drops a scoped grant the role already holds site-wide", () => {
 			const grants = normalizeGrants({
 				permissions: ["content:read"],

@@ -4,6 +4,8 @@
  * Validates a seed file structure before applying it.
  */
 
+import { BUILT_IN_ROLE_SLUGS } from "@emdash-cms/auth";
+
 import { validateGrantInput } from "../api/handlers/roles.js";
 import { getI18nConfig, resolveConfiguredLocale } from "../i18n/config.js";
 import { isSiteRelativeDestination } from "../redirects/destination.js";
@@ -22,6 +24,8 @@ import { compileUrlPattern } from "../schema/url-pattern.js";
 import type { SeedFile, SeedMenuItem, SeedTaxonomy, ValidationResult } from "./types.js";
 
 const ROLE_SLUG_PATTERN = /^[a-z][a-z0-9_-]*$/;
+const MAX_ROLE_LABEL_LENGTH = 100;
+const MAX_ROLE_DESCRIPTION_LENGTH = 500;
 
 const COLLECTION_FIELD_SLUG_PATTERN = /^[a-z][a-z0-9_]*$/;
 /** Matches `SchemaRegistry.validateSlug`, which collection and field slugs go through. */
@@ -635,8 +639,16 @@ export function validateSeed(data: unknown): ValidationResult {
 					errors.push(`${prefix}: must be an object`);
 					continue;
 				}
-				if (typeof role.slug !== "string" || !ROLE_SLUG_PATTERN.test(role.slug)) {
-					errors.push(`${prefix}.slug: must start with a letter and use a-z, 0-9, - and _`);
+				if (
+					typeof role.slug !== "string" ||
+					role.slug.length > MAX_SLUG_LENGTH ||
+					!ROLE_SLUG_PATTERN.test(role.slug)
+				) {
+					errors.push(
+						`${prefix}.slug: must start with a letter, use a-z, 0-9, - and _, and have at most ${MAX_SLUG_LENGTH} characters`,
+					);
+				} else if (BUILT_IN_ROLE_SLUGS.has(role.slug)) {
+					errors.push(`${prefix}.slug: "${role.slug}" names a built-in role`);
 				} else if (roleSlugs.has(role.slug)) {
 					errors.push(`${prefix}.slug: duplicate role slug "${role.slug}"`);
 				} else {
@@ -644,19 +656,47 @@ export function validateSeed(data: unknown): ValidationResult {
 				}
 				if (typeof role.label !== "string" || role.label.trim() === "") {
 					errors.push(`${prefix}: label is required`);
+				} else if (role.label.trim().length > MAX_ROLE_LABEL_LENGTH) {
+					errors.push(`${prefix}.label: must have at most ${MAX_ROLE_LABEL_LENGTH} characters`);
 				}
-				const permissions = Array.isArray(role.permissions) ? role.permissions : [];
-				const collections = isRecord(role.collections) ? role.collections : {};
+				if (
+					role.description !== undefined &&
+					(typeof role.description !== "string" ||
+						role.description.length > MAX_ROLE_DESCRIPTION_LENGTH)
+				) {
+					errors.push(
+						`${prefix}.description: must be a string of at most ${MAX_ROLE_DESCRIPTION_LENGTH} characters`,
+					);
+				}
+				// The same names the apply step hands to the role handler: anything
+				// that is not a string of permission names fails here, not after
+				// the rest of the seed has been written.
+				const permissions = role.permissions ?? [];
+				if (!Array.isArray(permissions) || !permissions.every((name) => typeof name === "string")) {
+					errors.push(`${prefix}.permissions: must be an array of permission names`);
+					continue;
+				}
+				const collections = role.collections ?? {};
+				if (!isRecord(collections)) {
+					errors.push(`${prefix}.collections: must map collection slugs to permission names`);
+					continue;
+				}
+				let collectionsValid = true;
+				for (const [slug, names] of Object.entries(collections)) {
+					if (!COLLECTION_FIELD_SLUG_PATTERN.test(slug) || slug.length > MAX_SLUG_LENGTH) {
+						errors.push(`${prefix}.collections: "${slug}" is not a collection slug`);
+						collectionsValid = false;
+					}
+					if (!Array.isArray(names) || !names.every((name) => typeof name === "string")) {
+						errors.push(`${prefix}.collections.${slug}: must be an array of permission names`);
+						collectionsValid = false;
+					}
+				}
+				if (!collectionsValid) continue;
 				const grantError = validateGrantInput({
-					permissions: permissions.filter((name): name is string => typeof name === "string"),
-					collections: Object.fromEntries(
-						Object.entries(collections).map(([slug, names]) => [
-							slug,
-							Array.isArray(names)
-								? names.filter((name): name is string => typeof name === "string")
-								: [],
-						]),
-					),
+					permissions,
+					// eslint-disable-next-line typescript/no-unsafe-type-assertion -- every value was checked to be a string array above
+					collections: collections as Record<string, string[]>,
 				});
 				if (grantError) errors.push(`${prefix}: ${grantError}`);
 			}

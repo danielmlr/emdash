@@ -158,13 +158,34 @@ export const BUILT_IN_ADMIN_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<
 	"transfer:import",
 ]);
 
-/** An `_any` permission includes the matching `_own` permission. */
-const ANY_IMPLIES_OWN: ReadonlyArray<readonly [Permission, Permission]> = [
+/** Slugs of the five built-in roles; a custom role cannot take one. */
+export const BUILT_IN_ROLE_SLUGS: ReadonlySet<string> = new Set([
+	"admin",
+	"editor",
+	"author",
+	"contributor",
+	"subscriber",
+]);
+
+/**
+ * Grants that include another: an `_any` permission includes its `_own`
+ * counterpart, and managing an area includes reading it, so a role that may
+ * manage menus can open the Menus page that lists them.
+ */
+const IMPLIED_PERMISSIONS: ReadonlyArray<readonly [Permission, Permission]> = [
 	["content:edit_any", "content:edit_own"],
 	["content:delete_any", "content:delete_own"],
 	["content:publish_any", "content:publish_own"],
 	["media:edit_any", "media:edit_own"],
 	["media:delete_any", "media:delete_own"],
+	["taxonomies:manage", "taxonomies:read"],
+	["comments:moderate", "comments:read"],
+	["menus:manage", "menus:read"],
+	["bylines:manage", "bylines:read"],
+	["widgets:manage", "widgets:read"],
+	["sections:manage", "sections:read"],
+	["redirects:manage", "redirects:read"],
+	["search:manage", "search:read"],
 ];
 
 /**
@@ -387,8 +408,8 @@ export function normalizeGrants(input: {
 
 function withOwnCounterparts(names: readonly Permission[]): Permission[] {
 	const set = new Set(names);
-	for (const [any, own] of ANY_IMPLIES_OWN) {
-		if (set.has(any)) set.add(own);
+	for (const [wider, included] of IMPLIED_PERMISSIONS) {
+		if (set.has(wider)) set.add(included);
 	}
 	return ALL_PERMISSIONS.filter((permission) => set.has(permission));
 }

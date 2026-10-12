@@ -11,6 +11,7 @@
 import {
 	ALL_PERMISSIONS,
 	BUILT_IN_ADMIN_ONLY_PERMISSIONS,
+	BUILT_IN_ROLE_SLUGS,
 	COLLECTION_SCOPED_PERMISSIONS,
 	Permissions,
 	compatibilityLevel,
@@ -157,6 +158,12 @@ export async function handleRoleCreate(
 ): Promise<ApiResult<{ item: RoleItem }>> {
 	const invalid = validateGrantInput(input);
 	if (invalid) return { success: false, error: { code: "VALIDATION_ERROR", message: invalid } };
+	if (BUILT_IN_ROLE_SLUGS.has(input.slug)) {
+		return {
+			success: false,
+			error: { code: "SLUG_CONFLICT", message: `"${input.slug}" names a built-in role` },
+		};
+	}
 	try {
 		const existing = await db
 			.selectFrom("_emdash_roles")

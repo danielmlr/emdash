@@ -252,7 +252,7 @@ describe("collection scope on REST routes", () => {
 		const postRevision = await getRevision(
 			ctx({ user: pageEditor, params: { revisionId: await revisionOf("post", postId) } }),
 		);
-		expect(postRevision.status).toBe(403);
+		expect(postRevision.status).toBe(404);
 	});
 
 	it("leaves built-in roles unaffected", async () => {

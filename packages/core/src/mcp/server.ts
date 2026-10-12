@@ -3783,6 +3783,11 @@ export function createMcpServer(
 					"Revision is missing collection or entry reference",
 				);
 			}
+			// Same answer as for a missing revision when the caller may not see
+			// this collection's drafts, so ids cannot be probed across collections.
+			if (!canReadDrafts(extra, revItem.collection)) {
+				return respondError("NOT_FOUND", `Revision not found: ${args.revisionId}`);
+			}
 
 			// Fetch the content entry to check ownership
 			const existing = await emdash.handleContentGet(revItem.collection, revItem.entryId);

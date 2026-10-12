@@ -93,6 +93,10 @@ export async function handleBulkTag(
 	origin: string,
 	input: BulkTagInput,
 	invalidate?: (tags: string[]) => Promise<void>,
+	options: {
+		/** Collections the caller may edit entries in; `null` or omitted means all. */
+		collections?: readonly string[] | null;
+	} = {},
 ): Promise<ApiResult<{ results: BulkTagResult[]; cacheRefreshFailed: boolean }>> {
 	try {
 		const taxonomy = new TaxonomyRepository(db);
@@ -113,8 +117,10 @@ export async function handleBulkTag(
 					: [];
 			}),
 		);
-		const collections = (await new SchemaRegistry(db).listCollections()).filter((collection) =>
-			allowed.has(collection.slug),
+		const editable = options.collections ?? null;
+		const collections = (await new SchemaRegistry(db).listCollections()).filter(
+			(collection) =>
+				allowed.has(collection.slug) && (!editable || editable.includes(collection.slug)),
 		);
 		const byCollection = new Map(collections.map((collection) => [collection.slug, collection]));
 		const content = new ContentRepository(db);

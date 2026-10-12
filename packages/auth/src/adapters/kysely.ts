@@ -802,7 +802,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   avatar_url TEXT,
   role INTEGER NOT NULL DEFAULT 10,
-  role_id TEXT,
+  role_id TEXT REFERENCES _emdash_roles(id),
   email_verified INTEGER NOT NULL DEFAULT 0,
   disabled INTEGER NOT NULL DEFAULT 0,
   data TEXT,
@@ -836,7 +836,7 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
   email TEXT,
   type TEXT NOT NULL,
   role INTEGER,
-  role_id TEXT,
+  role_id TEXT REFERENCES _emdash_roles(id),
   invited_by TEXT REFERENCES users(id),
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL
@@ -859,7 +859,7 @@ CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user ON oauth_accounts(user_id);
 CREATE TABLE IF NOT EXISTS allowed_domains (
   domain TEXT PRIMARY KEY,
   default_role INTEGER NOT NULL DEFAULT 20,
-  default_role_id TEXT,
+  default_role_id TEXT REFERENCES _emdash_roles(id),
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
@@ -870,8 +870,11 @@ CREATE TABLE IF NOT EXISTS _emdash_roles (
   slug TEXT UNIQUE NOT NULL,
   label TEXT NOT NULL,
   description TEXT,
-  grants TEXT NOT NULL DEFAULT '{"permissions":[],"collections":{}}',
+  grants TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_role_id ON auth_tokens(role_id);
+CREATE INDEX IF NOT EXISTS idx_allowed_domains_default_role_id ON allowed_domains(default_role_id);
 `;

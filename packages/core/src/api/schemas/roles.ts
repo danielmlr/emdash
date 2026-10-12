@@ -1,3 +1,4 @@
+import { BUILT_IN_ROLE_SLUGS } from "@emdash-cms/auth";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -11,9 +12,16 @@ const permissionNames = z.array(z.string().min(1).max(64)).max(200);
 
 export const roleCreateBody = z
 	.object({
-		slug: z.string().min(1).max(63).regex(ROLE_SLUG_PATTERN, {
-			message: "Slug must start with a letter and contain only a-z, 0-9, - and _",
-		}),
+		slug: z
+			.string()
+			.min(1)
+			.max(63)
+			.regex(ROLE_SLUG_PATTERN, {
+				message: "Slug must start with a letter and contain only a-z, 0-9, - and _",
+			})
+			.refine((slug) => !BUILT_IN_ROLE_SLUGS.has(slug), {
+				message: "Slug names a built-in role",
+			}),
 		label: z.string().trim().min(1).max(100),
 		description: z.string().trim().max(500).nullable().optional(),
 		permissions: permissionNames.default([]),

@@ -5,9 +5,10 @@
  * POST /_emdash/api/revisions/{revisionId}/restore - Restore revision
  */
 
+import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm, requirePermInAnyCollection } from "#api/authorize.js";
+import { requirePermInAnyCollection } from "#api/authorize.js";
 import { apiError, unwrapResult } from "#api/error.js";
 
 export const prerender = false;
@@ -24,11 +25,13 @@ export const GET: APIRoute = async ({ params, locals }) => {
 	}
 
 	const result = await emdash.handleRevisionGet(revisionId);
-	if (result.success) {
-		const scopeDenied = requirePerm(user, "content:read_drafts", {
-			collection: result.data?.item?.collection,
-		});
-		if (scopeDenied) return scopeDenied;
+	// A revision in a collection the caller may not read drafts of is answered
+	// like a missing one, so revision ids cannot be probed across collections.
+	if (
+		result.success &&
+		!hasPermission(user, "content:read_drafts", { collection: result.data?.item?.collection })
+	) {
+		return apiError("NOT_FOUND", `Revision not found: ${revisionId}`, 404);
 	}
 
 	return unwrapResult(result);

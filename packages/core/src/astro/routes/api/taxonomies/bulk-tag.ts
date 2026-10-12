@@ -1,6 +1,7 @@
+import { collectionsWithPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm } from "#api/authorize.js";
+import { requirePermInAnyCollection } from "#api/authorize.js";
 import { apiError, requireDb, unwrapResult } from "#api/error.js";
 import { handleBulkTag } from "#api/handlers/bulk-tag.js";
 import { isParseError, parseBody } from "#api/parse.js";
@@ -13,7 +14,7 @@ export const POST: APIRoute = async ({ locals, request, cache }) => {
 	const { emdash, user } = locals;
 	const dbError = requireDb(emdash?.db);
 	if (dbError) return dbError;
-	const denied = requirePerm(user, "content:edit_any");
+	const denied = requirePermInAnyCollection(user, "content:edit_any");
 	if (denied) return denied;
 	const body = await parseBody(request, bulkTagBody);
 	if (isParseError(body)) return body;
@@ -24,6 +25,7 @@ export const POST: APIRoute = async ({ locals, request, cache }) => {
 			getPublicOrigin(new URL(request.url), emdash.config),
 			body,
 			cache?.enabled ? (tags) => cache.invalidate({ tags }) : undefined,
+			{ collections: collectionsWithPermission(user, "content:edit_any") },
 		),
 	);
 };

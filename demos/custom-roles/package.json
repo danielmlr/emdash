@@ -1,0 +1,27 @@
+{
+  "name": "emdash-demo-custom-roles",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "emdash": {
+    "seed": "seed/seed.json"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "personas": "node ./scripts/personas.mjs",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/node": "catalog:",
+    "@astrojs/react": "catalog:",
+    "@emdash-cms/auth": "workspace:*",
+    "astro": "catalog:",
+    "emdash": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@astrojs/check": "catalog:"
+  }
+}

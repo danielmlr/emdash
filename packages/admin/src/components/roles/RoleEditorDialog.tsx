@@ -100,7 +100,12 @@ export function RoleEditorDialog({
 	error,
 	onSave,
 }: RoleEditorDialogProps) {
-	const { t } = useLingui();
+	const { t, i18n } = useLingui();
+	const reservedNoteId = React.useId();
+	const listFormat = React.useMemo(
+		() => new Intl.ListFormat(i18n.locale, { type: "conjunction" }),
+		[i18n.locale],
+	);
 	const [draft, setDraft] = React.useState(() => draftFrom(role, template));
 	const [slugEdited, setSlugEdited] = React.useState(false);
 	const isEdit = Boolean(role);
@@ -315,36 +320,53 @@ export function RoleEditorDialog({
 								{t`These permissions apply to the whole site.`}
 							</p>
 							<div className="mt-3 divide-y divide-kumo-line rounded-md border border-kumo-line">
-								{areas.map(([area, entries]) => (
-									<div
-										key={area}
-										role="group"
-										aria-label={areaText(area)}
-										className="flex flex-wrap items-center gap-x-6 gap-y-2 px-3 py-2"
-									>
-										<span className="w-36 shrink-0 text-sm font-medium">{areaText(area)}</span>
-										{entries.map((entry) => {
-											const implied = impliedBy(ALL, entry.name);
-											return (
-												<span
-													key={entry.name}
-													title={
-														entry.builtInAdminOnly
-															? t`Only the built-in Admin role can hold this`
-															: (implied ?? undefined)
-													}
-												>
-													<Checkbox
-														label={actionText(entry.name)}
-														checked={holds(ALL, entry.name) || implied !== null}
-														disabled={entry.builtInAdminOnly || implied !== null}
-														onCheckedChange={(checked) => toggle(ALL, entry.name, checked === true)}
-													/>
-												</span>
-											);
-										})}
-									</div>
-								))}
+								{areas.map(([area, entries]) => {
+									const reserved = entries.filter((entry) => entry.builtInAdminOnly);
+									const noteId = reserved.length > 0 ? `${reservedNoteId}-${area}` : undefined;
+									const reservedList = listFormat.format(
+										reserved.map((entry) => actionText(entry.name)),
+									);
+									return (
+										<div
+											key={area}
+											role="group"
+											aria-label={areaText(area)}
+											className="flex flex-wrap items-center gap-x-6 gap-y-2 px-3 py-2"
+										>
+											<span className="w-36 shrink-0 text-sm font-medium">{areaText(area)}</span>
+											{entries.map((entry) => {
+												const implied = impliedBy(ALL, entry.name);
+												return (
+													<span
+														key={entry.name}
+														title={
+															entry.builtInAdminOnly
+																? t`Only the built-in Admin role can hold this`
+																: (implied ?? undefined)
+														}
+													>
+														<Checkbox
+															label={actionText(entry.name)}
+															checked={holds(ALL, entry.name) || implied !== null}
+															disabled={entry.builtInAdminOnly || implied !== null}
+															aria-describedby={entry.builtInAdminOnly ? noteId : undefined}
+															onCheckedChange={(checked) =>
+																toggle(ALL, entry.name, checked === true)
+															}
+														/>
+													</span>
+												);
+											})}
+											{noteId && (
+												<p id={noteId} className="basis-full text-xs text-kumo-subtle sm:ps-42">
+													{reserved.length === entries.length
+														? t`Reserved for the built-in Admin role, so a custom role can't give itself or others more access.`
+														: t`Reserved for the built-in Admin role: ${reservedList}.`}
+												</p>
+											)}
+										</div>
+									);
+								})}
 							</div>
 						</section>
 

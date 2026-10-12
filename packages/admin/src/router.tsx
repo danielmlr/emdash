@@ -78,8 +78,6 @@ import { TaxonomyManager } from "./components/TaxonomyManager";
 import { Widgets } from "./components/Widgets";
 import { WordPressImport } from "./components/WordPressImport";
 import {
-	apiFetch,
-	parseApiResponse,
 	fetchManifest,
 	fetchContentList,
 	fetchContentAuthors,
@@ -157,6 +155,7 @@ import {
 import { runBulkAction } from "./lib/bulk";
 import { parseCalendarSearch } from "./lib/calendar";
 import { describeContentValidationError } from "./lib/content-validation-errors";
+import { can, canActOnOwn } from "./lib/permissions";
 import { usePluginPage } from "./lib/plugin-context";
 import { getPluginBlocks } from "./lib/pluginBlocks";
 import { withAutosavedDraft } from "./lib/revision-list-cache.js";
@@ -166,6 +165,7 @@ import { useEntryLock } from "./lib/useEntryLock";
 import { BylineSchemaPage } from "./routes/byline-schema";
 import { BylinesPage } from "./routes/bylines";
 import { CalendarPage } from "./routes/calendar";
+import { RolesPage } from "./routes/roles";
 import { UsersPage } from "./routes/users";
 
 // Router context type
@@ -779,6 +779,10 @@ function ContentListPage() {
 		return <NotFoundPage message={`Collection "${collection}" not found`} />;
 	}
 
+	if (currentUser && !can(currentUser, "content:read", { collection })) {
+		return <AccessDenied message={t`Your role cannot open this collection.`} />;
+	}
+
 	if (contentList.query.error) {
 		return <ErrorScreen error={contentList.query.error.message} />;
 	}
@@ -795,6 +799,17 @@ function ContentListPage() {
 			},
 		];
 	});
+
+	// Row and bulk actions are offered when the user may do them to at least
+	// their own entries here; the server still checks each entry's owner.
+	const scope = { collection };
+	const canEditHere =
+		can(currentUser, "content:edit_own", scope) || can(currentUser, "content:edit_any", scope);
+	const canDeleteHere =
+		can(currentUser, "content:delete_own", scope) || can(currentUser, "content:delete_any", scope);
+	const canPublishHere =
+		can(currentUser, "content:publish_own", scope) ||
+		can(currentUser, "content:publish_any", scope);
 
 	const handleLocaleChange = (locale: string) => {
 		// Update URL search params without full navigation
@@ -817,10 +832,19 @@ function ContentListPage() {
 			isLoading={contentList.query.isLoading}
 			isTrashedLoading={trash.query.isLoading}
 			trashedCount={trash.pagination.totalCount}
-			onDelete={(id) => deleteMutation.mutate(id)}
-			onRestore={(id) => restoreMutation.mutate(id)}
-			onPermanentDelete={(id) => permanentDeleteMutation.mutate(id)}
-			onDuplicate={(id) => duplicateMutation.mutate(id)}
+			canCreate={can(currentUser, "content:create", { collection })}
+			onDelete={canDeleteHere ? (id) => deleteMutation.mutate(id) : undefined}
+			onRestore={canEditHere ? (id) => restoreMutation.mutate(id) : undefined}
+			onPermanentDelete={
+				can(currentUser, "content:delete_permanent", { collection })
+					? (id) => permanentDeleteMutation.mutate(id)
+					: undefined
+			}
+			onDuplicate={
+				can(currentUser, "content:create", { collection })
+					? (id) => duplicateMutation.mutate(id)
+					: undefined
+			}
 			i18n={i18n}
 			activeLocale={activeLocale}
 			onLocaleChange={handleLocaleChange}
@@ -839,11 +863,23 @@ function ContentListPage() {
 			onDateFilterChange={setDateFilter}
 			bylineFilter={bylineFilter}
 			onBylineFilterChange={setBylineFilter}
-			onBulkPublish={(ids) => bulkPublishMutation.mutateAsync(ids).then((r) => r.failedIds)}
-			onBulkUnpublish={(ids) => bulkUnpublishMutation.mutateAsync(ids).then((r) => r.failedIds)}
-			onBulkDelete={(ids) => bulkDeleteMutation.mutateAsync(ids).then((r) => r.failedIds)}
+			onBulkPublish={
+				canPublishHere
+					? (ids) => bulkPublishMutation.mutateAsync(ids).then((r) => r.failedIds)
+					: undefined
+			}
+			onBulkUnpublish={
+				canPublishHere
+					? (ids) => bulkUnpublishMutation.mutateAsync(ids).then((r) => r.failedIds)
+					: undefined
+			}
+			onBulkDelete={
+				canDeleteHere
+					? (ids) => bulkDeleteMutation.mutateAsync(ids).then((r) => r.failedIds)
+					: undefined
+			}
 			bulkTagTaxonomies={
-				(currentUser?.role ?? 0) >= ROLE_EDITOR
+				can(currentUser, "content:edit_any")
 					? manifest.taxonomies.filter((taxonomy) => taxonomy.collections.includes(collection))
 					: []
 			}
@@ -979,6 +1015,10 @@ function ContentNewPage() {
 		return <NotFoundPage message={`Collection "${collection}" not found`} />;
 	}
 
+	if (currentUser && !can(currentUser, "content:create", { collection })) {
+		return <AccessDenied message={t`Your role cannot create entries in this collection.`} />;
+	}
+
 	return (
 		<ContentEditor
 			collection={collection}
@@ -1014,11 +1054,6 @@ const contentEditRoute = createRoute({
 		...(typeof search.locale === "string" && { locale: search.locale }),
 	}),
 });
-
-// Role levels from @emdash-cms/auth
-const ROLE_CONTRIBUTOR = 20;
-const ROLE_AUTHOR = 30;
-const ROLE_EDITOR = 40;
 
 const EMPTY_FIELDS: AdminManifest["collections"][string]["fields"] = {};
 
@@ -1067,11 +1102,36 @@ function ContentEditPage() {
 		retry: (failureCount, queryError) =>
 			!(queryError instanceof ApiResponseError && queryError.status === 404) && failureCount < 1,
 	});
+	const { data: currentUser } = useCurrentUser();
+	const entryScope = { collection };
+	const entryAuthorId = rawItem?.authorId ?? null;
+	const canEditEntry = canActOnOwn(
+		currentUser,
+		entryAuthorId,
+		"content:edit_own",
+		"content:edit_any",
+		entryScope,
+	);
+	const canPublishEntry = canActOnOwn(
+		currentUser,
+		entryAuthorId,
+		"content:publish_own",
+		"content:publish_any",
+		entryScope,
+	);
+	const canDeleteEntry = canActOnOwn(
+		currentUser,
+		entryAuthorId,
+		"content:delete_own",
+		"content:delete_any",
+		entryScope,
+	);
+	// A viewer who cannot edit has nothing to lock.
 	const entryLock = useEntryLock({
 		collection,
 		entryId: id,
 		locale: activeLocale,
-		ready: Boolean(rawItem),
+		ready: Boolean(rawItem) && canEditEntry,
 	});
 	const revisionTokensRef = React.useRef(new Map<string, string | undefined>());
 	const revisionVersionsRef = React.useRef(new Map<string, number>());
@@ -1187,21 +1247,11 @@ function ContentEditPage() {
 		};
 	}, [rawItem, draftRevision]);
 
-	// Fetch current user for permission checks
-	const { data: currentUser } = useQuery({
-		queryKey: ["currentUser"],
-		queryFn: async (): Promise<{ id: string; role: number }> => {
-			const response = await apiFetch("/_emdash/api/auth/me");
-			return parseApiResponse<{ id: string; role: number }>(response, t`Failed to fetch user`);
-		},
-		staleTime: 5 * 60 * 1000,
-	});
-
-	// Fetch users list for author selector (only if user is editor+)
+	// Fetch users list for the author selector
 	const { data: usersData } = useQuery({
 		queryKey: ["users"],
 		queryFn: () => fetchUsers({ limit: 100 }),
-		enabled: !!currentUser && currentUser.role >= ROLE_EDITOR,
+		enabled: can(currentUser, "users:read"),
 		staleTime: 5 * 60 * 1000,
 	});
 
@@ -1938,6 +1988,10 @@ function ContentEditPage() {
 		return <NotFoundPage message={`Collection "${collection}" not found`} />;
 	}
 
+	if (currentUser && !can(currentUser, "content:read", { collection })) {
+		return <AccessDenied message={t`Your role cannot open this collection.`} />;
+	}
+
 	if (isLoading) {
 		return <LoadingScreen />;
 	}
@@ -1946,7 +2000,7 @@ function ContentEditPage() {
 		if (itemError instanceof ApiResponseError && itemError.status === 404) {
 			// Users without content:read_drafts get 404 for anything not published.
 			const message =
-				currentUser && currentUser.role < ROLE_CONTRIBUTOR
+				currentUser && !can(currentUser, "content:read_drafts", { collection })
 					? t`This entry doesn't exist or isn't published. Your role can only view published content.`
 					: t`This entry doesn't exist or was deleted.`;
 			return <NotFoundPage message={message} />;
@@ -1976,17 +2030,17 @@ function ContentEditPage() {
 			autosaveCompletionToken={autosaveCompletion.entryId === id ? autosaveCompletion.token : 0}
 			autosaveRejectionToken={autosaveRejection.entryId === id ? autosaveRejection.token : 0}
 			hasSaveConflict={conflictedEntryId === id}
-			onPublish={handlePublish}
-			onUnpublish={handleUnpublish}
-			onDiscardDraft={handleDiscardDraft}
+			onPublish={canPublishEntry ? handlePublish : undefined}
+			onUnpublish={canPublishEntry ? handleUnpublish : undefined}
+			onDiscardDraft={canEditEntry ? handleDiscardDraft : undefined}
 			onRevisionRestored={handleRevisionRestored}
-			onSchedule={handleSchedule}
-			onUnschedule={handleUnschedule}
+			onSchedule={canPublishEntry ? handleSchedule : undefined}
+			onUnschedule={canPublishEntry ? handleUnschedule : undefined}
 			isScheduling={scheduleMutation.isPending}
 			isUnscheduling={unscheduleMutation.isPending}
 			onPublishedAtChange={handlePublishedAtChange}
 			isUpdatingPublishedAt={publishedAtMutation.isPending}
-			onDelete={handleDelete}
+			onDelete={canDeleteEntry ? handleDelete : undefined}
 			isDeleting={deleteMutation.isPending}
 			supportsDrafts={collectionConfig.supports.includes("drafts")}
 			supportsRevisions={collectionConfig.supports.includes("revisions")}
@@ -2006,7 +2060,7 @@ function ContentEditPage() {
 			onQuickEditByline={handleQuickEditByline}
 			manifest={manifest ?? null}
 			onEntryRefresh={handlePluginEntryRefresh}
-			readOnly={entryLock.readOnly}
+			readOnly={entryLock.readOnly || (!!currentUser && !canEditEntry)}
 			notice={
 				<EntryLockNotice
 					state={entryLock.state}
@@ -2260,11 +2314,7 @@ function MediaPage() {
 	);
 	const canMoveMedia = React.useCallback(
 		(item: { authorId: string | null }) =>
-			Boolean(
-				currentUser &&
-				(currentUser.role >= ROLE_EDITOR ||
-					(currentUser.role >= ROLE_AUTHOR && item.authorId === currentUser.id)),
-			),
+			canActOnOwn(currentUser, item.authorId, "media:edit_own", "media:edit_any"),
 		[currentUser],
 	);
 
@@ -2303,7 +2353,7 @@ function MediaPage() {
 			folderId={folder}
 			currentFolder={currentFolderQuery.data ?? null}
 			currentFolderLoading={currentFolderQuery.isLoading}
-			canManageFolders={(currentUser?.role ?? 0) >= ROLE_EDITOR}
+			canManageFolders={can(currentUser, "media:edit_any")}
 			onOpenFolder={handleOpenFolder}
 			onBackToMain={handleBackToMain}
 			onRetryFolders={() => void folderListQuery.refetch()}
@@ -2324,7 +2374,6 @@ const commentsRoute = createRoute({
 });
 
 // Admin role level from @emdash-cms/auth
-const ROLE_ADMIN = 50;
 
 function CommentsPage() {
 	const { t } = useLingui();
@@ -2336,15 +2385,7 @@ function CommentsPage() {
 		queryFn: fetchManifest,
 	});
 
-	// Current user for ADMIN check (hard delete)
-	const { data: currentUser } = useQuery({
-		queryKey: ["currentUser"],
-		queryFn: async (): Promise<{ id: string; role: number }> => {
-			const response = await apiFetch("/_emdash/api/auth/me");
-			return parseApiResponse<{ id: string; role: number }>(response, t`Failed to fetch user`);
-		},
-		staleTime: 5 * 60 * 1000,
-	});
+	const { data: currentUser } = useCurrentUser();
 
 	// Filter state
 	const [activeStatus, setActiveStatus] = React.useState<CommentStatus>("pending");
@@ -2445,8 +2486,7 @@ function CommentsPage() {
 	const allComments = commentsData?.pages.flatMap((p) => p.items) ?? [];
 	const lastPage = commentsData?.pages[commentsData.pages.length - 1];
 
-	// Require EDITOR role for comment moderation
-	if (currentUser && currentUser.role < ROLE_EDITOR) {
+	if (currentUser && !can(currentUser, "comments:moderate")) {
 		return (
 			<div className="flex items-center justify-center min-h-[50vh]">
 				<div className="text-center">
@@ -2478,7 +2518,7 @@ function CommentsPage() {
 			onLoadMore={() => {
 				if (hasNextPage) void fetchNextPage();
 			}}
-			isAdmin={(currentUser?.role ?? 0) >= ROLE_ADMIN}
+			isAdmin={can(currentUser, "comments:delete")}
 			isStatusPending={
 				statusMutation.isPending || deleteMutation.isPending || bulkMutation.isPending
 			}
@@ -2772,6 +2812,12 @@ const usersRoute = createRoute({
 	component: UsersPage,
 });
 
+const rolesRoute = createRoute({
+	getParentRoute: () => adminLayoutRoute,
+	path: "/roles",
+	component: RolesPage,
+});
+
 // Bylines route
 //
 // `validateSearch` rejects empty-string locale (`?locale=`) — left as `""`
@@ -2795,7 +2841,7 @@ const bylinesRoute = createRoute({
 });
 
 // Byline schema management route (Discussion #1174, Phase 5).
-// `minRole: ROLE_ADMIN` is enforced both in the sidebar (entry hidden
+// `schema:manage` is enforced both in the sidebar (entry hidden
 // for non-admins) and inside `BylineSchemaPage` (URL-direct navigation).
 const bylineSchemaRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
@@ -3242,6 +3288,7 @@ const adminRoutes = adminLayoutRoute.addChildren([
 	sectionEditRoute,
 	taxonomyRoute,
 	usersRoute,
+	rolesRoute,
 	bylinesRoute,
 	bylineSchemaRoute,
 	widgetsRoute,
@@ -3341,6 +3388,21 @@ function NotFoundPage({ message }: { message?: string }) {
 				<p className="mt-2 text-sm text-kumo-subtle">
 					{message ?? t`The page you're looking for doesn't exist.`}
 				</p>
+				<Link to="/" className="mt-4 inline-block text-kumo-link">
+					{t`Go to Dashboard`}
+				</Link>
+			</div>
+		</div>
+	);
+}
+
+function AccessDenied({ message }: { message: string }) {
+	const { t } = useLingui();
+	return (
+		<div className="flex items-center justify-center min-h-[50vh]">
+			<div className="text-center">
+				<h1 className="text-2xl font-semibold leading-tight">{t`Access Denied`}</h1>
+				<p className="mt-2 text-sm text-kumo-subtle">{message}</p>
 				<Link to="/" className="mt-4 inline-block text-kumo-link">
 					{t`Go to Dashboard`}
 				</Link>

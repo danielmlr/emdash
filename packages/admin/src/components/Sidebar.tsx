@@ -1,14 +1,14 @@
 import { Sidebar as KumoSidebar, useSidebar } from "@cloudflare/kumo";
 import { isSafePluginPagePath, normalizePluginPagePath } from "@emdash-cms/blocks";
 import { useLingui } from "@lingui/react/macro";
-import { Gear, Storefront, Users } from "@phosphor-icons/react";
+import { Gear, ShieldCheck, Storefront, Users } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import * as React from "react";
 
 import { formatAdminVersion } from "../lib/admin-version.js";
 import { fetchCommentCounts } from "../lib/api/comments";
-import { useCurrentUser } from "../lib/api/current-user";
+import { useCan, type PermissionChecks } from "../lib/permissions";
 import { resolvePluginPagePath, usePluginAdmins } from "../lib/plugin-context";
 import {
 	groupNavItems,
@@ -36,11 +36,6 @@ import { BrandIcon } from "./Logo.js";
 export { KumoSidebar as Sidebar, useSidebar };
 export { resolveNavIcon, toPhosphorIconName };
 
-// Role levels (matching @emdash-cms/auth)
-const ROLE_ADMIN = 50;
-const ROLE_EDITOR = 40;
-const ROLE_CONTRIBUTOR = 20;
-
 /**
  * Static invariants for nav entries that have AC-level visibility
  * requirements (Phase 5 of Discussion #1174: "Admin sees the 'Byline
@@ -56,21 +51,22 @@ const ROLE_CONTRIBUTOR = 20;
  */
 export const BYLINE_SCHEMA_NAV_ITEM = {
 	to: "/byline-schema" as const,
-	minRole: ROLE_ADMIN,
+	permission: "schema:manage",
 	icon: ADMIN_NAV_ICONS.bylineSchema,
 } as const;
 
 /**
- * Filter a nav-items list by user role. Pure function — exported so
- * tests can verify the role gate without rendering the sidebar. An
- * item passes when it has no `minRole` (public) or the user is at
- * least the required level.
+ * Filter a nav-items list by permission. Pure function — exported so
+ * tests can verify the gate without rendering the sidebar. An item passes
+ * when it names no `permission` or the user holds it, for the item's
+ * collection when it has one.
  */
-export function filterNavItemsByRole<T extends { minRole?: number }>(
-	items: T[],
-	userRole: number,
-): T[] {
-	return items.filter((item) => !item.minRole || userRole >= item.minRole);
+export function filterNavItemsByPermission<
+	T extends { permission?: string; params?: Record<string, string> },
+>(items: T[], can: PermissionChecks["can"]): T[] {
+	return items.filter(
+		(item) => !item.permission || can(item.permission, { collection: item.params?.collection }),
+	);
 }
 
 /**
@@ -146,8 +142,8 @@ export interface NavItem extends GroupableNavItem {
 	icon: React.ElementType;
 	params?: Record<string, string>;
 	search?: Record<string, string>;
-	/** Minimum role level required to see this item */
-	minRole?: number;
+	/** Permission required to see this item, checked for `params.collection` when set */
+	permission?: string;
 	/** Optional badge count (e.g., pending comments) */
 	badge?: number;
 }
@@ -397,8 +393,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 		new URL(location.href, "http://emdash.local").searchParams.get("locale") ?? undefined;
 	const pluginAdmins = usePluginAdmins();
 
-	const { data: user } = useCurrentUser();
-	const userRole = user?.role ?? 0;
+	const { can, canAnywhere } = useCan();
 
 	// Fetch pending comment count for badge
 	const { data: commentCounts } = useQuery({
@@ -406,7 +401,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 		queryFn: fetchCommentCounts,
 		staleTime: 60 * 1000,
 		retry: false,
-		enabled: userRole >= ROLE_EDITOR,
+		enabled: can("comments:moderate"),
 	});
 
 	// --- Build nav item groups ---
@@ -423,9 +418,15 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			group: config.group,
 			groupRank: GROUP_RANK.collection,
 			params: { collection: name },
+			permission: "content:read",
 		});
 	}
-	contentItems.push({ to: "/media", label: t`Media`, icon: ADMIN_NAV_ICONS.media });
+	contentItems.push({
+		to: "/media",
+		label: t`Media`,
+		icon: ADMIN_NAV_ICONS.media,
+		permission: "media:read",
+	});
 
 	const collectionGroups = new Map(
 		visibleCollectionEntries(manifest.collections).map(([name, config]) => [name, config.group]),
@@ -439,19 +440,39 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			to: "/comments",
 			label: t`Comments`,
 			icon: ADMIN_NAV_ICONS.comments,
-			minRole: ROLE_EDITOR,
+			permission: "comments:moderate",
 			badge: commentCounts?.pending,
 		},
-		{ to: "/menus", label: t`Menus`, icon: ADMIN_NAV_ICONS.menus, minRole: ROLE_EDITOR },
+		{
+			to: "/menus",
+			label: t`Menus`,
+			icon: ADMIN_NAV_ICONS.menus,
+			permission: "menus:manage",
+		},
 		{
 			to: "/redirects",
 			label: t`Redirects`,
 			icon: ADMIN_NAV_ICONS.redirects,
-			minRole: ROLE_ADMIN,
+			permission: "redirects:manage",
 		},
-		{ to: "/widgets", label: t`Widgets`, icon: ADMIN_NAV_ICONS.widgets, minRole: ROLE_EDITOR },
-		{ to: "/sections", label: t`Sections`, icon: ADMIN_NAV_ICONS.sections, minRole: ROLE_EDITOR },
-		{ to: "/bylines", label: t`Bylines`, icon: ADMIN_NAV_ICONS.bylines, minRole: ROLE_EDITOR },
+		{
+			to: "/widgets",
+			label: t`Widgets`,
+			icon: ADMIN_NAV_ICONS.widgets,
+			permission: "widgets:manage",
+		},
+		{
+			to: "/sections",
+			label: t`Sections`,
+			icon: ADMIN_NAV_ICONS.sections,
+			permission: "sections:manage",
+		},
+		{
+			to: "/bylines",
+			label: t`Bylines`,
+			icon: ADMIN_NAV_ICONS.bylines,
+			permission: "bylines:manage",
+		},
 	];
 	for (const tax of getSidebarTaxonomies(
 		manifest.taxonomies,
@@ -464,7 +485,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			icon: getTaxonomyNavIcon(tax.name),
 			params: { taxonomy: tax.name },
 			search: routeLocale ? { locale: routeLocale } : undefined,
-			minRole: ROLE_EDITOR,
+			permission: "taxonomies:manage",
 		};
 		const group = taxonomyGroup(tax.collections ?? [], collectionGroups);
 		if (group) {
@@ -479,15 +500,16 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			to: "/content-types",
 			label: t`Content Types`,
 			icon: ADMIN_NAV_ICONS.contentTypes,
-			minRole: ROLE_ADMIN,
+			permission: "schema:manage",
 		},
 		{ ...BYLINE_SCHEMA_NAV_ITEM, label: t`Byline Schema` },
-		{ to: "/users", label: t`Users`, icon: Users, minRole: ROLE_ADMIN },
+		{ to: "/users", label: t`Users`, icon: Users, permission: "users:read" },
+		{ to: "/roles", label: t`Roles`, icon: ShieldCheck, permission: "users:manage" },
 		{
 			to: "/plugins-manager",
 			label: t`Plugins`,
 			icon: ADMIN_NAV_ICONS.plugins,
-			minRole: ROLE_ADMIN,
+			permission: "plugins:manage",
 		},
 	];
 
@@ -496,7 +518,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			to: "/plugins/registry",
 			label: t`Registry`,
 			icon: Storefront,
-			minRole: ROLE_ADMIN,
+			permission: "plugins:manage",
 		});
 	}
 
@@ -505,9 +527,9 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 			to: "/import/wordpress",
 			label: t`Import`,
 			icon: ADMIN_NAV_ICONS.import,
-			minRole: ROLE_ADMIN,
+			permission: "import:execute",
 		},
-		{ to: "/settings", label: t`Settings`, icon: Gear, minRole: ROLE_ADMIN },
+		{ to: "/settings", label: t`Settings`, icon: Gear, permission: "settings:manage" },
 	);
 
 	const pluginItems: NavItem[] = [];
@@ -535,11 +557,11 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 	}
 
 	const visibleContent = groupNavItems(
-		filterNavItemsByRole(contentItems, userRole).filter((i) => i.to !== "/"),
+		filterNavItemsByPermission(contentItems, can).filter((i) => i.to !== "/"),
 	);
-	const visibleManage = filterNavItemsByRole(manageItems, userRole);
-	const visibleAdmin = filterNavItemsByRole(adminItems, userRole);
-	const visiblePlugins = groupNavItems(filterNavItemsByRole(pluginItems, userRole));
+	const visibleManage = filterNavItemsByPermission(manageItems, can);
+	const visibleAdmin = filterNavItemsByPermission(adminItems, can);
+	const visiblePlugins = groupNavItems(filterNavItemsByPermission(pluginItems, can));
 
 	const folders = useFolderState();
 
@@ -609,7 +631,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 							item={{ to: "/", label: t`Dashboard`, icon: ADMIN_NAV_ICONS.dashboard }}
 							isActive={isItemActive("/", currentPath)}
 						/>
-						{userRole >= ROLE_CONTRIBUTOR && (
+						{canAnywhere("content:read_drafts") && (
 							<NavMenuLink
 								item={{ to: "/calendar", label: t`Calendar`, icon: ADMIN_NAV_ICONS.calendar }}
 								isActive={isItemActive("/calendar", currentPath)}

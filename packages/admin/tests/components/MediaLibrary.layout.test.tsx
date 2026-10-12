@@ -6,6 +6,7 @@ import { page } from "vitest/browser";
 import "../../dist/styles.css";
 import { MediaLibrary } from "../../src/components/MediaLibrary.js";
 import type { MediaItem } from "../../src/lib/api/media.js";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.js";
 
 vi.mock("../../src/lib/api", async (importOriginal) => ({
@@ -14,7 +15,7 @@ vi.mock("../../src/lib/api", async (importOriginal) => ({
 }));
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "user-1", role: 30 } }),
+	useCurrentUser: () => ({ data: builtInUser(30, "user-1") }),
 }));
 
 const items: MediaItem[] = Array.from({ length: 35 }, (_, index) => ({

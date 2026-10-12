@@ -94,9 +94,19 @@ vi.mock("../../src/lib/api/media-usage-activation.js", async () => {
 	};
 });
 
-vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "user-1", role: setupMocks.role } }),
-}));
+vi.mock("../../src/lib/api/current-user.js", async () => {
+	const { permissionsForRole } = await import("@emdash-cms/auth/rbac");
+	return {
+		useCurrentUser: () => ({
+			data: {
+				id: "user-1",
+				role: setupMocks.role,
+				permissions: permissionsForRole(setupMocks.role as 10 | 20 | 30 | 40 | 50),
+				collections: {},
+			},
+		}),
+	};
+});
 
 function setInputFiles(input: HTMLInputElement, files: File[]) {
 	const transfer = new DataTransfer();

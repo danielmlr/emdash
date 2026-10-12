@@ -27,6 +27,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import type { AdminManifest, ContentItem } from "../src/lib/api";
 import { ConfigurationLoadingScreen, createAdminRouter } from "../src/router";
+import { builtInUser } from "./utils/permissions.ts";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient, createMockFetch, waitFor } from "./utils/test-helpers";
 
@@ -390,7 +391,7 @@ describe("MediaPage – upload completion", () => {
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: builtInUser(50, "user_01"),
 			})
 			.on("GET", "/_emdash/api/media/folders/folder-one", {
 				data: { item: { id: "folder-one", name: "Folder One" } },
@@ -861,7 +862,7 @@ describe("MediaPage – upload completion", () => {
 
 	it("allows authors to move their own media but not another user's media", async () => {
 		mockFetch.on("GET", "/_emdash/api/auth/me", {
-			data: { id: "user_01", role: 30 },
+			data: builtInUser(30, "user_01"),
 		});
 		const { router, TestApp } = buildRouter();
 		await router.navigate({ to: "/media" });
@@ -1005,7 +1006,7 @@ describe("ContentListPage – locale forwarding to the new-content route", () =>
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: builtInUser(50, "user_01"),
 			})
 			.on("GET", "/_emdash/api/content/posts", {
 				data: { items: [], nextCursor: undefined },
@@ -1099,7 +1100,7 @@ describe("ContentListPage – hook order is stable when a refetch errors (#1415)
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: builtInUser(50, "user_01"),
 			})
 			.on("GET", "/_emdash/api/content/posts", {
 				data: { items: [], nextCursor: undefined },
@@ -1192,7 +1193,7 @@ describe("ContentListPage – numbered pages", () => {
 		holdCollection = undefined;
 		mockFetch = createMockFetch();
 		mockFetch
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 60 } })
+			.on("GET", "/_emdash/api/auth/me", { data: builtInUser(50, "user_01") })
 			.on("GET", "/_emdash/api/content/posts/authors", { data: { items: [] } })
 			.on("GET", "/_emdash/api/content/pages/authors", { data: { items: [] } });
 		const mockedFetch = globalThis.fetch;
@@ -1328,7 +1329,7 @@ describe("ContentNewPage – locale passed to createContent", () => {
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: builtInUser(50, "user_01"),
 			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			.on("POST", "/_emdash/api/content/posts", {
@@ -1415,7 +1416,7 @@ describe("ContentNewPage – create failure surfaces the server's error", () => 
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: builtInUser(50, "user_01"),
 			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			// A canned 409 SLUG_CONFLICT — the response shape the server
@@ -1542,7 +1543,7 @@ describe("Content editor routes – byline profiles saved from the editor", () =
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 60 } })
+			.on("GET", "/_emdash/api/auth/me", { data: builtInUser(50, "user_01") })
 			.on("GET", "/_emdash/api/content/posts/post_1", {
 				data: {
 					item: {
@@ -1666,7 +1667,7 @@ describe("ContentEditPage – autosave cache patching", () => {
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: manifestWithRevisions })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 30 },
+				data: builtInUser(30, "user_01"),
 			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			.on("GET", "/_emdash/api/content/posts/post_1", {
@@ -2308,7 +2309,7 @@ describe("ContentEditPage – revision token synchronization", () => {
 			if (method === "GET" && url === "/_emdash/api/manifest")
 				return jsonResponse({ data: manifestWithRevisions });
 			if (method === "GET" && url === "/_emdash/api/auth/me")
-				return jsonResponse({ data: { id: "user_01", role: 30 } });
+				return jsonResponse({ data: builtInUser(30, "user_01") });
 			if (method === "GET" && url === "/_emdash/api/bylines")
 				return jsonResponse({ data: { items: [] } });
 			if (method === "GET" && url.startsWith("/_emdash/api/revisions/rev_draft"))

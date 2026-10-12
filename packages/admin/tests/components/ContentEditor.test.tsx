@@ -27,6 +27,7 @@ import type {
 import { PluginAdminProvider, type PluginAdmins } from "../../src/lib/plugin-context";
 import { diffVersion } from "../../src/lib/revision-diff/index.js";
 import { withAutosavedDraft } from "../../src/lib/revision-list-cache";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 function makeByline(overrides: Partial<BylineSummary> = {}): BylineSummary {
@@ -266,7 +267,7 @@ function renderBylineContent(
 	return renderEditor({
 		isNew: false,
 		item: makeItem({ data: { title: "Hello", body: "" }, bylines }),
-		currentUser: { id: "u-1", role: 50 },
+		currentUser: builtInUser(50, "u-1"),
 		availableBylines: [],
 		availableBylinesLoaded: true,
 		...props,
@@ -1738,7 +1739,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: builtInUser(50, "u-1"),
 				i18n: { defaultLocale: "en", locales: ["en", "fr-fr"] },
 				entryLocale: "fr-fr",
 				availableBylines: [],
@@ -1755,7 +1756,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: builtInUser(50, "u-1"),
 				i18n: { defaultLocale: "en", locales: ["en", "fr-fr"] },
 				entryLocale: "fr-fr",
 				availableBylines: [],
@@ -2978,7 +2979,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: builtInUser(50, "u-1"),
 				// Empty initial list: the only way to reach "Zoe Far" is via search.
 				availableBylines: [],
 				availableBylinesLoaded: true,
@@ -3013,7 +3014,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: builtInUser(50, "u-1"),
 				// Initial list does NOT include the credited byline (it would be
 				// past the old 100-row cap). It must still render from the entry.
 				availableBylines: [],

@@ -4,6 +4,7 @@ import * as React from "react";
 
 import type { AdminManifest } from "../lib/api/client.js";
 import { useCurrentUser } from "../lib/api/current-user";
+import { can } from "../lib/permissions";
 import { getLocaleDir } from "../locales/config.js";
 import { useLocale } from "../locales/useLocale.js";
 import { AdminCommandPalette } from "./AdminCommandPalette";
@@ -79,7 +80,7 @@ export function Shell({ children, manifest }: ShellProps) {
 	React.useEffect(() => {
 		if (!user) return;
 		try {
-			if (user.role >= 30) {
+			if (can(user, "content:edit_own") && can(user, "content:read_drafts")) {
 				localStorage.setItem("emdash-editor", "1");
 				localStorage.setItem(
 					"emdash-toolbar-labels",
@@ -140,6 +141,7 @@ export function Shell({ children, manifest }: ShellProps) {
 					onClose={() => setWelcomeModalOpen(false)}
 					userName={user.name}
 					userRole={user.role}
+					customRoleLabel={user.customRole?.label}
 				/>
 			)}
 

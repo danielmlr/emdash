@@ -196,7 +196,7 @@ function UserListRow({ user, onSelect }: UserListRowProps) {
 				</div>
 			</td>
 			<td className="px-4 py-3">
-				<RoleBadge role={user.role} />
+				<RoleBadge role={user.role} customRole={user.customRole} />
 			</td>
 			<td className="px-4 py-3">
 				{user.disabled ? (

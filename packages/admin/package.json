@@ -123,6 +123,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
+    "@emdash-cms/auth": "workspace:*",
     "@babel/core": "^7.29.7",
     "@lingui/babel-plugin-lingui-macro": "catalog:",
     "@lingui/cli": "catalog:",

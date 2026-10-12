@@ -17,6 +17,7 @@ import {
 	InviteUserModal,
 	useRolesConfig,
 } from "../components/users";
+import { parseRoleKey } from "../components/users/useRolesConfig.js";
 import {
 	fetchUsers,
 	fetchUser,
@@ -118,7 +119,10 @@ export function UsersPage() {
 	});
 
 	const inviteMutation = useMutation({
-		mutationFn: ({ email, role }: { email: string; role: number }) => inviteUser(email, role),
+		mutationFn: ({ email, roleKey }: { email: string; roleKey: string }) => {
+			const { role, roleId } = parseRoleKey(roleKey);
+			return inviteUser(email, role, roleId);
+		},
 		onSuccess: (result) => {
 			setInviteError(null);
 			if (result.inviteUrl) {
@@ -153,8 +157,10 @@ export function UsersPage() {
 
 		// Check for role demotion — require confirmation.
 		// Guard: only check when user data is loaded (currentRole defined).
+		// Assigning a custom role always counts: its level is at most Editor.
 		const currentRole = userDetailQuery.data?.role;
-		if (data.role !== undefined && currentRole !== undefined && data.role < currentRole) {
+		const newLevel = data.roleId !== undefined ? 0 : data.role;
+		if (newLevel !== undefined && currentRole !== undefined && newLevel < currentRole) {
 			setPendingSaveData(data);
 			setShowDemoteConfirm(true);
 			return;
@@ -191,9 +197,9 @@ export function UsersPage() {
 		}
 	};
 
-	const handleInvite = (email: string, role: number) => {
+	const handleInvite = (email: string, roleKey: string) => {
 		setInviteError(null);
-		inviteMutation.mutate({ email, role });
+		inviteMutation.mutate({ email, roleKey });
 	};
 
 	// Loading state

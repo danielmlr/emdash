@@ -10,6 +10,7 @@ import { ContentEditor } from "../src/components/ContentEditor";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest, ContentItem } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { builtInUser } from "./utils/permissions.ts";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient } from "./utils/test-helpers.tsx";
 
@@ -95,7 +96,7 @@ function createServer() {
 		const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
 		requests.push({ method, url, body });
 		if (url === "/_emdash/api/manifest") return jsonResponse({ data: MANIFEST });
-		if (url === "/_emdash/api/auth/me") return jsonResponse({ data: { id: "user_1", role: 40 } });
+		if (url === "/_emdash/api/auth/me") return jsonResponse({ data: builtInUser(40, "user_1") });
 		if (url.startsWith("/_emdash/api/bylines") || url.startsWith("/_emdash/api/users"))
 			return jsonResponse({ data: { items: [] } });
 		if (url === "/_emdash/api/revisions/revision-current")

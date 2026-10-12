@@ -13,6 +13,16 @@ export * from "./lib/api";
 // Utilities
 export { cn } from "./lib/utils";
 
+// Permission checks against the signed-in user's effective permissions
+export {
+	can,
+	canActOnOwn,
+	canAnywhere,
+	useCan,
+	type PermissionChecks,
+	type PermissionResource,
+} from "./lib/permissions";
+
 export {
 	type ContentEditorPanelContext,
 	type ContentEditorPanelExtension,

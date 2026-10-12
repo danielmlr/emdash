@@ -3,7 +3,7 @@ import { useLingui } from "@lingui/react/macro";
 import { Check, Copy, X } from "@phosphor-icons/react";
 import * as React from "react";
 
-import { useRolesConfig } from "./useRolesConfig.js";
+import { useRoleOptions } from "./useRolesConfig.js";
 
 export interface InviteUserModalProps {
 	open: boolean;
@@ -12,7 +12,8 @@ export interface InviteUserModalProps {
 	/** When set, shows a copy-link view instead of the form (no email provider) */
 	inviteUrl?: string | null;
 	onOpenChange: (open: boolean) => void;
-	onInvite: (email: string, role: number) => void;
+	/** `roleKey` is a role picker key: a built-in level or `custom:<id>`. */
+	onInvite: (email: string, roleKey: string) => void;
 }
 
 /**
@@ -27,9 +28,9 @@ export function InviteUserModal({
 	onInvite,
 }: InviteUserModalProps) {
 	const { t } = useLingui();
-	const { roles, roleLabels } = useRolesConfig();
+	const { options: roleOptions, labels: roleLabels } = useRoleOptions({ enabled: open });
 	const [email, setEmail] = React.useState("");
-	const [role, setRole] = React.useState(30); // Default to Author
+	const [role, setRole] = React.useState("30"); // Default to Author
 	const [copied, setCopied] = React.useState(false);
 	const [copyError, setCopyError] = React.useState(false);
 
@@ -39,7 +40,7 @@ export function InviteUserModal({
 	React.useEffect(() => {
 		if (open) {
 			setEmail("");
-			setRole(30);
+			setRole("30");
 			setCopied(false);
 			setCopyError(false);
 		}
@@ -162,12 +163,12 @@ export function InviteUserModal({
 							<div className="grid gap-2">
 								<Select
 									label={t`Role`}
-									value={role.toString()}
-									onValueChange={(v) => v !== null && setRole(parseInt(v, 10))}
+									value={role}
+									onValueChange={(v) => v !== null && setRole(v)}
 									items={roleLabels}
 								>
-									{roles.map((r) => (
-										<Select.Option key={r.value} value={r.value.toString()}>
+									{roleOptions.map((r) => (
+										<Select.Option key={r.key} value={r.key}>
 											<div>
 												<div>{r.label}</div>
 												<div className="text-xs text-kumo-subtle">{r.description}</div>

@@ -10,6 +10,7 @@ import {
 } from "../../../src/lib/api/content";
 import type { CurrentUser } from "../../../src/lib/api/current-user";
 import { createCalendarDisplay, toCalendarItems } from "../../../src/lib/calendar";
+import { builtInUser } from "../../utils/permissions.ts";
 import { render } from "../../utils/render.tsx";
 
 vi.mock("@tanstack/react-router", async () => ({
@@ -106,7 +107,7 @@ function renderPanel(item: ReturnType<typeof scheduledItem>, user: CurrentUser) 
 	return { screen, onClose };
 }
 
-const editor: CurrentUser = { id: "editor", email: "editor@example.com", role: 40 };
+const editor: CurrentUser = { ...builtInUser(40, "editor"), email: "editor@example.com" };
 
 describe("CalendarEntryPanel", () => {
 	beforeEach(() => {
@@ -130,7 +131,7 @@ describe("CalendarEntryPanel", () => {
 	});
 
 	it("publishes an overdue schedule now with the revision it loaded", async () => {
-		const author: CurrentUser = { id: "author", email: "author@example.com", role: 30 };
+		const author: CurrentUser = { ...builtInUser(30, "author"), email: "author@example.com" };
 		vi.mocked(fetchContent).mockResolvedValue(details("author"));
 		const { screen } = renderPanel(scheduledItem("2026-10-15T11:00:00.000Z"), author);
 		const panel = (await screen).getByRole("dialog", { name: "Launch" });
@@ -144,7 +145,7 @@ describe("CalendarEntryPanel", () => {
 	});
 
 	it("keeps publishing actions from roles that can't publish the entry", async () => {
-		const contributor: CurrentUser = { id: "contributor", email: "c@example.com", role: 20 };
+		const contributor: CurrentUser = { ...builtInUser(20, "contributor"), email: "c@example.com" };
 		const { screen } = renderPanel(scheduledItem("2026-10-15T11:00:00.000Z"), contributor);
 		const panel = (await screen).getByRole("dialog", { name: "Launch" });
 

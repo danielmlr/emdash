@@ -17,6 +17,7 @@ import {
 } from "../../src/components/PortableTextEditor";
 import type { MediaItem } from "../../src/lib/api";
 import { fetchMediaItem, type LocalMediaItem } from "../../src/lib/api/media.js";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.js";
 
 const REPLACEMENT: MediaItem = {
@@ -76,7 +77,7 @@ vi.mock("../../src/components/editor/DragHandleWrapper", () => ({
 }));
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "editor-1", role: 40 } }),
+	useCurrentUser: () => ({ data: builtInUser(40, "editor-1") }),
 }));
 
 function imageBlock(fields: Record<string, unknown> = {}): PortableTextBlock {

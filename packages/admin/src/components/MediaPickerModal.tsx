@@ -55,6 +55,7 @@ import { useCurrentUser } from "../lib/api/current-user.js";
 import { useDebouncedValue } from "../lib/hooks.js";
 import { canonicalMediaProviderId, providerItemToMediaItem } from "../lib/media-utils.js";
 import { matchesMimeAllowlist, mimeFromUrl } from "../lib/mime-utils.js";
+import { can, canActOnOwn } from "../lib/permissions";
 import {
 	MediaBrowserFolder,
 	MediaBrowserItem,
@@ -70,9 +71,6 @@ const URL_SOURCE = "__url";
 const PICKER_PAGE_SIZE = 12;
 const WORKSPACE_RESIZE_DURATION_MS = 340;
 const WORKSPACE_RESIZE_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
-const ROLE_CONTRIBUTOR = 20;
-const ROLE_AUTHOR = 30;
-const ROLE_EDITOR = 40;
 const EMPTY_DETAIL_ITEM: MediaItem = {
 	id: "",
 	filename: "",
@@ -712,9 +710,7 @@ export function MediaPickerModal({
 			return null;
 		}
 		const item = selected.item as LocalMediaItem;
-		const canEdit =
-			currentUser.role >= ROLE_EDITOR ||
-			(currentUser.role >= ROLE_AUTHOR && item.authorId === currentUser.id);
+		const canEdit = canActOnOwn(currentUser, item.authorId, "media:edit_own", "media:edit_any");
 		return canEdit ? item : null;
 	}, [currentUser, selectedItems]);
 	const replaceSelectedLocalItem = React.useCallback((item: LocalMediaItem) => {
@@ -988,7 +984,7 @@ export function MediaPickerModal({
 						embedded
 						context="content"
 						canCropOriginal={Boolean(editableSelection)}
-						canDuplicateCrop={(currentUser?.role ?? 0) >= ROLE_CONTRIBUTOR}
+						canDuplicateCrop={can(currentUser, "media:upload")}
 						requestExitRef={mediaDetailPanelRef}
 						restoreFocusTargetRef={editAssetButtonRef}
 						onClose={closeAssetEditor}

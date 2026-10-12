@@ -12,7 +12,14 @@ export interface CurrentUser {
 	id: string;
 	email: string;
 	name?: string;
+	/** Built-in level; for a custom role, its compatibility level. */
 	role: number;
+	/** The user's custom role, or null for a built-in role. */
+	customRole?: { id: string; slug: string; label: string } | null;
+	/** Permission names the user holds in every collection. */
+	permissions?: string[];
+	/** Content permission names the user holds per collection slug. */
+	collections?: Record<string, string[]>;
 	avatarUrl?: string;
 	isFirstLogin?: boolean;
 }

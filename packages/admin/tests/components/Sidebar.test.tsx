@@ -14,10 +14,10 @@
  *
  * Instead, the source `Sidebar.tsx` exports two pure artefacts:
  *
- *   - `BYLINE_SCHEMA_NAV_ITEM` — the route + minRole pairing used
+ *   - `BYLINE_SCHEMA_NAV_ITEM` — the route + permission pairing used
  *     verbatim inside the runtime `adminItems` array.
- *   - `filterNavItemsByRole` — the pure role filter applied to every
- *     nav group.
+ *   - `filterNavItemsByPermission` — the pure permission filter applied
+ *     to every nav group.
  *
  * Together they cover the AC without DOM coupling: the constant pins
  * the contract, the filter pins the gate.
@@ -37,7 +37,7 @@ import { describe, it, expect } from "vitest";
 
 import {
 	BYLINE_SCHEMA_NAV_ITEM,
-	filterNavItemsByRole,
+	filterNavItemsByPermission,
 	getSidebarTaxonomies,
 	isItemActive,
 	NavIcon,
@@ -49,10 +49,9 @@ import {
 	toPhosphorIconName,
 	visibleCollectionEntries,
 } from "../../src/components/Sidebar";
+import { builtInUser, checksFor, customRoleUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
-// Mirror @emdash-cms/auth Role levels. Kept inline (matching Sidebar.tsx)
-// to avoid a runtime dependency just to read two numeric constants.
 const ROLE_SUBSCRIBER = 10;
 const ROLE_CONTRIBUTOR = 20;
 const ROLE_AUTHOR = 30;
@@ -122,52 +121,61 @@ describe("BYLINE_SCHEMA_NAV_ITEM invariants", () => {
 		expect(BYLINE_SCHEMA_NAV_ITEM.to).toBe("/byline-schema");
 		expect(BYLINE_SCHEMA_NAV_ITEM.icon).toBe(IdentificationCard);
 	});
-
-	it("gates on ROLE_ADMIN — editors and below must not see it", () => {
-		// If anyone drops this to ROLE_EDITOR (40), editors gain
-		// access to admin-only schema management via the sidebar.
-		// Keep this asserting the literal 50 (not the constant) so a
-		// rename like `ROLE_ADMIN = 40` would also fail the test.
-		expect(BYLINE_SCHEMA_NAV_ITEM.minRole).toBe(50);
-	});
 });
 
-describe("filterNavItemsByRole", () => {
+describe("filterNavItemsByPermission", () => {
 	const items = [
-		{ to: "/", minRole: undefined },
-		{ to: "/bylines", minRole: ROLE_EDITOR },
-		{ to: "/byline-schema", minRole: ROLE_ADMIN },
+		{ to: "/", permission: undefined },
+		{ to: "/bylines", permission: "bylines:manage" },
+		{ ...BYLINE_SCHEMA_NAV_ITEM },
+		{ to: "/content/$collection", permission: "content:read", params: { collection: "jobs" } },
+		{ to: "/content/$collection", permission: "content:read", params: { collection: "posts" } },
 	];
+	const visibleFor = (user: ReturnType<typeof builtInUser>) =>
+		filterNavItemsByPermission(items, checksFor(user).can).map(
+			(item) => item.params?.collection ?? item.to,
+		);
 
-	it("passes items without minRole at every role", () => {
-		for (const role of [ROLE_SUBSCRIBER, ROLE_CONTRIBUTOR, ROLE_AUTHOR, ROLE_EDITOR, ROLE_ADMIN]) {
-			expect(filterNavItemsByRole(items, role).map((i) => i.to)).toContain("/");
+	it("passes items without a permission at every role", () => {
+		for (const role of [
+			ROLE_SUBSCRIBER,
+			ROLE_CONTRIBUTOR,
+			ROLE_AUTHOR,
+			ROLE_EDITOR,
+			ROLE_ADMIN,
+		] as const) {
+			expect(visibleFor(builtInUser(role))).toContain("/");
 		}
 	});
 
-	it("excludes /byline-schema for EDITOR", () => {
-		// Direct check of the AC: an Editor must not see the entry.
-		const visible = filterNavItemsByRole(items, ROLE_EDITOR).map((i) => i.to);
-		expect(visible).not.toContain("/byline-schema");
-	});
-
-	it("excludes /byline-schema for AUTHOR, CONTRIBUTOR, SUBSCRIBER", () => {
-		for (const role of [ROLE_SUBSCRIBER, ROLE_CONTRIBUTOR, ROLE_AUTHOR]) {
-			const visible = filterNavItemsByRole(items, role).map((i) => i.to);
-			expect(visible).not.toContain("/byline-schema");
+	it("shows /byline-schema to ADMIN only", () => {
+		expect(visibleFor(builtInUser(ROLE_ADMIN))).toContain("/byline-schema");
+		for (const role of [ROLE_SUBSCRIBER, ROLE_CONTRIBUTOR, ROLE_AUTHOR, ROLE_EDITOR] as const) {
+			expect(visibleFor(builtInUser(role))).not.toContain("/byline-schema");
 		}
 	});
 
-	it("includes /byline-schema for ADMIN", () => {
-		const visible = filterNavItemsByRole(items, ROLE_ADMIN).map((i) => i.to);
-		expect(visible).toContain("/byline-schema");
+	it("shows every collection to every built-in role", () => {
+		for (const role of [
+			ROLE_SUBSCRIBER,
+			ROLE_CONTRIBUTOR,
+			ROLE_AUTHOR,
+			ROLE_EDITOR,
+			ROLE_ADMIN,
+		] as const) {
+			expect(visibleFor(builtInUser(role))).toEqual(expect.arrayContaining(["jobs", "posts"]));
+		}
 	});
 
-	it("treats role=0 (unauthenticated / pre-fetch) as below every gate", () => {
-		// SidebarNav falls back to `userRole ?? 0` during the brief
-		// load window before `useCurrentUser` resolves. The filter
-		// must strip every gated entry at role=0.
-		const visible = filterNavItemsByRole(items, 0).map((i) => i.to);
+	it("shows a collection-scoped role only its collections", () => {
+		const jobsEditor = customRoleUser({
+			collections: { jobs: ["content:read", "content:edit_any"] },
+		});
+		expect(visibleFor(jobsEditor)).toEqual(["/", "jobs"]);
+	});
+
+	it("hides every gated entry before the user has loaded", () => {
+		const visible = filterNavItemsByPermission(items, () => false).map((item) => item.to);
 		expect(visible).toEqual(["/"]);
 	});
 });

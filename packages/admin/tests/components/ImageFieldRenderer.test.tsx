@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImageFieldRenderer, type ImageFieldValue } from "../../src/components/ImageFieldRenderer";
 import { fetchMediaItem, type LocalMediaItem } from "../../src/lib/api";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 vi.mock("../../src/lib/api", async () => {
@@ -59,7 +60,7 @@ vi.mock("../../src/components/MediaPickerModal", () => ({
 }));
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "editor-1", role: 40 } }),
+	useCurrentUser: () => ({ data: builtInUser(40, "editor-1") }),
 }));
 
 vi.mock("../../src/components/MediaDetailPanel.js", () => ({

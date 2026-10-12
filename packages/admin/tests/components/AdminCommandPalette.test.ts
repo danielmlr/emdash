@@ -2,6 +2,9 @@ import { Browser, ClockCounterClockwise, Download, Files, Newspaper } from "@pho
 import { describe, expect, it } from "vitest";
 
 import { buildNavItems } from "../../src/components/AdminCommandPalette";
+import { builtInUser, checksFor, customRoleUser } from "../utils/permissions.ts";
+
+const admin = checksFor(builtInUser(50));
 
 describe("buildNavItems", () => {
 	it("uses collection overrides and the default collection icon", () => {
@@ -14,7 +17,7 @@ describe("buildNavItems", () => {
 				},
 				plugins: {},
 			},
-			50,
+			admin,
 			(id) => id,
 		);
 
@@ -28,13 +31,17 @@ describe("buildNavItems", () => {
 		const manifest = { collections: {}, plugins: {} };
 
 		expect(
-			buildNavItems(manifest, 20, (id) => id).find((item) => item.id === "calendar"),
+			buildNavItems(manifest, checksFor(builtInUser(20)), (id) => id).find(
+				(item) => item.id === "calendar",
+			),
 		).toMatchObject({
 			to: "/calendar",
 		});
-		expect(buildNavItems(manifest, 10, (id) => id).some((item) => item.id === "calendar")).toBe(
-			false,
-		);
+		expect(
+			buildNavItems(manifest, checksFor(builtInUser(10)), (id) => id).some(
+				(item) => item.id === "calendar",
+			),
+		).toBe(false);
 	});
 
 	it("leaves hidden collections out of the navigation links", () => {
@@ -46,7 +53,7 @@ describe("buildNavItems", () => {
 				},
 				plugins: {},
 			},
-			50,
+			admin,
 			(id) => id,
 		);
 
@@ -65,7 +72,7 @@ describe("buildNavItems", () => {
 					},
 				},
 			},
-			50,
+			admin,
 			(id) => id,
 		);
 
@@ -85,7 +92,7 @@ describe("buildNavItems", () => {
 					},
 				},
 			},
-			50,
+			admin,
 			(id) => id,
 		);
 
@@ -105,12 +112,28 @@ describe("buildNavItems", () => {
 					},
 				},
 			},
-			50,
+			admin,
 			(id) => id,
 		);
 
 		expect(items.find((item) => item.id === "plugin-emdash-forms-/")?.to).toBe(
 			"/plugins/emdash-forms/",
 		);
+	});
+
+	it("offers a collection-scoped role only its collections and nothing it cannot open", () => {
+		const jobsEditor = checksFor(
+			customRoleUser({
+				permissions: ["media:read"],
+				collections: { jobs: ["content:read", "content:read_drafts", "content:edit_any"] },
+			}),
+		);
+		const ids = buildNavItems(
+			{ collections: { jobs: { label: "Jobs" }, posts: { label: "Posts" } }, plugins: {} },
+			jobsEditor,
+			(id) => id,
+		).map((item) => item.id);
+
+		expect(ids).toEqual(["dashboard", "calendar", "collection-jobs", "media"]);
 	});
 });

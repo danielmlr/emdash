@@ -28,6 +28,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { BylineFieldEditor } from "../../src/components/BylineFieldEditor";
 import type { BylineFieldDefinition } from "../../src/lib/api/byline-fields";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 // `useCurrentUser` is the gate for the page-permission tests below.
@@ -104,13 +105,13 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 	);
 }
 
-const ROLE_EDITOR = 40;
-const ROLE_ADMIN = 50;
+const ROLE_EDITOR = 40 as const;
+const ROLE_ADMIN = 50 as const;
 
 describe("BylineSchemaPage — permission gate", () => {
 	it("renders Access denied for an EDITOR (below schema:manage)", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "e@e", role: ROLE_EDITOR },
+			data: builtInUser(ROLE_EDITOR, "u1"),
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape; the rest is unused
 		} as any);
@@ -133,7 +134,7 @@ describe("BylineSchemaPage — permission gate", () => {
 
 	it("renders the schema management UI for an ADMIN", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: builtInUser(ROLE_ADMIN, "u1"),
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);

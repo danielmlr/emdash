@@ -306,6 +306,8 @@ function buildReferencesPayload(
 export interface CurrentUserInfo {
 	id: string;
 	role: number;
+	permissions?: string[];
+	collections?: Record<string, string[]>;
 }
 
 export interface ContentEditorProps {
@@ -1616,8 +1618,8 @@ export function ContentEditor({
 						supportsPreview={supportsPreview}
 						isLoadingPreview={isLoadingPreview}
 						onPreview={handlePreview}
-						onPublish={handlePublish}
-						onUnpublish={handleUnpublish}
+						onPublish={onPublish ? handlePublish : undefined}
+						onUnpublish={onUnpublish ? handleUnpublish : undefined}
 						onMenuOpenChange={setPublishingMenuOpen}
 						beforePublish={
 							// The settings panel holds these outside distraction-free mode.

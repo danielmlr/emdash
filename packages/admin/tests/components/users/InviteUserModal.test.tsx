@@ -33,7 +33,7 @@ describe("InviteUserModal", () => {
 		await userEvent.type(emailInput, "new@example.com");
 		const submitButton = screen.getByText("Send Invite").element().closest("button")!;
 		submitButton.click();
-		expect(onInvite).toHaveBeenCalledWith("new@example.com", 30);
+		expect(onInvite).toHaveBeenCalledWith("new@example.com", "30");
 	});
 
 	it("submit button disabled when email is empty", async () => {

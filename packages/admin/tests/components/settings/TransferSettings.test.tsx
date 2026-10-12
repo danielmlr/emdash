@@ -11,6 +11,7 @@ import type {
 	TransferCapabilities,
 	TransferOperation,
 } from "../../../src/lib/api/transfer.js";
+import { builtInUser } from "../../utils/permissions.ts";
 import { render } from "../../utils/render.js";
 
 const api = vi.hoisted(() => ({
@@ -159,7 +160,7 @@ describe("TransferSettings", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		currentUserMock.mockReturnValue({
-			data: { id: "admin", email: "admin@example.com", role: 50 },
+			data: builtInUser(50, "admin"),
 			isLoading: false,
 		});
 		fetchUsersMock.mockResolvedValue({
@@ -174,7 +175,7 @@ describe("TransferSettings", () => {
 
 	it("denies non-admins", async () => {
 		currentUserMock.mockReturnValue({
-			data: { id: "editor", email: "e@example.com", role: 40 },
+			data: builtInUser(40, "editor"),
 			isLoading: false,
 		});
 		setup({});

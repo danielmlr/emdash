@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { builtInUser } from "./utils/permissions.ts";
 import { render } from "./utils/render.tsx";
 
 const manifest: AdminManifest = {
@@ -89,7 +90,9 @@ describe("plugin admin page sidebar groups", () => {
 				typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 			if (url === "/_emdash/api/manifest") return json({ data: manifest });
 			if (url === "/_emdash/api/auth/me") {
-				return json({ data: { id: "admin", email: "admin@example.com", name: "Admin", role: 50 } });
+				return json({
+					data: { ...builtInUser(50, "admin"), email: "admin@example.com", name: "Admin" },
+				});
 			}
 			if (url === "/_emdash/api/admin/comments/counts") {
 				return json({ data: { pending: 0, approved: 0, spam: 0, trash: 0 } });

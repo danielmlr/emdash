@@ -20,6 +20,8 @@ interface WelcomeModalProps {
 	onClose: () => void;
 	userName?: string;
 	userRole: number;
+	/** Label of the user's custom role, shown instead of the built-in role. */
+	customRoleLabel?: string;
 }
 
 const MSG_ROLE_ADMINISTRATOR = msg`Administrator`;
@@ -56,6 +58,7 @@ function scopeDescriptor(isAdmin: boolean, userRole: number): MessageDescriptor 
 	return MSG_SCOPE_CONTRIBUTOR;
 }
 
+const MSG_SCOPE_CUSTOM = msg`Your administrator chose what this role can do. The sidebar shows the parts of the site you can work on.`;
 const MSG_ADMIN_INVITE = msg`As an administrator, you can invite other users from the Users section.`;
 const MSG_CLOSE = msg`Close`;
 
@@ -68,7 +71,13 @@ async function dismissWelcome(fallbackMessage: string): Promise<void> {
 	if (!response.ok) await throwResponseError(response, fallbackMessage);
 }
 
-export function WelcomeModal({ open, onClose, userName, userRole }: WelcomeModalProps) {
+export function WelcomeModal({
+	open,
+	onClose,
+	userName,
+	userRole,
+	customRoleLabel,
+}: WelcomeModalProps) {
 	const { t } = useLingui();
 	const queryClient = useQueryClient();
 
@@ -94,8 +103,8 @@ export function WelcomeModal({ open, onClose, userName, userRole }: WelcomeModal
 		dismissMutation.mutate();
 	};
 
-	const roleLabel = t(roleDescriptor(userRole));
-	const isAdmin = userRole >= 50;
+	const roleLabel = customRoleLabel ?? t(roleDescriptor(userRole));
+	const isAdmin = !customRoleLabel && userRole >= 50;
 
 	const firstName = userName?.split(" ")?.[0]?.trim() ?? "";
 	const titleDescriptor =
@@ -136,7 +145,7 @@ export function WelcomeModal({ open, onClose, userName, userRole }: WelcomeModal
 						</Badge>
 					</div>
 					<p className="text-sm leading-5 text-pretty text-kumo-default">
-						{t(scopeDescriptor(isAdmin, userRole))}
+						{customRoleLabel ? t(MSG_SCOPE_CUSTOM) : t(scopeDescriptor(isAdmin, userRole))}
 					</p>
 					{isAdmin && (
 						<p className="text-sm leading-5 text-pretty text-kumo-subtle">{t(MSG_ADMIN_INVITE)}</p>

@@ -73,6 +73,7 @@ import {
 	fallbackToOriginalThumbnail,
 	metaNumber,
 } from "../lib/media-utils";
+import { can, canActOnOwn } from "../lib/permissions";
 import { cn } from "../lib/utils";
 import { ListPaginationFooter, type ListPagination } from "./ListPaginationFooter.js";
 import {
@@ -204,7 +205,7 @@ export function MediaLibrary({
 }: MediaLibraryProps) {
 	const { t } = useLingui();
 	const currentUser = useCurrentUser().data;
-	const isAdmin = (currentUser?.role ?? 0) >= 50;
+	const isAdmin = can(currentUser, "schema:manage");
 	const [activeProvider, setActiveProvider] = React.useState<string>("local");
 	const activationQuery = useQuery({
 		queryKey: MEDIA_USAGE_ACTIVATION_QUERY_KEY,
@@ -1275,10 +1276,11 @@ export function MediaLibrary({
 					canReplaceOriginal={Boolean(
 						isLocalMediaItem(detailItem) &&
 						currentUser &&
-						(currentUser.role >= 40 ||
-							(currentUser.role >= 30 && detailItem.authorId === currentUser.id)),
+						canActOnOwn(currentUser, detailItem.authorId, "media:edit_own", "media:edit_any"),
 					)}
-					canDuplicateCrop={Boolean(isLocalMediaItem(detailItem) && (currentUser?.role ?? 0) >= 20)}
+					canDuplicateCrop={Boolean(
+						isLocalMediaItem(detailItem) && can(currentUser, "media:upload"),
+					)}
 					restoreFocusTargetRef={mediaHeadingRef}
 					onClose={closeDetail}
 					onClosed={handleDetailClosed}

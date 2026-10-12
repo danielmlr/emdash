@@ -7,6 +7,7 @@ import type { AdminManifest } from "../../src/lib/api";
 import type { DashboardStats } from "../../src/lib/api/dashboard";
 import type { TransferCapabilities } from "../../src/lib/api/transfer.js";
 import { PluginAdminProvider } from "../../src/lib/plugin-context";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -132,7 +133,7 @@ function transferCapabilities(empty: boolean): TransferCapabilities {
 describe("Dashboard", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockUseCurrentUser.mockReturnValue({ data: { role: 50 } });
+		mockUseCurrentUser.mockReturnValue({ data: builtInUser(50) });
 		mockDismissScheduledPolicyRejection.mockResolvedValue();
 		mockFetchTransferCapabilities.mockResolvedValue(transferCapabilities(false));
 		window.localStorage.clear();
@@ -149,7 +150,7 @@ describe("Dashboard", () => {
 	});
 
 	it("hides marketplace migration guidance from non-admins", async () => {
-		mockUseCurrentUser.mockReturnValue({ data: { role: 40 } });
+		mockUseCurrentUser.mockReturnValue({ data: builtInUser(40) });
 		mockFetchDashboardStats.mockResolvedValue(makeStats([]));
 
 		const screen = await render(<Dashboard manifest={{ ...manifest, marketplace: true }} />);
@@ -175,7 +176,7 @@ describe("Dashboard", () => {
 	});
 
 	it("does not link the scheduled summary for subscribers, who cannot open the calendar", async () => {
-		mockUseCurrentUser.mockReturnValue({ data: { role: 10 } });
+		mockUseCurrentUser.mockReturnValue({ data: builtInUser(10) });
 		mockFetchDashboardStats.mockResolvedValue(
 			makeStats([
 				{ slug: "pages", label: "Pages", total: 5, published: 2, draft: 3, scheduled: 2 },
@@ -315,7 +316,7 @@ describe("Dashboard", () => {
 	});
 
 	it("does not offer dismissal to authors", async () => {
-		mockUseCurrentUser.mockReturnValue({ data: { role: 30 } });
+		mockUseCurrentUser.mockReturnValue({ data: builtInUser(30) });
 		const stats = policyStats();
 		mockFetchDashboardStats.mockResolvedValue(stats);
 
@@ -501,7 +502,7 @@ describe("Dashboard", () => {
 		});
 
 		it("doesn't check import eligibility for non-admins", async () => {
-			mockUseCurrentUser.mockReturnValue({ data: { role: 40 } });
+			mockUseCurrentUser.mockReturnValue({ data: builtInUser(40) });
 			mockFetchDashboardStats.mockResolvedValue(emptyStats());
 			mockFetchTransferCapabilities.mockResolvedValue(transferCapabilities(true));
 

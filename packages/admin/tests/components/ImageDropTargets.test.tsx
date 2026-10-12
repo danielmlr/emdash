@@ -9,6 +9,7 @@ import {
 } from "../../src/components/ImageFieldRenderer.js";
 import { SeoImageField } from "../../src/components/SeoImageField.js";
 import { fetchMediaItem, uploadMedia, type LocalMediaItem } from "../../src/lib/api/media.js";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.js";
 
 vi.mock("../../src/lib/api/media.js", async (importOriginal) => ({
@@ -18,7 +19,7 @@ vi.mock("../../src/lib/api/media.js", async (importOriginal) => ({
 }));
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "editor-1", role: 40 } }),
+	useCurrentUser: () => ({ data: builtInUser(40, "editor-1") }),
 }));
 
 vi.mock("../../src/components/MediaPickerModal", () => ({

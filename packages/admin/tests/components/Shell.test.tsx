@@ -2,6 +2,7 @@ import * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Shell } from "../../src/components/Shell";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -9,7 +10,9 @@ vi.mock("@tanstack/react-router", () => ({
 		select([{ staticData: { fullBleed: false } }]),
 }));
 
-const mocks = vi.hoisted(() => ({ user: null as null | { role: number } }));
+const mocks = vi.hoisted(() => ({
+	user: null as null | { role: number; permissions?: string[] },
+}));
 
 vi.mock("../../src/lib/api/current-user", () => ({
 	useCurrentUser: () => ({ data: mocks.user }),
@@ -65,7 +68,7 @@ describe("Shell", () => {
 	});
 
 	it("stores localized labels for the cache-safe client toolbar bootstrap", async () => {
-		mocks.user = { role: 30 };
+		mocks.user = builtInUser(30);
 		await render(
 			<Shell manifest={manifest}>
 				<div>Page content</div>

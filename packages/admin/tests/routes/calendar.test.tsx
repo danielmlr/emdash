@@ -7,6 +7,7 @@ import { page } from "vitest/browser";
 import { calendarQueryOptions, type CalendarEntry } from "../../src/lib/api/calendar";
 import { fetchRange, monthGridDays } from "../../src/lib/calendar";
 import { CalendarPage } from "../../src/routes/calendar";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.tsx";
 
 const router = vi.hoisted(() => ({
@@ -40,7 +41,7 @@ vi.mock("../../src/lib/api/client.js", async () => ({
 }));
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "editor", email: "editor@example.com", role: 40 } }),
+	useCurrentUser: () => ({ data: { ...builtInUser(40, "editor"), email: "editor@example.com" } }),
 }));
 
 const originalFetch = globalThis.fetch;

@@ -15,7 +15,7 @@ import * as React from "react";
 import type { UserDetail as UserDetailType, UpdateUserInput } from "../../lib/api";
 import { useStableCallback } from "../../lib/hooks";
 import { cn, formatDate, isolate } from "../../lib/utils.js";
-import { useRolesConfig } from "./useRolesConfig.js";
+import { parseRoleKey, roleKeyFor, useRoleOptions } from "./useRolesConfig.js";
 
 export interface UserDetailProps {
 	user: UserDetailType | null;
@@ -55,10 +55,10 @@ export function UserDetail({
 	onSendRecovery,
 }: UserDetailProps) {
 	const { t, i18n } = useLingui();
-	const { roles, roleLabels, getRoleLabel } = useRolesConfig();
+	const { options: roleOptions, labels: roleLabels } = useRoleOptions({ enabled: isOpen });
 	const [name, setName] = React.useState(user?.name ?? "");
 	const [email, setEmail] = React.useState(user?.email ?? "");
-	const [role, setRole] = React.useState(user?.role ?? 30);
+	const [role, setRole] = React.useState(user ? roleKeyFor(user) : "30");
 
 	// Reset form when viewing a different user
 	const userIdRef = React.useRef(user?.id);
@@ -67,7 +67,7 @@ export function UserDetail({
 		if (user) {
 			setName(user.name ?? "");
 			setEmail(user.email ?? "");
-			setRole(user.role);
+			setRole(roleKeyFor(user));
 		}
 	}
 
@@ -76,7 +76,7 @@ export function UserDetail({
 	const isSelf = user && currentUserId && user.id === currentUserId;
 
 	const isDirty =
-		user && (name !== (user.name ?? "") || email !== user.email || role !== user.role);
+		user && (name !== (user.name ?? "") || email !== user.email || role !== roleKeyFor(user));
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -90,8 +90,8 @@ export function UserDetail({
 		if (email !== user.email) {
 			data.email = email;
 		}
-		if (role !== user.role && !isSelf) {
-			data.role = role;
+		if (role !== roleKeyFor(user) && !isSelf) {
+			Object.assign(data, parseRoleKey(role));
 		}
 
 		onSave(data);
@@ -179,7 +179,7 @@ export function UserDetail({
 										<div className="flex-1">
 											<Input
 												label={t`Role`}
-												value={getRoleLabel(role)}
+												value={roleLabels[role] ?? role}
 												disabled
 												className="cursor-not-allowed"
 											/>
@@ -191,12 +191,12 @@ export function UserDetail({
 										<div className="flex-1">
 											<Select
 												label={t`Role`}
-												value={role.toString()}
-												onValueChange={(v) => v !== null && setRole(parseInt(v, 10))}
+												value={role}
+												onValueChange={(v) => v !== null && setRole(v)}
 												items={roleLabels}
 											>
-												{roles.map((r) => (
-													<Select.Option key={r.value} value={r.value.toString()}>
+												{roleOptions.map((r) => (
+													<Select.Option key={r.key} value={r.key}>
 														<div>
 															<div>{r.label}</div>
 															<div className="text-xs text-kumo-subtle">{r.description}</div>

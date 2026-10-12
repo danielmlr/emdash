@@ -15,19 +15,18 @@ import {
 	fetchTransferCapabilities,
 	TRANSFER_CAPABILITIES_QUERY_KEY,
 } from "../../lib/api/transfer.js";
+import { can } from "../../lib/permissions";
 import { getMutationError } from "../DialogError.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
 import { ApprovalsSection } from "./transfer/ApprovalsSection.js";
 import { ExportSection } from "./transfer/ExportSection.js";
 import { ImportSection } from "./transfer/ImportSection.js";
 
-const ROLE_ADMIN = 50;
-
 export function TransferSettings({ focusImport = false }: { focusImport?: boolean }) {
 	const { t } = useLingui();
 	const importRef = React.useRef<HTMLDivElement>(null);
 	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-	const isAdmin = !!currentUser && currentUser.role >= ROLE_ADMIN;
+	const isAdmin = can(currentUser, "transfer:export") || can(currentUser, "transfer:import");
 	const capabilitiesQuery = useQuery({
 		queryKey: TRANSFER_CAPABILITIES_QUERY_KEY,
 		queryFn: fetchTransferCapabilities,

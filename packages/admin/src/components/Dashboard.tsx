@@ -11,6 +11,7 @@ import { useCurrentUser } from "../lib/api/current-user.js";
 import type { CollectionStats, DashboardStats, RecentItem } from "../lib/api/dashboard";
 import { dismissScheduledPolicyRejection, fetchDashboardStats } from "../lib/api/dashboard";
 import { fetchTransferCapabilities, TRANSFER_CAPABILITIES_QUERY_KEY } from "../lib/api/transfer.js";
+import { can, canAnywhere, useCan } from "../lib/permissions";
 import { usePluginWidget } from "../lib/plugin-context";
 import { cn, formatRelativeTime } from "../lib/utils.js";
 import { ArrowNext } from "./ArrowIcons";
@@ -35,10 +36,6 @@ const DASHBOARD_STATUS_STATES: Record<string, ContentStatusState> = {
 	private: "private",
 	archived: "archived",
 };
-
-const ROLE_ADMIN = 50;
-const ROLE_EDITOR = 40;
-const ROLE_CONTRIBUTOR = 20;
 
 const SITE_IMPORT_HINT_DISMISSED_KEY = "emdash:dashboard:site-import-hint-dismissed";
 
@@ -66,7 +63,7 @@ export function Dashboard({ manifest }: DashboardProps) {
 
 	return (
 		<div className="space-y-6">
-			{manifest.marketplace && (user?.role ?? 0) >= ROLE_ADMIN && <MarketplaceMigrationBanner />}
+			{manifest.marketplace && can(user, "plugins:manage") && <MarketplaceMigrationBanner />}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<h1 className="text-2xl font-semibold leading-tight">{t`Dashboard`}</h1>
 				<QuickActions manifest={manifest} />
@@ -78,14 +75,14 @@ export function Dashboard({ manifest }: DashboardProps) {
 
 			{showDashboardData && (
 				<>
-					{stats && (user?.role ?? 0) >= ROLE_ADMIN && <SiteImportHint stats={stats} />}
+					{stats && can(user, "transfer:import") && <SiteImportHint stats={stats} />}
 					{stats && (
-						<SchedulerWarning stats={stats} canDismissPolicy={(user?.role ?? 0) >= ROLE_EDITOR} />
+						<SchedulerWarning stats={stats} canDismissPolicy={can(user, "content:publish_any")} />
 					)}
 					<SummaryMetrics
 						stats={stats}
 						loading={isLoading}
-						linkCalendar={(user?.role ?? 0) >= ROLE_CONTRIBUTOR}
+						linkCalendar={canAnywhere(user, "content:read_drafts")}
 					/>
 
 					{/* Collections + Recent activity */}
@@ -326,9 +323,13 @@ function DashboardCardInset({ className, ...props }: React.ComponentPropsWithout
 
 function QuickActions({ manifest }: { manifest: AdminManifest }) {
 	const { t } = useLingui();
+	const checks = useCan();
 	const collections = visibleCollectionEntries(manifest.collections).filter(
-		([, config]) => config.quickCreate !== false,
+		([slug, config]) =>
+			config.quickCreate !== false && checks.can("content:create", { collection: slug }),
 	);
+	const canUpload = checks.can("media:upload");
+	if (collections.length === 0 && !canUpload) return null;
 
 	return (
 		<div className="flex flex-wrap items-center gap-2">
@@ -344,9 +345,11 @@ function QuickActions({ manifest }: { manifest: AdminManifest }) {
 					{config.labelSingular ?? config.label}
 				</RouterLinkButton>
 			))}
-			<RouterLinkButton to="/media" variant="secondary" icon={<Upload aria-hidden="true" />}>
-				{t`Upload Media`}
-			</RouterLinkButton>
+			{canUpload && (
+				<RouterLinkButton to="/media" variant="secondary" icon={<Upload aria-hidden="true" />}>
+					{t`Upload Media`}
+				</RouterLinkButton>
+			)}
 		</div>
 	);
 }

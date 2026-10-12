@@ -11,6 +11,8 @@ type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
 export interface RoleBadgeProps {
 	role: number;
+	/** Shown instead of the built-in role when the user has a custom role. */
+	customRole?: { label: string } | null;
 	size?: "sm" | "md";
 	showDescription?: boolean;
 	className?: string;
@@ -33,12 +35,24 @@ const ROLE_VARIANTS: Record<string, BadgeVariant> = {
  */
 export function RoleBadge({
 	role,
+	customRole,
 	size = "sm",
 	showDescription = false,
 	className,
 }: RoleBadgeProps) {
 	const { t } = useLingui();
 	const config = getRoleConfig(role);
+	const sizeClassesForCustom = size === "md" ? "px-2.5 py-1 text-sm" : "text-xs";
+
+	if (customRole) {
+		return (
+			<span title={t`Custom role`}>
+				<Badge variant="teal" className={cn(sizeClassesForCustom, className)}>
+					{customRole.label}
+				</Badge>
+			</span>
+		);
+	}
 
 	const sizeClasses = {
 		sm: "text-xs",

@@ -9,6 +9,7 @@ import {
 } from "../../src/components/editor/ImageDetailPanel.js";
 import { ApiResponseError, fetchMediaItem } from "../../src/lib/api";
 import type { LocalMediaItem, MediaItem } from "../../src/lib/api/media.js";
+import { builtInUser } from "../utils/permissions.ts";
 import { render } from "../utils/render.js";
 
 vi.mock("../../src/lib/api", async () => {
@@ -31,7 +32,7 @@ vi.mock("../../src/lib/api", async () => {
 });
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "editor-1", role: 40 } }),
+	useCurrentUser: () => ({ data: builtInUser(40, "editor-1") }),
 }));
 
 vi.mock("../../src/components/MediaDetailPanel.js", () => ({

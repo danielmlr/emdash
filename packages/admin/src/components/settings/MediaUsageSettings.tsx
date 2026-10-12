@@ -17,10 +17,9 @@ import {
 	type MediaUsageProgress,
 	type MediaUsageProgressAdvanceResponse,
 } from "../../lib/api/media-usage-activation.js";
+import { can } from "../../lib/permissions";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
-
-const ROLE_ADMIN = 50;
 
 type Notice = "unconfirmed" | "version" | "validation" | "denied" | null;
 
@@ -28,7 +27,7 @@ export function MediaUsageSettings() {
 	const { t } = useLingui();
 	const queryClient = useQueryClient();
 	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-	const isAdmin = !!currentUser && currentUser.role >= ROLE_ADMIN;
+	const isAdmin = can(currentUser, "schema:manage");
 	const [dialogOpen, setDialogOpen] = React.useState(false);
 	const [notice, setNotice] = React.useState<Notice>(null);
 	const [pageVisible, setPageVisible] = React.useState(

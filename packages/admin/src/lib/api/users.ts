@@ -24,6 +24,8 @@ export interface UserListItem {
 	name: string | null;
 	avatarUrl: string | null;
 	role: number;
+	/** The user's custom role, or null for a built-in role. */
+	customRole?: { id: string; slug: string; label: string } | null;
 	emailVerified: boolean;
 	disabled: boolean;
 	createdAt: string;
@@ -52,7 +54,10 @@ export interface UserDetail extends UserListItem {
 export interface UpdateUserInput {
 	name?: string;
 	email?: string;
+	/** Built-in role level; clears a custom role. */
 	role?: number;
+	/** Custom role id. */
+	roleId?: string;
 }
 
 /**
@@ -159,11 +164,15 @@ export interface InviteResult {
  * When no email provider is configured, the response includes
  * an `inviteUrl` for manual sharing.
  */
-export async function inviteUser(email: string, role?: number): Promise<InviteResult> {
+export async function inviteUser(
+	email: string,
+	role?: number,
+	roleId?: string,
+): Promise<InviteResult> {
 	const response = await apiFetch(`${API_BASE}/auth/invite`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ email, role }),
+		body: JSON.stringify(roleId ? { email, roleId } : { email, role }),
 	});
 	return parseApiResponse<InviteResult>(response, i18n._(msg`Failed to invite user`));
 }

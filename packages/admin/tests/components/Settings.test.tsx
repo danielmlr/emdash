@@ -36,12 +36,21 @@ vi.mock("../../src/locales/useLocale.js", () => ({
 	useLocale: () => ({ locale: "en", setLocale: mockSetLocale }),
 }));
 
-vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({
-		data: { id: "user-1", email: "admin@example.com", role: currentUser.role },
-		isLoading: false,
-	}),
-}));
+vi.mock("../../src/lib/api/current-user.js", async () => {
+	const { permissionsForRole } = await import("@emdash-cms/auth/rbac");
+	return {
+		useCurrentUser: () => ({
+			data: {
+				id: "user-1",
+				email: "admin@example.com",
+				role: currentUser.role,
+				permissions: permissionsForRole(currentUser.role as 10 | 20 | 30 | 40 | 50),
+				collections: {},
+			},
+			isLoading: false,
+		}),
+	};
+});
 
 // Import after mocks
 const { Settings } = await import("../../src/components/Settings");

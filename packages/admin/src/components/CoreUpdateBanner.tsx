@@ -6,9 +6,9 @@ import { useState } from "react";
 
 import { fetchCoreUpdateStatus } from "../lib/api/core-update.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { can } from "../lib/permissions";
 
 /** Matches Role.ADMIN in @emdash-cms/auth (same constant as Sidebar). */
-const ROLE_ADMIN = 50;
 
 // Scoped to the deployment base path so EmDash sites sharing an origin
 // (subpath deployments) keep independent dismissals. Computed lazily so
@@ -34,7 +34,7 @@ function readDismissedVersion(): string | null {
 export function CoreUpdateBanner() {
 	const { t } = useLingui();
 	const { data: user } = useCurrentUser();
-	const isAdmin = (user?.role ?? 0) >= ROLE_ADMIN;
+	const isAdmin = can(user, "updates:read");
 
 	const { data: status } = useQuery({
 		queryKey: ["core-update"],

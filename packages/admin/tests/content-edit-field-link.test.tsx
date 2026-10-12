@@ -11,6 +11,7 @@ import { ThemeProvider } from "../src/components/ThemeProvider.js";
 import type { AdminManifest } from "../src/lib/api/index.js";
 import type { BlockType } from "../src/lib/api/schema.js";
 import { createAdminRouter } from "../src/router.js";
+import { builtInUser } from "./utils/permissions.ts";
 import { render } from "./utils/render.js";
 import { createMockFetch, createTestQueryClient } from "./utils/test-helpers.js";
 
@@ -130,7 +131,7 @@ describe("ContentEditPage opened from a field link on the site", () => {
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 50 } })
+			.on("GET", "/_emdash/api/auth/me", { data: builtInUser(50, "user_01") })
 			.on("GET", "/_emdash/api/content/pages/page_1", { data: { item: PAGE } });
 	});
 

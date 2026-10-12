@@ -39,6 +39,7 @@ import {
 	type CalendarItem,
 	type CalendarState,
 } from "../../lib/calendar.js";
+import { canActOnOwn } from "../../lib/permissions";
 import { contentUrl } from "../../lib/url.js";
 import { cn } from "../../lib/utils.js";
 import { getLocaleLabel } from "../../locales/index.js";
@@ -52,8 +53,6 @@ import {
 } from "./CalendarEntry.js";
 
 // Role levels (matching @emdash-cms/auth)
-const ROLE_AUTHOR = 30;
-const ROLE_EDITOR = 40;
 
 const STATE_TEXT: Record<CalendarState, string> = {
 	published: "text-kumo-success",
@@ -151,9 +150,10 @@ function CalendarEntryPanelContent({
 
 	const entry = details.data;
 	const canPublish = Boolean(
-		user &&
 		entry &&
-		(user.role >= ROLE_EDITOR || (user.role >= ROLE_AUTHOR && entry.authorId === user.id)),
+		canActOnOwn(user, entry.authorId, "content:publish_own", "content:publish_any", {
+			collection: item.collection,
+		}),
 	);
 	const scheduled = item.kind === "scheduled";
 	const title = item.title;

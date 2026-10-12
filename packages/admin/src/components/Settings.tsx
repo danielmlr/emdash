@@ -19,6 +19,7 @@ import * as React from "react";
 
 import { fetchManifest } from "../lib/api";
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { can } from "../lib/permissions";
 import { SUPPORTED_LOCALES } from "../locales/index.js";
 import { useLocale } from "../locales/useLocale.js";
 import { SettingsNavRow, SettingsSection } from "./settings/SettingsLayout.js";
@@ -36,8 +37,9 @@ export function Settings() {
 	const { t } = useLingui();
 	const { locale, setLocale } = useLocale();
 	const showSecuritySettings = manifest?.authMode === "passkey";
-	const isAdmin = (currentUser?.role ?? 0) >= 50;
-	const showMediaUsageSettings = isAdmin;
+	const showMediaUsageSettings = can(currentUser, "schema:manage");
+	const showTransferSettings =
+		can(currentUser, "transfer:export") || can(currentUser, "transfer:import");
 	const selectedLocale = SUPPORTED_LOCALES.find((option) => option.code === locale) ?? null;
 
 	return (
@@ -118,7 +120,7 @@ export function Settings() {
 						title={t`Backups`}
 						description={t`Download backups and schedule automatic backups to storage`}
 					/>
-					{isAdmin ? (
+					{showTransferSettings ? (
 						<SettingsNavRow
 							to="/settings/transfer"
 							icon={<ArrowsLeftRight className="h-5 w-5" />}

@@ -128,12 +128,15 @@ export function RoleEditorDialog({
 	}, [siteWideEntries]);
 
 	const holds = (scope: string, name: string) => draft.grants[scope]?.has(name) ?? false;
-	/** Granted through a site-wide grant or through the matching `_any` grant. */
+	/** Granted through a site-wide grant or through a wider grant that includes it. */
 	const impliedBy = (scope: string, name: string): string | null => {
 		if (scope !== ALL && holds(ALL, name)) return t`Granted for all collections`;
-		const any = Object.entries(ANY_INCLUDES_OWN).find(([, own]) => own === name)?.[0];
-		if (any && (holds(scope, any) || (scope !== ALL && holds(ALL, any)))) {
-			return t`Included in ${actionText(any)}`;
+		const wider = Object.entries(ANY_INCLUDES_OWN).find(([, own]) => own === name)?.[0];
+		if (
+			wider &&
+			(holds(scope, wider) || (scope !== ALL && holds(ALL, wider)) || impliedBy(scope, wider))
+		) {
+			return t`Included in ${actionText(wider)}`;
 		}
 		return null;
 	};

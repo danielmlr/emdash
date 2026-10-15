@@ -305,6 +305,91 @@ describe("collection scope on MCP tools", () => {
 	});
 });
 
+describe("a draft-only role scoped to one collection", () => {
+	let drafter: User;
+	let harness: McpHarness | undefined;
+
+	beforeEach(async () => {
+		const created = await handleRoleCreate(db, {
+			slug: "page-drafter",
+			label: "Page drafter",
+			collections: {
+				page: ["content:read", "content:read_drafts", "content:create", "content:edit_own_drafts"],
+			},
+		});
+		if (!created.success) throw new Error(created.error.message);
+		const adapter = createKyselyAdapter(db);
+		const row = await adapter.createUser({
+			email: "drafter@test.com",
+			role: created.data.item.compatibilityLevel,
+			roleId: created.data.item.id,
+		});
+		const loaded = await adapter.getUserById(row.id);
+		if (!loaded) throw new Error("user not found");
+		drafter = loaded;
+	});
+
+	afterEach(async () => {
+		await harness?.cleanup();
+		harness = undefined;
+	});
+
+	async function ownEntries() {
+		const ownDraft = await createEntry("page", drafter.id);
+		const ownPublished = await createEntry("page", drafter.id);
+		await db
+			.updateTable("ec_page" as never)
+			.set({ status: "published" } as never)
+			.where("id" as never, "=", ownPublished as never)
+			.execute();
+		const ownPostDraft = await createEntry("post", drafter.id);
+		return [
+			["page", ownDraft, true],
+			["page", ownPublished, false],
+			["post", ownPostDraft, false],
+		] as const;
+	}
+
+	it("saves its own drafts in that collection only, through REST", async () => {
+		for (const [collection, id, allowed] of await ownEntries()) {
+			const res = await putEntry(
+				ctx({
+					user: drafter,
+					params: { collection, id },
+					method: "PUT",
+					body: { data: { title: "Edited" } },
+				}),
+			);
+			expect(res.status, `${collection} ${allowed ? "draft" : "refused"}`).toBe(
+				allowed ? 200 : 403,
+			);
+		}
+	});
+
+	it("saves its own drafts in that collection only, through MCP", async () => {
+		const entries = await ownEntries();
+		const adminHarness = await connectMcpHarness({ db, userId: admin.id, userRole: Role.ADMIN });
+		const revs = await Promise.all(
+			entries.map(([collection, id]) => currentRev(adminHarness.client, collection, id)),
+		);
+		await adminHarness.cleanup();
+
+		harness = await connectMcpHarness({
+			db,
+			userId: drafter.id,
+			userRole: drafter.role,
+			customRole: drafter.customRole,
+		});
+		for (const [index, [collection, id, allowed]] of entries.entries()) {
+			const result = await harness.client.callTool({
+				name: "content_update",
+				arguments: { collection, id, data: { title: "Edited" }, _rev: revs[index] },
+			});
+			expect(isErrorResult(result), extractText(result)).toBe(!allowed);
+		}
+	});
+});
+
 describe("role management", () => {
 	it("rejects permissions that only the built-in Admin may hold", async () => {
 		const result = await handleRoleCreate(db, {

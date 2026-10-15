@@ -1112,6 +1112,17 @@ function ContentEditPage() {
 		"content:edit_any",
 		entryScope,
 	);
+	// A draft-only grant lets the owner save the entry while it is a draft, as on the server.
+	const canSaveEntry =
+		canEditEntry ||
+		(rawItem?.status === "draft" &&
+			canActOnOwn(
+				currentUser,
+				entryAuthorId,
+				"content:edit_own_drafts",
+				"content:edit_any",
+				entryScope,
+			));
 	const canPublishEntry = canActOnOwn(
 		currentUser,
 		entryAuthorId,
@@ -1131,7 +1142,7 @@ function ContentEditPage() {
 		collection,
 		entryId: id,
 		locale: activeLocale,
-		ready: Boolean(rawItem) && canEditEntry,
+		ready: Boolean(rawItem) && canSaveEntry,
 	});
 	const revisionTokensRef = React.useRef(new Map<string, string | undefined>());
 	const revisionVersionsRef = React.useRef(new Map<string, number>());
@@ -2060,7 +2071,7 @@ function ContentEditPage() {
 			onQuickEditByline={handleQuickEditByline}
 			manifest={manifest ?? null}
 			onEntryRefresh={handlePluginEntryRefresh}
-			readOnly={entryLock.readOnly || (!!currentUser && !canEditEntry)}
+			readOnly={entryLock.readOnly || (!!currentUser && !canSaveEntry)}
 			notice={
 				<EntryLockNotice
 					state={entryLock.state}

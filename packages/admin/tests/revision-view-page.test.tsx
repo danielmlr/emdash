@@ -15,6 +15,7 @@ import { useRevisionViewContext } from "../src/components/revisions/revision-vie
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest, ContentItem, RevisionListResponse } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { builtInUser } from "./utils/permissions.ts";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient } from "./utils/test-helpers.tsx";
 
@@ -181,7 +182,7 @@ function createMockServer() {
 			return jsonResponse({ data: MANIFEST });
 		}
 		if (method === "GET" && url === "/_emdash/api/auth/me") {
-			return jsonResponse({ data: { id: "user_1", role: 40 } });
+			return jsonResponse({ data: builtInUser(40, "user_1") });
 		}
 		if (method === "GET" && url.startsWith("/_emdash/api/bylines")) {
 			return jsonResponse({ data: { items: [] } });

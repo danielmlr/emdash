@@ -103,6 +103,24 @@ describe("custom roles", () => {
 			).toBe(false);
 		});
 
+		it("scopes editing one's own drafts to the named collection", () => {
+			const draftWriter = customActor(
+				normalizeGrants({ collections: { jobs: ["content:create", "content:edit_own_drafts"] } }),
+			);
+			const own = (collection: string) =>
+				canActOnOwn(draftWriter, draftWriter.id, "content:edit_own_drafts", "content:edit_any", {
+					collection,
+				});
+			expect(own("jobs")).toBe(true);
+			expect(own("posts")).toBe(false);
+			expect(hasPermission(draftWriter, "content:edit_own", { collection: "jobs" })).toBe(false);
+		});
+
+		it("lets editing one's own entries include editing one's own drafts", () => {
+			const grants = normalizeGrants({ collections: { jobs: ["content:edit_any"] } });
+			expect(grants.collections.jobs).toContain("content:edit_own_drafts");
+		});
+
 		it("does not treat inherited object keys as collections", () => {
 			expect(hasPermission(sam, "content:read", { collection: "constructor" })).toBe(false);
 			expect(hasPermission(sam, "content:read", { collection: "toString" })).toBe(false);
@@ -134,7 +152,9 @@ describe("custom roles", () => {
 				},
 			});
 			expect(grants.permissions).toEqual(["content:read"]);
-			expect(grants.collections).toEqual({ jobs: ["content:edit_own", "content:edit_any"] });
+			expect(grants.collections).toEqual({
+				jobs: ["content:edit_own_drafts", "content:edit_own", "content:edit_any"],
+			});
 		});
 
 		it("includes the read permission of every area the role manages", () => {
@@ -162,6 +182,15 @@ describe("custom roles", () => {
 				(p) => p !== "menus:manage",
 			);
 			expect(compatibilityLevel(normalizeGrants({ permissions: editorWithoutMenus }))).toBe(
+				Role.AUTHOR,
+			);
+		});
+
+		it("stays Author for a role that lists Author's permissions without edit_own_drafts", () => {
+			const authorAsListed = permissionsForRole(Role.AUTHOR).filter(
+				(p) => p !== "content:edit_own_drafts",
+			);
+			expect(compatibilityLevel(normalizeGrants({ permissions: authorAsListed }))).toBe(
 				Role.AUTHOR,
 			);
 		});

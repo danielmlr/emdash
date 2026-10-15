@@ -124,7 +124,9 @@ export const PUT: APIRoute = async ({ params, request, locals, cache }) => {
 	// between this check and the write.
 	const checkedRev = typeof existingData?._rev === "string" ? existingData._rev : undefined;
 	const rev =
-		entryEditAccess(user, entry, { collection: params.collection }) === "draft" ? (body._rev ?? checkedRev) : body._rev;
+		entryEditAccess(user, entry, { collection: params.collection }) === "draft"
+			? (body._rev ?? checkedRev)
+			: body._rev;
 
 	// Only EDITOR+ can write publishedAt directly — incl. clearing to null.
 	if (

@@ -6,6 +6,7 @@ export const CONTENT_PERMISSION_COLUMNS = [
 	"content:read",
 	"content:read_drafts",
 	"content:create",
+	"content:edit_own_drafts",
 	"content:edit_own",
 	"content:edit_any",
 	"content:publish_own",
@@ -17,10 +18,12 @@ export const CONTENT_PERMISSION_COLUMNS = [
 
 /**
  * Permissions and the permission each one includes: `_any` includes `_own`,
- * and managing an area includes reading it. Mirrors the server's rule.
+ * editing one's own entries includes editing one's own drafts, and managing
+ * an area includes reading it. Mirrors the server's rule.
  */
 export const ANY_INCLUDES_OWN: Readonly<Record<string, string>> = {
 	"content:edit_any": "content:edit_own",
+	"content:edit_own": "content:edit_own_drafts",
 	"content:delete_any": "content:delete_own",
 	"content:publish_any": "content:publish_own",
 	"media:edit_any": "media:edit_own",
@@ -61,6 +64,7 @@ const ACTION_LABELS: Record<string, MessageDescriptor> = {
 	read: msg`Read`,
 	read_drafts: msg`Read drafts`,
 	create: msg`Create`,
+	edit_own_drafts: msg`Edit own drafts`,
 	edit_own: msg`Edit own`,
 	edit_any: msg`Edit any`,
 	delete_own: msg`Delete own`,

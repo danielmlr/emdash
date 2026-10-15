@@ -2,7 +2,7 @@
 
 This prototype tests the design proposed in emdash-cms/emdash#3717 (custom
 roles and collection-scoped permissions) against EmDash at upstream commit
-`2244d2c8b0`. It is a feasibility study, not an implementation pull request.
+`30604dcb05`. It is a feasibility study, not an implementation pull request.
 The demo site in this directory runs it; [README.md](README.md) explains how
 to start it and which personas to sign in as.
 
@@ -11,7 +11,7 @@ to start it and which personas to sign in as.
 | Area         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Where                                         |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | Check        | `hasPermission(actor, permission, { collection })`. A built-in role answers from the permission map as before. A custom role answers from its grants. A grant limited to collections counts only when the check names one of them.                                                                                                                                                                                                                                                                                                                                     | `packages/auth/src/rbac.ts`                   |
-| Grants       | Unknown names are dropped, `_any` adds the matching `_own`, managing an area adds reading it, and the permissions that reach past the content model stay with the built-in Admin role: `users:*`, `auth:manage_connections`, `settings:manage`, `plugins:manage`, `schema:manage`, `import:execute`, `backups:manage` and `transfer:*`.                                                                                                                                                                                                                                | `normalizeGrants` in `rbac.ts`                |
+| Grants       | Unknown names are dropped, `_any` adds the matching `_own`, `content:edit_own` adds `content:edit_own_drafts`, managing an area adds reading it, and the permissions that reach past the content model stay with the built-in Admin role: `users:*`, `auth:manage_connections`, `settings:manage`, `plugins:manage`, `schema:manage`, `import:execute`, `backups:manage` and `transfer:*`.                                                                                                                                                                             | `normalizeGrants` in `rbac.ts`                |
 | Stored level | `users.role` keeps a built-in level for code that compares numbers: the highest built-in role whose permissions the custom role holds for all collections, at least Subscriber. Changing a role rewrites the level of its users, invites and signup domains in one transaction, or one atomic batch on D1; assigning a role reads the level inside the write that stores it. External-auth role sync leaves users with a custom role alone.                                                                                                                            | `compatibilityLevel`, `api/handlers/roles.ts` |
 | Schema       | Migration 092 adds `_emdash_roles` and nullable `role_id` columns on `users` and `auth_tokens` and `default_role_id` on `allowed_domains`, each a foreign key to the roles table.                                                                                                                                                                                                                                                                                                                                                                                      | `database/migrations/092_custom_roles.ts`     |
 | Loading      | The query that loads the signed-in user joins the role, so a custom role costs no extra query. While migration 092 is still pending, the lookup falls back to the plain user select and tries the join again a minute later.                                                                                                                                                                                                                                                                                                                                           | `adapters/kysely.ts`                          |
@@ -29,8 +29,8 @@ to start it and which personas to sign in as.
 A custom role that holds exactly a built-in role's permissions answers every
 check the way the built-in role does, in every collection, and is stored at
 that role's level (`packages/auth/src/custom-roles.test.ts`). The existing
-tests pass unchanged where they test behavior: 4,550 core tests in the
-suites the change touches, and the admin suites listed under Verification.
+tests pass unchanged where they test behavior: the full core suite (9,844
+tests) and the admin suites listed under Verification.
 
 A few admin test fixtures changed. They described users as `{ id, role }`,
 which the real `/auth/me` no longer sends, and three of them relied on states
@@ -50,22 +50,24 @@ Sam holds the `jobs-editor` role from the demo seed. On the running site:
 
 The same cases run as an integration test against a real database, through
 the REST routes and the MCP tools (`packages/core/tests/integration/auth/custom-roles.test.ts`,
-13 tests).
+15 tests).
 
 ![Sam's dashboard: the sidebar lists Dashboard, Calendar, Jobs and Media; the only quick action is "+ Job".](screenshots/04-sam-dashboard.png)
 
 ### The admin offers only what the server allows
 
-Pat holds `jobs-writer`: create and edit own jobs, no publishing. Pat's own
-draft is editable and shows no Publish or Schedule button, and a direct
-publish request is refused with 403. An entry Pat doesn't own opens read-only.
+Pat holds `jobs-writer`: create jobs and edit their own job drafts
+(`content:edit_own_drafts` in Jobs only), no publishing. Pat's own draft is
+editable and shows no Publish or Schedule button, and a direct publish request
+is refused with 403. An entry Pat doesn't own opens read-only, and so does
+Pat's own job once a jobs editor has published it.
 
 ![Pat's own job draft: the editor shows "Saved" and a draft status, but no Publish button.](screenshots/08-pat-own-draft-no-publish.png)
 
-The built-in roles benefit too. A Contributor opening someone else's post now
-gets a read-only editor. In EmDash 1.0 the same Contributor sees Save,
-Publish, Schedule and Move to Trash, and the first edit fails with
-"Autosave failed".
+The built-in roles benefit too. A Contributor opening someone else's post, or
+their own post after it was published, now gets a read-only editor. Upstream,
+the same Contributor sees Save, Publish, Schedule and Move to Trash, and the
+first edit fails with "Autosave failed".
 
 ### Custom roles cost no extra query
 
@@ -127,6 +129,12 @@ role's permissions into a new role. The page works right to left
   entry they run on, which the host takes from its own route and the loaded
   entry. Other plugin routes have no collection, so only a site-wide grant
   satisfies them.
+- **Editing one's own drafts.** `content:edit_own_drafts`, which upstream
+  added at Contributor in emdash-cms/emdash#4133, can be granted per
+  collection like the other content permissions, and `content:edit_own`
+  includes it. Without that, a role that lists Author's permissions by name
+  would be stored at Subscriber level, because Contributor's permissions now
+  include the new name.
 - **Collection lookups use `Object.hasOwn`.** `constructor` is a valid
   collection slug.
 - **Search treats an empty collection list as all collections**, so a role
@@ -173,7 +181,7 @@ server already disagree. The prototype follows the server in each case:
 
 ## Verification
 
-- `packages/auth`: the full suite (158 tests), 58 of them for the permission checks and custom-role semantics.
+- `packages/auth`: the full suite (161 tests), 61 of them for the permission checks and custom-role semantics.
 - `packages/core`: `tests/integration/auth/custom-roles*.test.ts` (role
   storage, collection scope on REST and MCP, references into other
   collections, token scopes, the level written on assignment, reserved

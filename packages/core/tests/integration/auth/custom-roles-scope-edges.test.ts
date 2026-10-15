@@ -182,10 +182,18 @@ describe("routes without the collection in the URL", () => {
 				rejectedAt: new Date().toISOString(),
 			});
 		}
-		const scoped = await handleDashboardStats(db, new Date(), { readableCollections: ["page"] });
-		const everything = await handleDashboardStats(db, new Date(), {});
-		if (!scoped.success || !everything.success) throw new Error("dashboard failed");
+		const scoped = await handleDashboardStats(db, {
+			includeDrafts: true,
+			readableCollections: ["page"],
+		});
+		const draftsInPageOnly = await handleDashboardStats(db, { includeDrafts: ["page"] });
+		const everything = await handleDashboardStats(db, { includeDrafts: true });
+		if (!scoped.success || !draftsInPageOnly.success || !everything.success) {
+			throw new Error("dashboard failed");
+		}
 		expect(scoped.data.policyRejectedScheduled).toBe(1);
+		expect(draftsInPageOnly.data.policyRejectedScheduled).toBe(1);
+		expect(draftsInPageOnly.data.policyRejections.map((r) => r.collection)).toEqual(["page"]);
 		expect(everything.data.policyRejectedScheduled).toBe(3);
 	});
 });

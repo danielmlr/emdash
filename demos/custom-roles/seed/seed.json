@@ -330,7 +330,7 @@
 			"description": "Drafts job postings for the jobs editor to publish.",
 			"permissions": ["media:read", "media:upload", "auth:manage_own_credentials"],
 			"collections": {
-				"jobs": ["content:read", "content:read_drafts", "content:create", "content:edit_own"]
+				"jobs": ["content:read", "content:read_drafts", "content:create", "content:edit_own_drafts"]
 			}
 		},
 		{

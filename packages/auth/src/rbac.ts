@@ -128,6 +128,7 @@ export const COLLECTION_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Pe
 	"content:read_drafts",
 	"content:create",
 	"content:edit_own",
+	"content:edit_own_drafts",
 	"content:edit_any",
 	"content:delete_own",
 	"content:delete_any",
@@ -169,11 +170,14 @@ export const BUILT_IN_ROLE_SLUGS: ReadonlySet<string> = new Set([
 
 /**
  * Grants that include another: an `_any` permission includes its `_own`
- * counterpart, and managing an area includes reading it, so a role that may
- * manage menus can open the Menus page that lists them.
+ * counterpart, editing one's own entries includes editing one's own drafts,
+ * and managing an area includes reading it, so a role that may manage menus
+ * can open the Menus page that lists them. Applied in order, so a chain
+ * needs its wider pair first.
  */
 const IMPLIED_PERMISSIONS: ReadonlyArray<readonly [Permission, Permission]> = [
 	["content:edit_any", "content:edit_own"],
+	["content:edit_own", "content:edit_own_drafts"],
 	["content:delete_any", "content:delete_own"],
 	["content:publish_any", "content:publish_own"],
 	["media:edit_any", "media:edit_own"],

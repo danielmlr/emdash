@@ -77,16 +77,17 @@ Query counts per request after a warm-up, measured on the demo site with
 | Request                         | Anonymous | Admin | Editor | Contributor | `jobs-editor` | `site-editor` |
 | ------------------------------- | --------- | ----- | ------ | ----------- | ------------- | ------------- |
 | `GET /`                         | 6         | 7     | 7      | 7           | 7             | 7             |
-| `GET /jobs`                     | 8         | 9     | 9      | 9           | 9             | 9             |
+| `GET /jobs`                     | 6         | 7     | 7      | 7           | 7             | 7             |
 | `GET /_emdash/api/auth/me`      | (401)     | 1     | 1      | 1           | 1             | 1             |
-| `GET /_emdash/api/content/jobs` | (401)     | 6     | 6      | 6           | 6             | 6             |
+| `GET /_emdash/api/content/jobs` | (401)     | 5     | 5      | 5           | 5             | 5             |
 | `GET /_emdash/api/dashboard`    | (401)     | 14    | 14     | 14          | 10            | 14            |
 
 The one query an authenticated page adds is the user lookup, the same as
 before. It now carries the role through a join. The `jobs-editor` dashboard
 is cheaper because it reads one collection instead of three. For anonymous
 pages, `pnpm query-counts` reports that both the counts and the query text
-match the committed SQLite snapshot.
+match the committed SQLite and D1 snapshots. The per-role counts above were
+measured on SQLite only.
 
 ### Roles can be managed in the admin
 

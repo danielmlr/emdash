@@ -1,7 +1,8 @@
 /**
  * New code serving requests against a database where migration 092 has not
- * run yet (migration mode `manual`): the user lookup falls back to the plain
- * select, so sessions keep working until the migration lands.
+ * run yet (migration mode `manual`) or stopped after creating the roles
+ * table: the user lookups fall back to the plain select, so sessions keep
+ * working until the migration lands.
  */
 
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
@@ -57,6 +58,8 @@ describe("user lookup before migration 092 has run", () => {
 			} as never)
 			.execute();
 		vi.spyOn(console, "error").mockImplementation(() => {});
+		// The fallback is remembered process-wide for a minute; each test starts without it.
+		delete (globalThis as Record<symbol, unknown>)[Symbol.for("emdash:auth:role-join-failed-at")];
 	});
 
 	afterEach(async () => {
@@ -70,6 +73,30 @@ describe("user lookup before migration 092 has run", () => {
 			id: "user-1",
 			role: 50,
 		});
+	});
+
+	it("still resolves a user when 092 stopped after creating the roles table", async () => {
+		await db.schema
+			.createTable("_emdash_roles")
+			.addColumn("id", "text", (col) => col.primaryKey())
+			.addColumn("slug", "text", (col) => col.notNull().unique())
+			.addColumn("label", "text", (col) => col.notNull())
+			.addColumn("description", "text")
+			.addColumn("grants", "text", (col) => col.notNull())
+			.addColumn("created_at", "text", (col) => col.notNull())
+			.addColumn("updated_at", "text", (col) => col.notNull())
+			.execute();
+		await expect(createKyselyAdapter(db).getUserById("user-1")).resolves.toMatchObject({
+			id: "user-1",
+			role: 50,
+		});
+	});
+
+	it("lists users, and none for a custom role", async () => {
+		const adapter = createKyselyAdapter(db);
+		const listed = await adapter.getUsers();
+		expect(listed.items.map((user) => user.id)).toEqual(["user-1"]);
+		expect((await adapter.getUsers({ roleId: "any-role" })).items).toEqual([]);
 	});
 
 	it("serves a signed-in admin API request", async () => {

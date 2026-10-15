@@ -120,11 +120,12 @@ type UserRow = Selectable<UserTable> & Partial<CustomRoleColumns>;
 
 /**
  * A build that knows custom roles can serve requests before migration 092
- * has created `_emdash_roles` (migration mode `manual`). The role join then
- * fails on every signed-in request; the plain user select stands in for a
- * minute before the join is tried again, so one failed query per process
+ * has created `_emdash_roles` and `users.role_id` (migration mode `manual`,
+ * or a run interrupted after the table but before the column). The role join
+ * then fails on every signed-in request; the plain user select stands in for
+ * a minute before the join is tried again, so one failed query per process
  * and minute is all that period costs. No row can reference a role before
- * the table exists, so the plain select answers the same.
+ * both exist, so the plain select answers the same.
  */
 const ROLE_JOIN_FAILED_AT = Symbol.for("emdash:auth:role-join-failed-at");
 const ROLE_JOIN_RETRY_MS = 60_000;
@@ -134,11 +135,13 @@ function roleJoinUnavailable(): boolean {
 	return typeof failedAt === "number" && Date.now() - failedAt < ROLE_JOIN_RETRY_MS;
 }
 
-function isMissingRolesTable(error: unknown): boolean {
+function isMissingRoleSchema(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return (
-		message.includes("_emdash_roles") &&
-		(message.includes("no such table") || message.includes("does not exist"))
+		(message.includes("_emdash_roles") &&
+			(message.includes("no such table") || message.includes("does not exist"))) ||
+		(message.includes("role_id") &&
+			(message.includes("no such column") || message.includes("does not exist")))
 	);
 }
 
@@ -150,7 +153,7 @@ async function withRoleJoinFallback<T>(
 	try {
 		return await joined();
 	} catch (error) {
-		if (!isMissingRolesTable(error)) throw error;
+		if (!isMissingRoleSchema(error)) throw error;
 		(globalThis as Record<symbol, unknown>)[ROLE_JOIN_FAILED_AT] = Date.now();
 		return plain();
 	}
@@ -292,14 +295,10 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			let query = kdb
 				.selectFrom("users")
 				.leftJoin("credentials", "users.id", "credentials.user_id")
-				.leftJoin("_emdash_roles", "_emdash_roles.id", "users.role_id")
 				.selectAll("users")
 				.select((eb) => [
 					eb.fn.count<number>("credentials.id").as("credential_count"),
 					eb.fn.max("credentials.last_used_at").as("last_login"),
-					eb.fn.max("_emdash_roles.slug").as("custom_role_slug"),
-					eb.fn.max("_emdash_roles.label").as("custom_role_label"),
-					eb.fn.max("_emdash_roles.grants").as("custom_role_grants"),
 				])
 				.groupBy("users.id")
 				.orderBy("users.created_at", "desc")
@@ -319,9 +318,6 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 			if (options?.role !== undefined) {
 				query = query.where("users.role", "=", options.role);
 			}
-			if (options?.roleId !== undefined) {
-				query = query.where("users.role_id", "=", options.roleId);
-			}
 
 			if (options?.cursor) {
 				// Get the cursor user's created_at for pagination
@@ -336,7 +332,24 @@ export function createKyselyAdapter<T extends AuthTables>(db: Kysely<T>): AuthAd
 				}
 			}
 
-			const rows = await query.execute();
+			type ListRow = Awaited<ReturnType<typeof query.execute>>[number] & Partial<CustomRoleColumns>;
+			const rows = await withRoleJoinFallback<ListRow[]>(
+				() => {
+					let joined = query
+						.leftJoin("_emdash_roles", "_emdash_roles.id", "users.role_id")
+						.select((eb) => [
+							eb.fn.max("_emdash_roles.slug").as("custom_role_slug"),
+							eb.fn.max("_emdash_roles.label").as("custom_role_label"),
+							eb.fn.max("_emdash_roles.grants").as("custom_role_grants"),
+						]);
+					if (options?.roleId !== undefined) {
+						joined = joined.where("users.role_id", "=", options.roleId);
+					}
+					return joined.execute();
+				},
+				// Without the role schema no user holds a custom role.
+				async () => (options?.roleId !== undefined ? [] : query.execute()),
+			);
 
 			// Get OAuth providers for all users in this batch
 			const userIds = rows.slice(0, limit).map((r) => r.id);

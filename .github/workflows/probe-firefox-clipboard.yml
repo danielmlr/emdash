@@ -22,7 +22,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run --filter emdash... build
-      - run: pnpm exec playwright install --with-deps firefox
+      - run: pnpm exec playwright install --with-deps chromium firefox
       - name: Run the clipboard test 15 times in Firefox
         env:
           CI: "true"

@@ -538,3 +538,4 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+# Measurement baseline: this line only makes the test plan run in full.

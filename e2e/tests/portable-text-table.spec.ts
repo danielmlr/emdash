@@ -94,6 +94,30 @@ async function createPost(
 
 function monitorErrors(page: Page) {
 	const errors: string[] = [];
+	void page.addInitScript(() => {
+		const events: string[] = [];
+		for (const type of ["beforeunload", "pagehide", "visibilitychange", "unload", "blur"]) {
+			window.addEventListener(type, () => events.push(`${type}@${Math.round(performance.now())}`), true);
+		}
+		const original = console.error;
+		console.error = (...args: unknown[]) => {
+			if (String(args[0]).includes("Cannot update a component")) {
+				original(
+					`PROBE-STACK url=${location.pathname} events=[${events.join(",")}] now=${Math.round(performance.now())} vis=${document.visibilityState}\n${new Error().stack}`,
+				);
+			}
+			original(...args);
+		};
+	});
+	void page.addInitScript(() => {
+		const original = console.error;
+		console.error = (...args: unknown[]) => {
+			if (String(args[0]).includes("Cannot update a component")) {
+				original("PROBE-STACK " + new Error().stack);
+			}
+			original(...args);
+		};
+	});
 	// WebKit reports a same-origin fetch that a navigation cancels as failing
 	// access control checks, which a same-origin request can't really fail.
 	const isCancelledFetch = (text: string) => {

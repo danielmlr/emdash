@@ -32,7 +32,7 @@ jobs:
           echo "exit=$?"
           grep -E "passed|failed|flaky" run.log | tail -5
           grep -o "Cannot update a component ([^)]*) while rendering a different component ([^)]*)" run.log | sort | uniq -c
-          grep -o 'PROBE-STACK[^"]*' run.log | sed 's/\\n/\n/g' | head -400
+          grep -o 'PROBE-NEST[^"]*' run.log | head -60
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

@@ -95,28 +95,82 @@ async function createPost(
 function monitorErrors(page: Page) {
 	const errors: string[] = [];
 	void page.addInitScript(() => {
-		const events: string[] = [];
-		for (const type of ["beforeunload", "pagehide", "visibilitychange", "unload", "blur"]) {
-			window.addEventListener(type, () => events.push(`${type}@${Math.round(performance.now())}`), true);
+		const w = window as any;
+		const log: string[] = [];
+		const outer: string[] = [];
+		let consoleDepth = 0;
+		const note = (entry: string) => {
+			log.push(`${entry}@${Math.round(performance.now())}`);
+			if (log.length > 25) log.shift();
+		};
+		const wrap = (kind: string, fn: Function) =>
+			function (this: unknown, ...args: unknown[]) {
+				outer.push(kind);
+				try {
+					return fn.apply(this, args);
+				} finally {
+					outer.pop();
+				}
+			};
+		const setTimeoutOriginal = window.setTimeout;
+		w.setTimeout = function (cb: unknown, ms?: number, ...rest: unknown[]) {
+			return setTimeoutOriginal.call(
+				window,
+				typeof cb === "function" ? wrap(`timeout(${ms ?? 0})`, cb) : (cb as any),
+				ms,
+				...rest,
+			);
+		};
+		const onmessage = Object.getOwnPropertyDescriptor(MessagePort.prototype, "onmessage")!;
+		Object.defineProperty(MessagePort.prototype, "onmessage", {
+			configurable: true,
+			get() {
+				return onmessage.get!.call(this);
+			},
+			set(fn) {
+				onmessage.set!.call(this, typeof fn === "function" ? wrap("message", fn) : fn);
+			},
+		});
+		const raf = window.requestAnimationFrame;
+		w.requestAnimationFrame = (cb: FrameRequestCallback) => raf.call(window, wrap("raf", cb) as any);
+		const xhrOpen = XMLHttpRequest.prototype.open;
+		w.XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, ...args: any[]) {
+			if (args[2] === false) note(`syncXHR ${args[1]}`);
+			return (xhrOpen as any).apply(this, args);
+		};
+		for (const name of ["alert", "confirm", "prompt", "print"]) {
+			const original = w[name];
+			w[name] = function (...args: unknown[]) {
+				note(`dialog ${name}`);
+				return original.apply(window, args);
+			};
 		}
-		const original = console.error;
-		console.error = (...args: unknown[]) => {
-			if (String(args[0]).includes("Cannot update a component")) {
-				original(
-					`PROBE-STACK url=${location.pathname} events=[${events.join(",")}] now=${Math.round(performance.now())} vis=${document.visibilityState}\n${new Error().stack}`,
-				);
-			}
-			original(...args);
-		};
-	});
-	void page.addInitScript(() => {
-		const original = console.error;
-		console.error = (...args: unknown[]) => {
-			if (String(args[0]).includes("Cannot update a component")) {
-				original("PROBE-STACK " + new Error().stack);
-			}
-			original(...args);
-		};
+		for (const type of ["blur", "focus", "focusout", "focusin", "pagehide", "beforeunload"]) {
+			window.addEventListener(
+				type,
+				(event) => note(`${type}:${(event.target as Element)?.nodeName ?? "?"} outer=${outer.join(">")}`),
+				true,
+			);
+		}
+		for (const level of ["log", "info", "warn", "debug", "error"] as const) {
+			const original = console[level];
+			console[level] = (...args: unknown[]) => {
+				const first = String(args[0]).slice(0, 70).replace(/\s+/g, " ");
+				if (level === "error" && first.includes("Cannot update a component")) {
+					original(
+						`PROBE-NEST url=${location.pathname} outer=[${outer.join(">")}] consoleDepth=${consoleDepth} now=${Math.round(performance.now())} log=[${log.join(" | ")}]`,
+					);
+				} else {
+					note(`console.${level} depth=${consoleDepth} outer=${outer.join(">")} ${first}`);
+				}
+				consoleDepth++;
+				try {
+					return original(...args);
+				} finally {
+					consoleDepth--;
+				}
+			};
+		}
 	});
 	// WebKit reports a same-origin fetch that a navigation cancels as failing
 	// access control checks, which a same-origin request can't really fail.

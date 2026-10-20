@@ -43,6 +43,7 @@ const UNIT_PACKAGE_BY_PATH = new Map([
 	["packages/plugin-test/", "@emdash-cms/plugin-test"],
 	["packages/plugin-types/", "@emdash-cms/plugin-types"],
 	["packages/plugins/ai-moderation/", "@emdash-cms/plugin-ai-moderation"],
+	["packages/plugins/ai-search/", "@emdash-cms/plugin-ai-search"],
 	["packages/plugins/atproto/", "@emdash-cms/plugin-atproto"],
 	["packages/plugins/embeds/", "@emdash-cms/plugin-embeds"],
 	["packages/plugins/field-kit/", "@emdash-cms/plugin-field-kit"],

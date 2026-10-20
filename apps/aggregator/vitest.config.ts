@@ -45,6 +45,12 @@ export default defineConfig({
 					LISTING_POLICY_MODE: "open",
 					LISTING_ALLOWLIST: "[]",
 					LISTING_MODERATION_POLICY: "",
+					// The admin routes start discovery, backfill and the Jetstream
+					// session in the background. A closed local port keeps that work
+					// off the production atproto services and out of later tests.
+					JETSTREAM_URL: "ws://127.0.0.1:9/subscribe",
+					RELAY_URL: "http://127.0.0.1:9",
+					IDENTITY_RESOLVER_URL: "http://127.0.0.1:9",
 				},
 			},
 		}),

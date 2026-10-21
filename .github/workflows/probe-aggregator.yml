@@ -39,16 +39,17 @@ jobs:
           printf 'nameserver 10.255.255.1\noptions timeout:5 attempts:1\n' > /tmp/slow-resolv.conf
           cat > /tmp/run-tests.sh <<EOF
           set -u
-          mount --bind /tmp/slow-resolv.conf /etc/resolv.conf
           export PATH="$PATH"
+          export HOME=/home/runner
           cd "$PWD"
           grep '^hosts' /etc/nsswitch.conf
           start=\$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took \$(( (\$(date +%s%N) - start) / 1000000 )) ms"
           start=\$(date +%s)
           timeout -k 10 480 pnpm exec vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1
           echo "vitest exit=\$? after \$(( \$(date +%s) - start )) s"
+          head -c 2500 file.log
           EOF
-          sudo unshare -m bash /tmp/run-tests.sh
+          sudo unshare -m bash -c 'mount --bind /tmp/slow-resolv.conf /etc/resolv.conf && exec setpriv --reuid=runner --regid=runner --init-groups bash /tmp/run-tests.sh'
           echo "outside the namespace:"; getent hosts github.com | head -1
       - name: Show the result
         if: always()

@@ -96,6 +96,53 @@ function monitorErrors(page: Page) {
 	const errors: string[] = [];
 	void page.addInitScript(() => {
 		const w = window as any;
+		const rawError = console.error.bind(console);
+		const short = (stack: string, max: number) =>
+			stack
+				.split("\n")
+				.filter(Boolean)
+				.slice(0, max)
+				.map((frame) => frame.replace(/@.*\/([^/]+?)(\?[^:]*)?:(\d+):\d+$/, "@$1:$3"))
+				.join(" <- ");
+		let token = 0;
+		const openCalls: [number, string, number][] = [];
+		const openRender: [number, number, string][] = [];
+		const watched = new Map<number, number>();
+		w.__probeEnter = (component: any) => {
+			const id = ++token;
+			openCalls.push([id, component?.displayName || component?.name || "anon", performance.now()]);
+			return id;
+		};
+		w.__probeExit = (id: number) => {
+			const index = openCalls.findLastIndex((entry) => entry[0] === id);
+			if (index >= 0) openCalls.splice(index, 1);
+			const since = watched.get(id);
+			if (since !== undefined) {
+				watched.delete(id);
+				rawError(
+					`PROBE-CALL-EXIT id=${id} ${Math.round(performance.now() - since)}ms after the warning; stack: ${short(new Error().stack ?? "", 30)}`,
+				);
+			}
+		};
+		w.__probeRender = (enter: number) => {
+			if (enter) openRender.push([++token, performance.now(), new Error().stack ?? ""]);
+			else {
+				const entry = openRender.pop();
+				if (entry && watched.has(entry[0])) {
+					const since = watched.get(entry[0])!;
+					watched.delete(entry[0]);
+					rawError(
+						`PROBE-RENDER-EXIT id=${entry[0]} ${Math.round(performance.now() - since)}ms after the warning; stack: ${short(new Error().stack ?? "", 30)}`,
+					);
+				}
+			}
+		};
+		w.__probeSnapshot = () => {
+			const now = performance.now();
+			for (const entry of openCalls) watched.set(entry[0], now);
+			for (const entry of openRender) watched.set(entry[0], now);
+			return `openCalls=[${openCalls.map(([id, name, t]) => `${id}:${name}:${Math.round(now - t)}ms`).join(", ")}] openRender=[${openRender.map(([id, t, stack]) => `${id}:${Math.round(now - t)}ms entered from ${short(stack, 25)}`).join(" || ")}]`;
+		};
 		const log: string[] = [];
 		const outer: string[] = [];
 		let consoleDepth = 0;
@@ -165,8 +212,18 @@ function monitorErrors(page: Page) {
 						.filter(Boolean)
 						.map((frame) => frame.replace(/@.*\/([^/]+?)(\?[^:]*)?:(\d+):\d+$/, "@$1:$3"));
 					original(`PROBE-STACK depth=${frames.length} ${frames.join(" <- ")}`);
+					original(`PROBE-OPEN ${w.__probeSnapshot()}`);
 				} else {
 					note(`console.${level} depth=${consoleDepth} outer=${outer.join(">")} ${first}`);
+				}
+				if (level === "error") {
+					for (const arg of args) {
+						if (arg instanceof Error) {
+							original(
+								`PROBE-ERR ${arg.name}: ${arg.message} :: ${short(arg.stack ?? "", 30)} :: open ${w.__probeSnapshot()}`,
+							);
+						}
+					}
 				}
 				consoleDepth++;
 				try {
@@ -176,6 +233,27 @@ function monitorErrors(page: Page) {
 				}
 			};
 		}
+	});
+	void page.route(/\/node_modules\/\.vite\/deps\/client-[^/?]*\.js/, async (route) => {
+		const response = await route.fetch();
+		let body = await response.text();
+		const call = "return Component(props, secondArg);";
+		if (body.includes(call)) {
+			body = body.replace(
+				call,
+				"var __probeId = globalThis.__probeEnter ? globalThis.__probeEnter(Component) : 0; try { return Component(props, secondArg); } finally { globalThis.__probeExit && globalThis.__probeExit(__probeId); }",
+			);
+			let renders = 0;
+			body = body.replace(
+				/executionContext \|= RenderContext;([\s\S]*?)executionContext = prevExecutionContext;/g,
+				(_match, between: string) => {
+					renders++;
+					return `executionContext |= RenderContext; globalThis.__probeRender && globalThis.__probeRender(1);${between}executionContext = prevExecutionContext; globalThis.__probeRender && globalThis.__probeRender(0);`;
+				},
+			);
+			console.log(`PROBE-PATCHED ${route.request().url()} renders=${renders}`);
+		}
+		await route.fulfill({ response, body });
 	});
 	// WebKit reports a same-origin fetch that a navigation cancels as failing
 	// access control checks, which a same-origin request can't really fail.

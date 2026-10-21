@@ -11,11 +11,11 @@ jobs:
   probe:
     name: aggregator ${{ matrix.variant }} (slow DNS)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        variant: [main, urls, stub]
+        variant: [main]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -41,21 +41,9 @@ jobs:
           grep '^hosts' /etc/nsswitch.conf
           start=$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took $(( ($(date +%s%N) - start) / 1000000 )) ms"
           getent hosts localhost
-      - name: Run backfill.test.ts three times, then the whole suite
+      - name: Run backfill.test.ts once, capped at 8 minutes, output streamed
         working-directory: apps/aggregator
         run: |
-          summarize='
-            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-            const tests = r.testResults.flatMap((f) => f.assertionResults);
-            const pick = /triggers discovery \(production|canonical mixed|uppercase BEARER|returns 204 on POST with valid token/;
-            const slow = tests.filter((t) => pick.test(t.title)).map((t) => `${Math.round(t.duration ?? 0)}ms ${t.status} ${t.title.slice(0, 40)}`);
-            const failed = tests.filter((t) => t.status === "failed").map((t) => `${Math.round(t.duration ?? 0)}ms ${t.title}`);
-            console.log(`${process.argv[2]}: passed=${r.numPassedTests} failed=${r.numFailedTests} | ${slow.join(" | ")}${failed.length ? " | FAILED: " + failed.join(", ") : ""}`);
-          '
-          for i in 1 2 3; do
-            pnpm exec vitest run test/backfill.test.ts --reporter=json --outputFile=file-$i.json > file-$i.log 2>&1 || true
-            node -e "$summarize" file-$i.json "backfill.test.ts run $i"
-          done
-          pnpm exec vitest run --reporter=json --outputFile=full.json > full.log 2>&1 || true
-          node -e "$summarize" full.json "full suite"
-          grep -h "Called close before connection\|did not resolve within" file-*.log full.log | sort | uniq -c || true
+          set +e
+          timeout 480 pnpm exec vitest run test/backfill.test.ts --reporter=verbose 2>&1 | grep -E "✓|×|→|Tests |Duration|timed out|did not resolve|Called close" | grep -E "admin|discovery|BEARER|Bearer|204|400|202|dedupes|Tests |Duration|timed out|did not resolve|Called close|→"
+          echo "pipeline exit=${PIPESTATUS[0]}"

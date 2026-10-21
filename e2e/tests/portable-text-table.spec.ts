@@ -160,6 +160,11 @@ function monitorErrors(page: Page) {
 					original(
 						`PROBE-NEST url=${location.pathname} outer=[${outer.join(">")}] consoleDepth=${consoleDepth} now=${Math.round(performance.now())} log=[${log.join(" | ")}]`,
 					);
+					const frames = (new Error().stack ?? "")
+						.split("\n")
+						.filter(Boolean)
+						.map((frame) => frame.replace(/@.*\/([^/]+?)(\?[^:]*)?:(\d+):\d+$/, "@$1:$3"));
+					original(`PROBE-STACK depth=${frames.length} ${frames.join(" <- ")}`);
 				} else {
 					note(`console.${level} depth=${consoleDepth} outer=${outer.join(">")} ${first}`);
 				}

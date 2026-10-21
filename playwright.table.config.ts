@@ -16,7 +16,10 @@ export default defineConfig(baseConfig, {
 		{
 			name: "firefox",
 			grep: /@table-cross-engine/,
-			use: { ...devices["Desktop Firefox"] },
+			use: {
+				...devices["Desktop Firefox"],
+				launchOptions: { firefoxUserPrefs: { "javascript.options.asyncstack": false } },
+			},
 		},
 		{
 			name: "webkit",

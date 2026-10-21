@@ -9,13 +9,13 @@ permissions:
 
 jobs:
   probe:
-    name: aggregator ${{ matrix.variant }} (slow DNS)
+    name: aggregator ${{ matrix.variant }} (slow DNS for the tests only)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        variant: [main]
+        variant: [main, stub]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -33,22 +33,23 @@ jobs:
         run: cp apps/aggregator/vitest.stub.config.ts apps/aggregator/vitest.config.ts
       - run: git diff --stat a6b28a6b1bf96f9ade9cc5c0327cd5b2e5af1ca2 -- apps/aggregator/vitest.config.ts
       - run: pnpm run --if-present --filter "@emdash-cms/aggregator..." build
-      - name: Make every DNS lookup take 5 s and fail
-        run: |
-          sudo systemctl stop systemd-resolved || true
-          sudo rm -f /etc/resolv.conf
-          printf 'nameserver 10.255.255.1\noptions timeout:5 attempts:1\n' | sudo tee /etc/resolv.conf
-          grep '^hosts' /etc/nsswitch.conf
-          start=$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took $(( ($(date +%s%N) - start) / 1000000 )) ms"
-          getent hosts localhost
-      - name: Run backfill.test.ts once, killed after 8 minutes
+      - name: Run backfill.test.ts with a resolver that takes 5 s per query and fails
         working-directory: apps/aggregator
         run: |
-          setsid pnpm exec vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1 &
-          pid=$!
-          for i in $(seq 1 96); do kill -0 $pid 2>/dev/null || break; sleep 5; done
-          kill -9 -- -$pid 2>/dev/null || true
-          echo "vitest ran for about $((i * 5)) s"
+          printf 'nameserver 10.255.255.1\noptions timeout:5 attempts:1\n' > /tmp/slow-resolv.conf
+          cat > /tmp/run-tests.sh <<EOF
+          set -u
+          mount --bind /tmp/slow-resolv.conf /etc/resolv.conf
+          export PATH="$PATH"
+          cd "$PWD"
+          grep '^hosts' /etc/nsswitch.conf
+          start=\$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took \$(( (\$(date +%s%N) - start) / 1000000 )) ms"
+          start=\$(date +%s)
+          timeout -k 10 480 pnpm exec vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1
+          echo "vitest exit=\$? after \$(( \$(date +%s) - start )) s"
+          EOF
+          sudo unshare -m bash /tmp/run-tests.sh
+          echo "outside the namespace:"; getent hosts github.com | head -1
       - name: Show the result
         if: always()
         working-directory: apps/aggregator

@@ -460,6 +460,10 @@ test.describe("Portable Text tables", () => {
 		];
 		expect(new Set(keys).size).toBe(keys.length);
 
+		// Firefox stops scripts that are still running when a reload starts, which
+		// would leave the edit page's first render half done.
+		await expect(page.locator(EDITOR).getByText("Rich", { exact: true })).toBeVisible();
+		await admin.waitForLoading();
 		await page.reload();
 		await admin.waitForShell();
 		await expect(page.locator(EDITOR).getByText("Rich", { exact: true })).toBeVisible();

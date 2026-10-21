@@ -35,7 +35,7 @@ jobs:
           grep -o 'PROBE-NEST[^"]*' run.log | head -60
           grep -o 'PROBE-STACK[^"]*' run.log | head -20
           grep -o 'PROBE-PATCHED.*' run.log | sort | uniq -c | head -5
-          grep -o 'PROBE-\(OPEN\|ERR\|CALL-EXIT\|RENDER-EXIT\)[^"]*' run.log | head -60
+          grep -o 'PROBE-\(ENV\|OPEN\|DETAIL\|LATER\|ERR\|CALL-EXIT\|RENDER-EXIT\)[^"]*' run.log | sort -u | head -80
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

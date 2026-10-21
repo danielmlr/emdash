@@ -105,12 +105,36 @@ function monitorErrors(page: Page) {
 				.map((frame) => frame.replace(/@.*\/([^/]+?)(\?[^:]*)?:(\d+):\d+$/, "@$1:$3"))
 				.join(" <- ");
 		let token = 0;
-		const openCalls: [number, string, number][] = [];
+		const openCalls: [number, string, number, unknown][] = [];
+		const hookEvents: string[] = [];
+		const wrappedDispatchers = new WeakSet<object>();
+		let renderEnters = 0;
+		const wrapDispatcher = (dispatcher: any) => {
+			if (!dispatcher || typeof dispatcher !== "object" || wrappedDispatchers.has(dispatcher)) return;
+			wrappedDispatchers.add(dispatcher);
+			for (const key of Object.keys(dispatcher)) {
+				const hook = dispatcher[key];
+				if (typeof hook !== "function") continue;
+				dispatcher[key] = function (this: unknown, ...args: unknown[]) {
+					const call = openCalls.at(-1)?.[0] ?? 0;
+					hookEvents.push(`${call}:${key}>`);
+					if (hookEvents.length > 40) hookEvents.shift();
+					try {
+						return hook.apply(this, args);
+					} finally {
+						hookEvents.push(`${call}:<${key}`);
+						if (hookEvents.length > 40) hookEvents.shift();
+					}
+				};
+			}
+		};
+		console.error(`PROBE-ENV createTask=${typeof (console as any).createTask}`);
 		const openRender: [number, number, string][] = [];
 		const watched = new Map<number, number>();
-		w.__probeEnter = (component: any) => {
+		w.__probeEnter = (component: any, internals: any) => {
 			const id = ++token;
-			openCalls.push([id, component?.displayName || component?.name || "anon", performance.now()]);
+			openCalls.push([id, component?.displayName || component?.name || "anon", performance.now(), component]);
+			wrapDispatcher(internals?.H);
 			return id;
 		};
 		w.__probeExit = (id: number) => {
@@ -125,7 +149,10 @@ function monitorErrors(page: Page) {
 			}
 		};
 		w.__probeRender = (enter: number) => {
-			if (enter) openRender.push([++token, performance.now(), new Error().stack ?? ""]);
+			if (enter) {
+				renderEnters++;
+				openRender.push([++token, performance.now(), new Error().stack ?? ""]);
+			}
 			else {
 				const entry = openRender.pop();
 				if (entry && watched.has(entry[0])) {
@@ -136,6 +163,12 @@ function monitorErrors(page: Page) {
 					);
 				}
 			}
+		};
+		w.__probeDetail = () => {
+			const state = w.__probeState?.();
+			const call = openCalls.at(-1);
+			const source = call ? Function.prototype.toString.call(call[3]).slice(0, 700).replace(/\s+/g, " ") : "";
+			return `state=${JSON.stringify({ isFlushingWork: state?.isFlushingWork, executionContext: state?.executionContext })} renderEnters=${renderEnters} componentStack=${String(state?.stack ?? "").replace(/\s+/g, " ").slice(0, 900)} hooks=[${hookEvents.join(" ")}] source=${source}`;
 		};
 		w.__probeSnapshot = () => {
 			const now = performance.now();
@@ -213,6 +246,15 @@ function monitorErrors(page: Page) {
 						.map((frame) => frame.replace(/@.*\/([^/]+?)(\?[^:]*)?:(\d+):\d+$/, "@$1:$3"));
 					original(`PROBE-STACK depth=${frames.length} ${frames.join(" <- ")}`);
 					original(`PROBE-OPEN ${w.__probeSnapshot()}`);
+					original(`PROBE-DETAIL ${w.__probeDetail()}`);
+					const enters = renderEnters;
+					for (const delay of [300, 1000]) {
+						setTimeoutOriginal.call(window, () => {
+							rawError(
+								`PROBE-LATER +${delay}ms renderEnters since warning=${renderEnters - enters} ${w.__probeSnapshot()} state=${JSON.stringify(w.__probeState?.() ?? {}).slice(0, 200)}`,
+							);
+						}, delay);
+					}
 				} else {
 					note(`console.${level} depth=${consoleDepth} outer=${outer.join(">")} ${first}`);
 				}
@@ -241,7 +283,11 @@ function monitorErrors(page: Page) {
 		if (body.includes(call)) {
 			body = body.replace(
 				call,
-				"var __probeId = globalThis.__probeEnter ? globalThis.__probeEnter(Component) : 0; try { return Component(props, secondArg); } finally { globalThis.__probeExit && globalThis.__probeExit(__probeId); }",
+				"var __probeId = globalThis.__probeEnter ? globalThis.__probeEnter(Component, ReactSharedInternals) : 0; try { return Component(props, secondArg); } finally { globalThis.__probeExit && globalThis.__probeExit(__probeId); }",
+			);
+			body = body.replace(
+				"var fakeActCallbackNode$1 = {},",
+				"globalThis.__probeState = function () { return { isFlushingWork: isFlushingWork, executionContext: executionContext, stack: getCurrentFiberStackInDev() }; }; var fakeActCallbackNode$1 = {},",
 			);
 			let renders = 0;
 			body = body.replace(

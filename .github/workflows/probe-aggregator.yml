@@ -41,9 +41,15 @@ jobs:
           grep '^hosts' /etc/nsswitch.conf
           start=$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took $(( ($(date +%s%N) - start) / 1000000 )) ms"
           getent hosts localhost
-      - name: Run backfill.test.ts once, capped at 8 minutes, output streamed
+      - name: Run backfill.test.ts once, killed after 8 minutes
         working-directory: apps/aggregator
         run: |
-          set +e
-          timeout 480 pnpm exec vitest run test/backfill.test.ts --reporter=verbose 2>&1 | grep -E "✓|×|→|Tests |Duration|timed out|did not resolve|Called close" | grep -E "admin|discovery|BEARER|Bearer|204|400|202|dedupes|Tests |Duration|timed out|did not resolve|Called close|→"
-          echo "pipeline exit=${PIPESTATUS[0]}"
+          setsid pnpm exec vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 96); do kill -0 $pid 2>/dev/null || break; sleep 5; done
+          kill -9 -- -$pid 2>/dev/null || true
+          echo "vitest ran for about $((i * 5)) s"
+      - name: Show the result
+        if: always()
+        working-directory: apps/aggregator
+        run: grep -E "✓|×|→|Tests |Duration|timed out|Called close|did not resolve" file.log | cut -c1-180 | head -90 || true

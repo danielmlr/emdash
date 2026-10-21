@@ -16,7 +16,10 @@ export default defineConfig(baseConfig, {
 		{
 			name: "firefox",
 			grep: /@table-cross-engine/,
-			use: { ...devices["Desktop Firefox"] },
+			use: {
+				...devices["Desktop Firefox"],
+				launchOptions: { firefoxUserPrefs: { "dom.ipc.cancel_content_js_when_navigating": false } },
+			},
 		},
 		{
 			name: "webkit",

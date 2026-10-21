@@ -45,7 +45,7 @@ jobs:
           grep '^hosts' /etc/nsswitch.conf
           start=\$(date +%s%N); getent hosts plc.directory || echo "lookup failed"; echo "plc.directory lookup took \$(( (\$(date +%s%N) - start) / 1000000 )) ms"
           start=\$(date +%s)
-          timeout -k 10 480 pnpm exec vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1
+          timeout -k 10 480 ./node_modules/.bin/vitest run test/backfill.test.ts --reporter=verbose > file.log 2>&1
           echo "vitest exit=\$? after \$(( \$(date +%s) - start )) s"
           head -c 2500 file.log
           EOF

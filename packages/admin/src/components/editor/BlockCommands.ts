@@ -19,6 +19,8 @@ import {
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { SuggestionPluginKey } from "@tiptap/suggestion";
 
+import { allowedHeadingLevels, mapPastedHeadings } from "./headingLevels.js";
+
 export interface BlockRange {
 	from: number;
 	to: number;
@@ -98,7 +100,11 @@ export function blockInsertPosition(selection: Selection): number | null {
 export function duplicateBlocks(editor: Editor, range = selectedBlockRange(editor.state)): boolean {
 	if (!range || !editor.isEditable) return false;
 	const { state } = editor;
-	const slice = state.doc.slice(range.from, range.to);
+	const slice = mapPastedHeadings(
+		state.doc.slice(range.from, range.to),
+		allowedHeadingLevels(editor),
+		state.schema,
+	);
 	editor.view.dispatch(state.tr.insert(range.to, slice.content).scrollIntoView());
 	return true;
 }

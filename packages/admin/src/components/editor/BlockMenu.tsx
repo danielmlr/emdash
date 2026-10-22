@@ -37,6 +37,7 @@ import {
 	editorMenuPopupClassName,
 	tabToEditor,
 } from "./EditorMenu.js";
+import { allowedHeadingLevels } from "./headingLevels.js";
 
 const NODE_LABELS: Record<string, MessageDescriptor> = {
 	image: msg`Image`,
@@ -150,7 +151,7 @@ export function BlockMenu({
 											textBlockTypes.find((type) => type.id === id)?.transform(editor)
 										}
 									>
-										{turnIntoMenuTypes(activeType.id).map((type) => (
+										{turnIntoMenuTypes(activeType.id, allowedHeadingLevels(editor)).map((type) => (
 											<EditorMenuRadioItem
 												key={type.id}
 												value={type.id}

@@ -125,9 +125,20 @@ export const textBlockTypes: TextBlockType[] = [
 /** Headings 4 to 6 stay out of menus unless a block already uses one; the slash menu finds them by name. */
 const MENU_HIDDEN_TYPES = new Set<TextBlockTypeId>(["heading4", "heading5", "heading6"]);
 
-/** The types a Turn into menu offers for a block of the given type. */
-export function turnIntoMenuTypes(activeId?: TextBlockTypeId): TextBlockType[] {
-	return textBlockTypes.filter((type) => !MENU_HIDDEN_TYPES.has(type.id) || type.id === activeId);
+/**
+ * The types a Turn into menu offers for a block of the given type, leaving
+ * out heading levels the field doesn't allow unless the block is one.
+ */
+export function turnIntoMenuTypes(
+	activeId?: TextBlockTypeId,
+	headingLevels?: readonly number[],
+): TextBlockType[] {
+	return textBlockTypes.filter((type) => {
+		if (type.id === activeId) return true;
+		if (MENU_HIDDEN_TYPES.has(type.id)) return false;
+		const level = HEADING_LEVELS[type.id];
+		return level === undefined || !headingLevels || headingLevels.includes(level);
+	});
 }
 
 const ACTIVE_ORDER: TextBlockTypeId[] = [

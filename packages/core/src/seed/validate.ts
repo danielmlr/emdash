@@ -8,6 +8,7 @@ import { getI18nConfig, resolveConfiguredLocale } from "../i18n/config.js";
 import { isSiteRelativeDestination } from "../redirects/destination.js";
 import { isPattern, validateDestinationParams, validatePattern } from "../redirects/patterns.js";
 import { validateBlockFields } from "../schema/block-type-contract.js";
+import { INVALID_HEADING_LEVELS_MESSAGE, isValidHeadingLevels } from "../schema/heading-levels.js";
 import {
 	FIELD_TYPES,
 	isIndexableFieldType,
@@ -325,6 +326,15 @@ export function validateSeed(data: unknown): ValidationResult {
 
 						if (field.translatable !== undefined && typeof field.translatable !== "boolean") {
 							errors.push(`${fieldPrefix}.translatable: must be a boolean`);
+						}
+
+						if (
+							field.options?.headingLevels !== undefined &&
+							!isValidHeadingLevels(field.options.headingLevels)
+						) {
+							errors.push(
+								`${fieldPrefix}.options.headingLevels: ${INVALID_HEADING_LEVELS_MESSAGE}`,
+							);
 						}
 
 						if (!field.type) {

@@ -806,6 +806,80 @@ describe("FieldEditor", () => {
 		});
 	});
 
+	describe("heading levels option (rich text field)", () => {
+		const contentField = makeField({
+			slug: "content",
+			label: "Content",
+			type: "portableText",
+			required: false,
+			unique: false,
+			searchable: false,
+		});
+
+		const save = async (screen: Awaited<ReturnType<typeof render>>) => {
+			const button = screen.getByRole("button", { name: "Update Field" });
+			await expect.element(button).toBeEnabled();
+			button.element().click();
+		};
+
+		it("is absent for other field types", async () => {
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={makeField({ ...contentField, type: "text" })} />,
+			);
+
+			expect(screen.getByRole("checkbox", { name: "Heading 1" }).query()).toBeNull();
+		});
+
+		it("saves the remaining levels when one is unchecked", async () => {
+			const onSave = vi.fn();
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={contentField} onSave={onSave} />,
+			);
+
+			const h1 = screen.getByRole("checkbox", { name: "Heading 1" });
+			await expect.element(h1).toBeChecked();
+			h1.element().click();
+			await expect.element(h1).not.toBeChecked();
+			await save(screen);
+
+			expect(onSave).toHaveBeenCalledWith(
+				expect.objectContaining({ options: { headingLevels: [2, 3, 4, 5, 6] } }),
+			);
+		});
+
+		it("removes only the option when every level is checked again", async () => {
+			const onSave = vi.fn();
+			const field = makeField({
+				...contentField,
+				options: { rows: 4, headingLevels: [2, 3] },
+			});
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={field} onSave={onSave} />,
+			);
+
+			for (const level of [1, 4, 5, 6]) {
+				const checkbox = screen.getByRole("checkbox", { name: `Heading ${level}` });
+				await expect.element(checkbox).not.toBeChecked();
+				checkbox.element().click();
+				await expect.element(checkbox).toBeChecked();
+			}
+			await save(screen);
+
+			expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ options: { rows: 4 } }));
+		});
+
+		it("leaves the options untouched when the field never had any", async () => {
+			const onSave = vi.fn();
+			const screen = await renderInRouter(
+				<FieldEditor {...defaultProps} field={contentField} onSave={onSave} />,
+			);
+
+			await save(screen);
+
+			expect(onSave.mock.calls[0]![0]).not.toHaveProperty("options");
+		});
+	});
+
 	// ---- A new reference field ----
 
 	// The relationship comes first: it decides what the field points at, how

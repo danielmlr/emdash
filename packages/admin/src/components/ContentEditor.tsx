@@ -75,6 +75,7 @@ import {
 	ScheduleActions,
 } from "./ContentSettingsPanel.js";
 import { focusDocumentStart } from "./editor/BlockCommands.js";
+import { readHeadingLevels } from "./editor/headingLevelSettings.js";
 import { EditorDraftPatchPreview } from "./EditorDraftPatchPreview.js";
 import { ImageFieldRenderer, type ImageFieldValue } from "./ImageFieldRenderer.js";
 import { NonListFieldValue, isNonListValue } from "./NonListFieldValue.js";
@@ -2586,6 +2587,9 @@ function FieldRenderer({
 								"bg-kumo-control [--emdash-editor-surface:var(--color-kumo-control)] focus-within:ring-kumo-focus/50 focus-within:ring-[1.5px]",
 						)}
 						pluginBlocks={pluginBlocks}
+						headingLevels={readHeadingLevels(
+							Array.isArray(field.options) ? undefined : field.options?.headingLevels,
+						)}
 						onEditorReady={onEditorReady}
 						minimal={minimal}
 						onBlockSidebarOpen={onBlockSidebarOpen}

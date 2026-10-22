@@ -234,6 +234,8 @@ export interface FieldWidgetOptions {
 	darkVariant?: boolean; // For image: offer a second slot for a dark-color-scheme counterpart
 	collection?: string; // For reference - which collection to reference
 	allowMultiple?: boolean; // For reference
+	/** For portableText: the heading levels the editor offers. All six when absent. */
+	headingLevels?: Array<1 | 2 | 3 | 4 | 5 | 6>;
 	[key: string]: unknown;
 }
 

@@ -50,6 +50,12 @@ import { singularize } from "../lib/singularize.js";
 import { cn, slugifyIdentifier } from "../lib/utils";
 import { AllowedTypesEditor } from "./AllowedTypesEditor";
 import { DialogError } from "./DialogError";
+import type { HeadingLevel } from "./editor/HeadingDropdownMenu.js";
+import {
+	ALL_HEADING_LEVELS,
+	HEADING_LABELS,
+	readHeadingLevels,
+} from "./editor/headingLevelSettings.js";
 import {
 	RELATION_DIALOG_CLASS,
 	RELATION_DIALOG_STYLE,
@@ -187,6 +193,7 @@ interface FieldFormState {
 	targetCollection: string;
 	allowMultiple: boolean;
 	darkVariant: boolean;
+	headingLevels: readonly HeadingLevel[];
 	/** Relation slug to bind to, `""` for "create a new one" on an existing
 	 * field, or `CREATE_RELATION` for a new field on its way to making one. */
 	relation: string;
@@ -232,6 +239,7 @@ function getInitialFormState(field?: SchemaField): FieldFormState {
 			// both read a missing one as single, so the switch must not say otherwise.
 			allowMultiple: field.validation?.multiple ?? false,
 			darkVariant: field.options?.darkVariant === true,
+			headingLevels: readHeadingLevels(field.options?.headingLevels),
 			relation: field.validation?.relation ?? "",
 			relationSide: field.validation?.relationSide ?? "parent",
 			labelEdited: true,
@@ -261,6 +269,7 @@ function getInitialFormState(field?: SchemaField): FieldFormState {
 		targetCollection: "",
 		allowMultiple: false,
 		darkVariant: false,
+		headingLevels: ALL_HEADING_LEVELS,
 		relation: "",
 		relationSide: "parent",
 		labelEdited: false,
@@ -645,6 +654,15 @@ export function FieldEditor({
 			delete widgetOptions.darkVariant;
 			if (formState.darkVariant) widgetOptions.darkVariant = true;
 			input.options = widgetOptions;
+		}
+
+		if (selectedType === "portableText") {
+			const widgetOptions: Record<string, unknown> = { ...field?.options };
+			delete widgetOptions.headingLevels;
+			if (formState.headingLevels.length < ALL_HEADING_LEVELS.length) {
+				widgetOptions.headingLevels = formState.headingLevels;
+			}
+			if (field?.options || Object.keys(widgetOptions).length > 0) input.options = widgetOptions;
 		}
 
 		onSave(input);
@@ -1374,6 +1392,34 @@ export function FieldEditor({
 									{t`Editors can select a second image that the site shows in dark mode.`}
 								</p>
 							</div>
+						)}
+
+						{selectedType === "portableText" && (
+							<fieldset className="grid gap-2">
+								<legend className="mb-2 text-sm font-medium">{t`Heading levels`}</legend>
+								<div className="flex flex-wrap gap-x-4 gap-y-2">
+									{ALL_HEADING_LEVELS.map((level) => (
+										<Checkbox
+											key={level}
+											label={t(HEADING_LABELS[level])}
+											checked={formState.headingLevels.includes(level)}
+											onCheckedChange={(checked) =>
+												setField(
+													"headingLevels",
+													ALL_HEADING_LEVELS.filter((candidate) =>
+														candidate === level
+															? checked
+															: formState.headingLevels.includes(candidate),
+													),
+												)
+											}
+										/>
+									))}
+								</div>
+								<p className="text-xs text-kumo-subtle">
+									{t`Editors can only add the checked levels in this field. Headings already in the content keep their level.`}
+								</p>
+							</fieldset>
 						)}
 					</div>
 				)}

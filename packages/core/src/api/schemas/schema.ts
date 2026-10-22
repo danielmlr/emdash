@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+	INVALID_HEADING_LEVELS_MESSAGE,
+	isValidHeadingLevels,
+} from "../../schema/heading-levels.js";
+import {
 	MAX_COLLECTION_GROUP_LENGTH,
 	MAX_COLLECTION_ICON_LENGTH,
 	MAX_COLLECTION_LIST_COLUMNS,
@@ -162,7 +166,18 @@ const fieldValidation = z
 	})
 	.optional();
 
-const fieldWidgetOptions = z.record(z.string(), z.unknown()).optional();
+const fieldWidgetOptions = z
+	.record(z.string(), z.unknown())
+	.superRefine((options, ctx) => {
+		if (options.headingLevels !== undefined && !isValidHeadingLevels(options.headingLevels)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["headingLevels"],
+				message: INVALID_HEADING_LEVELS_MESSAGE,
+			});
+		}
+	})
+	.optional();
 
 /** Admin sidebar folder label; an empty string clears it like `null`. */
 const navGroupValue = z.string().trim().max(MAX_COLLECTION_GROUP_LENGTH);

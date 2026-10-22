@@ -287,6 +287,56 @@ describe("validateSeed", () => {
 			expect(result.errors).toContain("collections[0].fields[0].indexed: must be a boolean");
 		});
 
+		it("should reject malformed heading levels on a field", () => {
+			for (const headingLevels of [[1, 7], [2, 2], "2,3", [2.5]]) {
+				const result = validateSeed({
+					version: "1",
+					collections: [
+						{
+							slug: "posts",
+							label: "Posts",
+							fields: [
+								{
+									slug: "content",
+									label: "Content",
+									type: "portableText",
+									options: { headingLevels },
+								},
+							],
+						},
+					],
+				});
+
+				expect(result.errors).toContain(
+					"collections[0].fields[0].options.headingLevels: must be a list of distinct heading levels from 1 to 6",
+				);
+			}
+		});
+
+		it("should accept valid heading levels, including none", () => {
+			for (const headingLevels of [[2, 3, 4], []]) {
+				const result = validateSeed({
+					version: "1",
+					collections: [
+						{
+							slug: "posts",
+							label: "Posts",
+							fields: [
+								{
+									slug: "content",
+									label: "Content",
+									type: "portableText",
+									options: { headingLevels },
+								},
+							],
+						},
+					],
+				});
+
+				expect(result.valid).toBe(true);
+			}
+		});
+
 		it("should accept indexed false for non-indexable fields", () => {
 			const result = validateSeed({
 				version: "1",

@@ -43,6 +43,7 @@ import type { FieldSchema } from "../client/portable-text.js";
 import { decodeCursor, InvalidCursorError } from "../database/repositories/types.js";
 import { resolveConfiguredLocale } from "../i18n/config.js";
 import type { RouteCallerInput } from "../plugins/routes.js";
+import { INVALID_HEADING_LEVELS_MESSAGE, isValidHeadingLevels } from "../schema/heading-levels.js";
 import {
 	TRANSFER_SCOPES,
 	type TransferApprovalAction,
@@ -303,7 +304,9 @@ const schemaUpdateFieldToolSchema = z.object({
 		"Validation constraints; pass null to clear existing constraints",
 	),
 	widget: updateFieldBody.shape.widget.describe("Admin editor widget name"),
-	options: updateFieldBody.shape.options.describe("Widget configuration"),
+	options: updateFieldBody.shape.options.describe(
+		"Widget configuration. For portableText fields, headingLevels (e.g. [2, 3, 4]) limits the heading levels the editor offers; omit it for all six, [] turns headings off",
+	),
 	sortOrder: updateFieldBody.shape.sortOrder.describe("Field order in the content editor"),
 	searchable: updateFieldBody.shape.searchable.describe(
 		"Whether full-text search indexes the field",
@@ -2570,6 +2573,13 @@ export function createMcpServer(
 							.optional()
 							.describe("Target collection slug for reference fields"),
 						rows: z.number().optional().describe("Number of rows for textarea"),
+						headingLevels: z
+							.array(z.number().int().min(1).max(6))
+							.refine(isValidHeadingLevels, INVALID_HEADING_LEVELS_MESSAGE)
+							.optional()
+							.describe(
+								"Heading levels the editor offers for portableText fields, e.g. [2, 3, 4]. Omit for all six; [] turns headings off",
+							),
 					})
 					.loose()
 					.optional()

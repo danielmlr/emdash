@@ -102,7 +102,14 @@ import {
 } from "@phosphor-icons/react";
 import { X } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Extension, InputRule, Mark, type EditorEvents, type Range } from "@tiptap/core";
+import {
+	Extension,
+	InputRule,
+	Mark,
+	textblockTypeInputRule,
+	type EditorEvents,
+	type Range,
+} from "@tiptap/core";
 import CharacterCount from "@tiptap/extension-character-count";
 import Focus from "@tiptap/extension-focus";
 import { isAllowedUri } from "@tiptap/extension-link";
@@ -187,7 +194,13 @@ import {
 import { TopBlockDocument } from "./editor/EmbedBlockShell";
 import { mediaItemToGalleryImage } from "./editor/GalleryDetailPanel";
 import { GalleryExtension, type GalleryImage } from "./editor/GalleryNode";
-import { HeadingDropdownMenu } from "./editor/HeadingDropdownMenu";
+import { HeadingDropdownMenu, type HeadingLevel } from "./editor/HeadingDropdownMenu";
+import {
+	ALL_HEADING_LEVELS,
+	HeadingLevels,
+	allowedHeadingLevels,
+	mapHeadingsInContent,
+} from "./editor/headingLevels.js";
 import { HtmlBlockExtension } from "./editor/HtmlBlockNode";
 import { iframeEmbedFromAttrs, isBuiltInIframeBlock } from "./editor/iframe-embed";
 import { IframeBlockExtension } from "./editor/IframeBlockNode";
@@ -508,6 +521,24 @@ const PortableTextStarterKit = StarterKit.extend({
 	addExtensions() {
 		return (this.parent?.() ?? []).map((extension) => {
 			if (extension.name === "blockquote") return extension.extend({ content: "paragraph+" });
+			if (extension.name === "heading") {
+				return extension.extend({
+					addInputRules() {
+						return ALL_HEADING_LEVELS.map((level) => {
+							const rule = textblockTypeInputRule({
+								find: new RegExp(`^(#{${level}})\\s$`),
+								type: this.type!,
+								getAttributes: { level },
+							});
+							return new InputRule({
+								find: rule.find,
+								handler: (props) =>
+									allowedHeadingLevels(this.editor).includes(level) ? rule.handler(props) : null,
+							});
+						});
+					},
+				});
+			}
 			if (extension.name === "listItem") {
 				return extension.extend({ content: "paragraph (paragraph | bulletList | orderedList)*" });
 			}
@@ -2006,6 +2037,7 @@ function insertHtmlBlock(editor: Editor, range?: Range, position?: number) {
 }
 
 const BASIC_BLOCKS_CATEGORY = msg`Basic blocks`;
+const HEADING_COMMAND_LEVELS = new Set(ALL_HEADING_LEVELS.map((level) => `heading${level}`));
 const MEDIA_CATEGORY = msg`Media`;
 const ADVANCED_CATEGORY = msg`Advanced`;
 const EMBEDS_CATEGORY = msg`Embeds`;
@@ -3450,6 +3482,11 @@ export interface PortableTextEditorProps {
 	 * host can move focus to the field above, such as the page title.
 	 */
 	onArrowUpAtStart?: () => void;
+	/**
+	 * Heading levels editors can create. Headings already in the content keep
+	 * their level. Defaults to all six.
+	 */
+	headingLevels?: readonly HeadingLevel[];
 }
 
 // For external providers, src is only used for admin preview; the frontend Image
@@ -3485,8 +3522,12 @@ export function PortableTextEditor({
 	onBlockSidebarClose,
 	variant = "boxed",
 	onArrowUpAtStart,
+	headingLevels = ALL_HEADING_LEVELS,
 }: PortableTextEditorProps) {
 	const { t } = useLingui();
+	const headingLevelsRef = React.useRef(headingLevels);
+	headingLevelsRef.current = headingLevels;
+	const headingLevelsKey = headingLevels.join();
 	const onArrowUpAtStartRef = React.useRef(onArrowUpAtStart);
 	onArrowUpAtStartRef.current = onArrowUpAtStart;
 	const isDocument = variant === "document";
@@ -3679,7 +3720,11 @@ export function PortableTextEditor({
 			},
 		});
 
-		const cmds: SlashCommandItem[] = [...defaultSlashCommands];
+		const cmds: SlashCommandItem[] = defaultSlashCommands.filter(
+			(item) =>
+				!HEADING_COMMAND_LEVELS.has(item.id) ||
+				headingLevelsRef.current.some((level) => `heading${level}` === item.id),
+		);
 		cmds.push(
 			{
 				id: "image",
@@ -3761,7 +3806,7 @@ export function PortableTextEditor({
 		}
 
 		return cmds;
-	}, [pluginBlockTypes, pluginBlocks, t]);
+	}, [pluginBlockTypes, pluginBlocks, t, headingLevelsKey]);
 
 	// Filter commands by query — accessed via ref so the Suggestion plugin
 	// (created once) always sees the latest command list without needing
@@ -3906,6 +3951,7 @@ export function PortableTextEditor({
 				underline: {},
 			}),
 			TopBlockDocument,
+			HeadingLevels.configure({ getLevels: () => headingLevelsRef.current }),
 			EmDashOrderedList,
 			CodeMarkExtension,
 			CodeBlockExtension,
@@ -4463,6 +4509,7 @@ export function PortableTextEditor({
 			let prosemirrorContent: unknown[];
 			try {
 				({ content: prosemirrorContent } = portableTextToProsemirror(ptContent, pluginBlockTypes));
+				prosemirrorContent = mapHeadingsInContent(editor, prosemirrorContent);
 			} catch (error) {
 				if (error instanceof UnsupportedPortableTextMarksError) {
 					setSectionInsertErrorMarks(error.marks);
@@ -5225,7 +5272,7 @@ function TurnIntoMenu({
 							}
 						>
 							<EditorMenuLabel>{t`Turn into`}</EditorMenuLabel>
-							{turnIntoMenuTypes(activeId).map((type) => (
+							{turnIntoMenuTypes(activeId, allowedHeadingLevels(editor)).map((type) => (
 								<EditorMenuRadioItem
 									key={type.id}
 									value={type.id}
@@ -6077,6 +6124,8 @@ const BlockFormatShortcuts = Extension.create({
 			if (canTurnInto(this.editor)) toggleTextBlockType(this.editor, id);
 			return true;
 		};
+		const heading = (level: HeadingLevel) => () =>
+			allowedHeadingLevels(this.editor).includes(level) ? convert(`heading${level}`)() : true;
 		const setAlignment = (alignment: TextAlignment) => {
 			setSelectionTextAlignment(this.editor, alignment);
 			return true;
@@ -6096,12 +6145,12 @@ const BlockFormatShortcuts = Extension.create({
 			"Shift-Backspace": backspaceToText,
 			"Mod-Backspace": backspaceToText,
 			"Alt-Backspace": backspaceToText,
-			"Mod-Alt-1": convert("heading1"),
-			"Mod-Alt-2": convert("heading2"),
-			"Mod-Alt-3": convert("heading3"),
-			"Mod-Alt-4": convert("heading4"),
-			"Mod-Alt-5": convert("heading5"),
-			"Mod-Alt-6": convert("heading6"),
+			"Mod-Alt-1": heading(1),
+			"Mod-Alt-2": heading(2),
+			"Mod-Alt-3": heading(3),
+			"Mod-Alt-4": heading(4),
+			"Mod-Alt-5": heading(5),
+			"Mod-Alt-6": heading(6),
 			"Mod-Shift-7": convert("orderedList"),
 			"Mod-Shift-8": convert("bulletList"),
 			"Mod-Shift-b": convert("blockquote"),
@@ -6142,6 +6191,7 @@ function EditorToolbar({
 	variant: NonNullable<PortableTextEditorProps["variant"]>;
 }) {
 	const { t } = useLingui();
+	const headingLevels = allowedHeadingLevels(editor);
 	const [showLinkPopover, setShowLinkPopover] = React.useState(false);
 	const [linkUrl, setLinkUrl] = React.useState("");
 	const [linkInvalid, setLinkInvalid] = React.useState(false);
@@ -6358,15 +6408,20 @@ function EditorToolbar({
 			<ToolbarSeparator />
 
 			{/* Headings */}
-			<ToolbarGroup>
-				<HeadingDropdownMenu
-					editor={editor}
-					className={toolbarButtonClassName}
-					activeClassName={toolbarActiveClassName}
-				/>
-			</ToolbarGroup>
+			{headingLevels.length > 0 && (
+				<>
+					<ToolbarGroup>
+						<HeadingDropdownMenu
+							editor={editor}
+							levels={headingLevels}
+							className={toolbarButtonClassName}
+							activeClassName={toolbarActiveClassName}
+						/>
+					</ToolbarGroup>
 
-			<ToolbarSeparator />
+					<ToolbarSeparator />
+				</>
+			)}
 
 			{/* Lists and blocks */}
 			<ToolbarGroup>

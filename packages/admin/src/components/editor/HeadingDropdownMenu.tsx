@@ -1,6 +1,4 @@
 import { Button, DropdownMenu, Tooltip } from "@cloudflare/kumo";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import {
 	CaretDown,
@@ -19,6 +17,7 @@ import * as React from "react";
 
 import { cn } from "../../lib/utils.js";
 import { canTurnInto, toggleTextBlockType } from "./blockTypes.js";
+import { HEADING_LABELS } from "./headingLevelSettings.js";
 
 /**
  * TipTap's heading-dropdown-menu API adapted to EmDash's Kumo primitives.
@@ -28,15 +27,6 @@ import { canTurnInto, toggleTextBlockType } from "./blockTypes.js";
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 const DEFAULT_LEVELS: readonly HeadingLevel[] = [1, 2, 3, 4, 5, 6];
-
-const HEADING_LABELS: Record<HeadingLevel, MessageDescriptor> = {
-	1: msg`Heading 1`,
-	2: msg`Heading 2`,
-	3: msg`Heading 3`,
-	4: msg`Heading 4`,
-	5: msg`Heading 5`,
-	6: msg`Heading 6`,
-};
 
 const HEADING_ICONS: Record<HeadingLevel, Icon> = {
 	1: TextHOne,
@@ -78,7 +68,8 @@ export function useHeadingDropdownMenu(config: UseHeadingDropdownMenuConfig = {}
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: currentEditor }) => {
-			const activeLevel = getActiveHeadingLevel(currentEditor, levels);
+			// A heading the field no longer allows still shows as the current level, so it can be changed.
+			const activeLevel = getActiveHeadingLevel(currentEditor);
 			const canToggle = canToggleHeading(currentEditor);
 			return {
 				activeLevel,
@@ -90,13 +81,17 @@ export function useHeadingDropdownMenu(config: UseHeadingDropdownMenuConfig = {}
 	});
 
 	const activeLevel = state?.activeLevel;
+	const shownLevels =
+		activeLevel === undefined || levels.includes(activeLevel)
+			? levels
+			: DEFAULT_LEVELS.filter((level) => level === activeLevel || levels.includes(level));
 
 	return {
 		isVisible: state?.isVisible ?? !hideWhenUnavailable,
 		activeLevel,
 		isActive: state?.isActive ?? false,
 		canToggle: state?.canToggle ?? false,
-		levels,
+		levels: shownLevels,
 		Icon: activeLevel ? HEADING_ICONS[activeLevel] : TextH,
 	};
 }
@@ -122,7 +117,14 @@ export const HeadingDropdownMenu = React.forwardRef<HTMLButtonElement, HeadingDr
 	) {
 		const { t } = useLingui();
 		const [open, setOpen] = React.useState(false);
-		const { isVisible, activeLevel, isActive, canToggle, Icon } = useHeadingDropdownMenu({
+		const {
+			isVisible,
+			activeLevel,
+			isActive,
+			canToggle,
+			Icon,
+			levels: shownLevels,
+		} = useHeadingDropdownMenu({
 			editor,
 			levels,
 			hideWhenUnavailable,
@@ -171,7 +173,7 @@ export const HeadingDropdownMenu = React.forwardRef<HTMLButtonElement, HeadingDr
 					}
 				/>
 				<DropdownMenu.Content align="start" className="min-w-44">
-					{levels.map((level) => {
+					{shownLevels.map((level) => {
 						const HeadingIcon = HEADING_ICONS[level];
 						return (
 							<DropdownMenu.Item

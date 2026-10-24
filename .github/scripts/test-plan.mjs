@@ -26,6 +26,7 @@ const REPOSITORY_METADATA_PATTERN =
 const UNIT_PACKAGE_PATH_PATTERN =
 	/^packages\/(?:blocks|gutenberg-to-portable-text|plugin-(?:cli|types)|registry-(?:client|lexicons|moderation|verification))\//;
 
+const CLOUDFLARE_TEMPLATE_PATH_PATTERN = /^templates\/[^/]+-cloudflare\//;
 const TABLE_E2E_PATH_PATTERN = /^e2e\/tests\/.*(?:table|data-grid).*\.(?:spec|test)\.[cm]?[jt]sx?$/;
 const LINE_BREAK_PATTERN = /\r?\n/;
 
@@ -200,6 +201,13 @@ const RULES = [
 		],
 	},
 	{
+		name: "Cloudflare project templates",
+		matches: (path) => CLOUDFLARE_TEMPLATE_PATH_PATTERN.test(path),
+		lanes: ["unit", "smoke", "integration", "e2e_node", "e2e_cloudflare", "query_counts"],
+		// The @emdash-cms/cloudflare tests load these templates' Astro configs.
+		unitPackages: ["@emdash-cms/cloudflare"],
+	},
+	{
 		name: "project templates",
 		matches: (path) => path.startsWith("templates/") || path.startsWith("assets/templates/"),
 		lanes: ["smoke", "integration", "e2e_node", "e2e_cloudflare", "query_counts"],
@@ -335,6 +343,7 @@ export function createTestPlan(inputPaths) {
 		for (const lane of rule.lanes) selected.add(lane);
 		if (rule.unitMode === "full") unitMode = "full";
 		if (CORE_UNIT_DEPENDENCIES.some((prefix) => path.startsWith(prefix))) unitMode = "full";
+		for (const packageName of rule.unitPackages ?? []) unitPackages.add(packageName);
 		for (const [prefix, packageName] of UNIT_PACKAGE_BY_PATH) {
 			if (path.startsWith(prefix)) unitPackages.add(packageName);
 		}

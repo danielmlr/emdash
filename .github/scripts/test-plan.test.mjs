@@ -237,6 +237,15 @@ describe("test plan", () => {
 		assert.equal(plan.unit, false);
 	});
 
+	it("runs the Cloudflare package tests for Cloudflare templates", () => {
+		const plan = createTestPlan(["templates/blog-cloudflare/astro.config.mjs"]);
+
+		assert.equal(plan.unit, true);
+		assert.equal(plan.unit_mode, "focused");
+		assert.deepEqual(plan.unit_packages, ["@emdash-cms/cloudflare"]);
+		assert.equal(plan.e2e_cloudflare, true);
+	});
+
 	it("fails closed for unknown paths", () => {
 		const plan = createTestPlan(["future-system/src/index.ts"]);
 

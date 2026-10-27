@@ -41,8 +41,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Test Maintainer review status
-        run: node --test .github/scripts/approval.test.mjs
+      - name: Test the workflow scripts
+        run: node --test .github/scripts/approval.test.mjs .github/scripts/e2e-shard.test.mjs
       - name: Select tests for this change
         id: plan
         env:
@@ -467,7 +467,6 @@ jobs:
           E2E_CLOUDFLARE: ${{ needs.change-plan.outputs.e2e_cloudflare }}
           SHARD: ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         run: |
-          node --test .github/scripts/e2e-shard.test.mjs
           target=both
           if [ "$E2E_CLOUDFLARE" != true ]; then target=node; fi
           if [ "$E2E_NODE" != true ]; then target=cloudflare; fi

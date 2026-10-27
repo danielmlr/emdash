@@ -87,26 +87,28 @@ function sumDurations(suite, totals) {
 
 /**
  * Seconds per spec file and target from Playwright JSON reports of test runs,
- * merged over the previous times. A spec file or target the reports don't
- * cover keeps its previous values, so a partial download can't erase the rest;
- * a stale entry costs nothing because Playwright's list decides which files
- * exist.
+ * averaged over the reports that ran the file and merged over the previous
+ * times. A spec file or target the reports don't cover keeps its previous
+ * values, so a partial download can't erase the rest; a stale entry costs
+ * nothing because Playwright's list decides which files exist.
  */
 export function recordTimes(reports, previous = {}) {
-	const measured = {};
+	const samples = {};
 	for (const { target, report } of reports) {
 		for (const suite of report.suites) {
 			const totals = { seconds: 0 };
 			sumDurations(suite, totals);
-			measured[suite.file] ??= {};
-			measured[suite.file][target] = (measured[suite.file][target] ?? 0) + totals.seconds;
+			((samples[suite.file] ??= {})[target] ??= []).push(totals.seconds);
 		}
 	}
 	const times = {};
-	for (const name of Object.keys({ ...previous, ...measured }).toSorted(byName)) {
+	for (const name of Object.keys({ ...previous, ...samples }).toSorted(byName)) {
 		times[name] = {};
 		for (const target of TARGETS) {
-			const seconds = measured[name]?.[target] ?? previous[name]?.[target];
+			const measured = samples[name]?.[target];
+			const seconds = measured
+				? measured.reduce((sum, value) => sum + value, 0) / measured.length
+				: previous[name]?.[target];
 			if (Number.isFinite(seconds)) times[name][target] = Math.max(1, Math.round(seconds));
 		}
 	}

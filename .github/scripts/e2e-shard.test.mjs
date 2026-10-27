@@ -104,20 +104,20 @@ describe("e2e shards", () => {
 		]);
 	});
 
-	it("sums every result of a run report into whole seconds per target", () => {
+	it("records a file's whole seconds per target, averaged over the reports that ran it", () => {
 		const previous = {
 			"kept.spec.ts": { node: 5, cloudflare: 6 },
 			"unseen.spec.ts": { node: 5, cloudflare: 6 },
 		};
 		const reports = [
 			{ target: "node", report: runReport({ "kept.spec.ts": [1500, 2600], "new.spec.ts": [100] }) },
-			{ target: "node", report: runReport({ "late.spec.ts": [30000] }) },
+			{ target: "node", report: runReport({ "kept.spec.ts": [5900], "late.spec.ts": [30000] }) },
 		];
 
 		const times = recordTimes(reports, previous);
 
 		assert.deepEqual(times, {
-			"kept.spec.ts": { node: 4, cloudflare: 6 },
+			"kept.spec.ts": { node: 5, cloudflare: 6 },
 			"late.spec.ts": { node: 30 },
 			"new.spec.ts": { node: 1 },
 			"unseen.spec.ts": { node: 5, cloudflare: 6 },

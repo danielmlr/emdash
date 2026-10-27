@@ -1,3 +1,4 @@
+# Measurement baseline run on the fork; not for merging.
 name: CI
 
 on:

@@ -297,6 +297,10 @@ test.describe("Inline Editor", () => {
 			if (f === page.mainFrame()) console.log(`[nav +${Date.now() - t0}ms] ${f.url()}`);
 		});
 		page.on("console", (m) => console.log(`[console +${Date.now() - t0}ms] ${m.type()} ${m.text()}`));
+		page.on("frameattached", (f) => console.log(`[frameattached +${Date.now() - t0}ms] ${f.url()}`));
+		page.on("framedetached", (f) => console.log(`[framedetached +${Date.now() - t0}ms] ${f.url()}`));
+		page.on("pageerror", (e) => console.log(`[pageerror +${Date.now() - t0}ms] ${e.stack ?? e.message}`));
+		page.on("crash", () => console.log(`[crash +${Date.now() - t0}ms]`));
 		page.on("request", (r) => {
 			if (r.isNavigationRequest()) console.log(`[navreq +${Date.now() - t0}ms] ${r.method()} ${r.url()}`);
 		});

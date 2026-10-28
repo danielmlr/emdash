@@ -28,12 +28,14 @@ jobs:
       - name: Run shard 7's files
         continue-on-error: true
         env:
-          DEBUG: "1"
+          DEBUG: "pw:protocol"
         run: |
           set -o pipefail
           pnpm exec playwright test e2e/tests/settings-pages.spec.ts e2e/tests/setup-wizard.spec.ts \
             e2e/tests/site-transfer.spec.ts e2e/tests/theme-marketplace.spec.ts e2e/tests/visual-editing.spec.ts \
-            --retries=0 --reporter=line 2>&1 | tee e2e-repro.log
+            --retries=0 --reporter=line 2>&1 \
+            | awk '!/pw:protocol/ || /"error":\{/ || /executionContextDestroyed|executionContextsCleared|targetCrashed|detachedFromTarget/' \
+            | tee e2e-repro.log
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

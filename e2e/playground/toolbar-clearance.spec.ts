@@ -33,3 +33,7 @@ test("lets the end of the page scroll clear of the toolbar", async ({ page }) =>
 	await darkTheme.click();
 	await expect(page.locator("html")).toHaveClass(DARK_CLASS);
 });
+
+test("fails on purpose to check the Tests lane", () => {
+	expect(1).toBe(2);
+});

@@ -15,6 +15,8 @@ name: Visual Regression
 # commits the correct Linux baselines for them.
 
 on:
+  push:
+    branches: [ci-check/playwright-1-64]
   pull_request:
     branches: [main]
     paths:

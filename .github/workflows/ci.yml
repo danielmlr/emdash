@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-check/playwright-1-64]
   pull_request:
   merge_group:
 

@@ -1,0 +1,38 @@
+name: 320px repro (fork only)
+on:
+  push:
+    branches: [flake-repro/320-with-4320]
+permissions:
+  contents: read
+jobs:
+  repro:
+    name: 320px x10 (${{ matrix.rep }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        rep: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run --filter "emdash-e2e-fixture..." build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run the 320 px test ten times
+        continue-on-error: true
+        run: |
+          pnpm exec playwright --version
+          pnpm exec playwright test e2e/tests/content-actions.spec.ts -g "320-pixel" --repeat-each=10 --retries=0 --reporter=line 2>&1 | tee e2e-320.log
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: repro-320-${{ matrix.rep }}
+          path: e2e-320.log
+          retention-days: 7

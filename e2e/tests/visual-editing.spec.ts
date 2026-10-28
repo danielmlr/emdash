@@ -292,6 +292,14 @@ test.describe("Image Rendering (Static)", () => {
 
 test.describe("Inline Editor", () => {
 	test.beforeEach(async ({ page }) => {
+		const t0 = Date.now();
+		page.on("framenavigated", (f) => {
+			if (f === page.mainFrame()) console.log(`[nav +${Date.now() - t0}ms] ${f.url()}`);
+		});
+		page.on("console", (m) => console.log(`[console +${Date.now() - t0}ms] ${m.type()} ${m.text()}`));
+		page.on("request", (r) => {
+			if (r.isNavigationRequest()) console.log(`[navreq +${Date.now() - t0}ms] ${r.method()} ${r.url()}`);
+		});
 		await enableEditMode(page);
 	});
 

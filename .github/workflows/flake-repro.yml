@@ -38,13 +38,11 @@ jobs:
         continue-on-error: true
         env:
           EMDASH_E2E_TARGET: cloudflare
-          DEBUG: "pw:protocol"
         run: |
           set -o pipefail
-          filter() { awk '!/pw:protocol/ || /"error":\{/'; }
           status=0
-          pnpm exec playwright test e2e/tests/content-actions.spec.ts -g "320-pixel viewport" --repeat-each 20 \
-            --retries=0 --trace on --reporter=line 2>&1 | filter | tee -a e2e-repro.log || status=1
+          pnpm exec playwright test e2e/tests/content-actions.spec.ts -g "320-pixel viewport" --repeat-each 15 \
+            --retries=0 --trace on --reporter=line 2>&1 | tee -a e2e-repro.log || status=1
           exit $status
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

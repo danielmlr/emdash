@@ -15,3 +15,7 @@ describe("formatAdminVersion", () => {
 		expect(formatAdminVersion("1.2.3", undefined, false)).toBe("v1.2.3");
 	});
 });
+
+it("fails on purpose to check the Tests lane", () => {
+	expect(1).toBe(2);
+});

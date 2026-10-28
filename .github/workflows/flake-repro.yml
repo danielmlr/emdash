@@ -1,0 +1,56 @@
+name: Flake repro (fork only)
+on:
+  push:
+    branches: [flake-repro/320-sheet]
+permissions:
+  contents: read
+jobs:
+  repro:
+    name: ${{ matrix.variant }} (${{ matrix.rep }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [main, pr-4320]
+        rep: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - if: matrix.variant == 'pr-4320'
+        run: git apply .github/flake-repro/pr-4320.diff && git diff --stat
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run --filter "emdash-e2e-fixture-cloudflare..." build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run the 320 px test (Cloudflare target)
+        continue-on-error: true
+        env:
+          EMDASH_E2E_TARGET: cloudflare
+          DEBUG: "pw:protocol"
+        run: |
+          set -o pipefail
+          filter() { awk '!/pw:protocol/ || /"error":\{/'; }
+          status=0
+          for pass in 1 2; do
+            echo "=== pass $pass: whole file" | tee -a e2e-repro.log
+            pnpm exec playwright test e2e/tests/content-actions.spec.ts --retries=0 --reporter=line 2>&1 \
+              | filter | tee -a e2e-repro.log || status=1
+          done
+          echo "=== pass 3: test alone x15" | tee -a e2e-repro.log
+          pnpm exec playwright test e2e/tests/content-actions.spec.ts -g "320-pixel viewport" --repeat-each 15 \
+            --retries=0 --reporter=line 2>&1 | filter | tee -a e2e-repro.log || status=1
+          exit $status
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: repro-${{ matrix.variant }}-${{ matrix.rep }}
+          path: |
+            e2e-repro.log
+            test-results/
+          retention-days: 7

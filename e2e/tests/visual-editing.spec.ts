@@ -513,36 +513,16 @@ test.describe("Inline Editor", () => {
 		await turnInto.click();
 		await expect(menu).toBeVisible();
 		// Closes the menu, then opens it again a task later, while it fades out.
-		try {
-			await turnInto.evaluate(async (trigger: HTMLElement) => {
-				const w = window as unknown as { __fade: Record<string, unknown> };
-				const status = () => document.querySelector('[role="menu"]')?.getAttribute("data-status") ?? "none";
-				w.__fade = { start: performance.now(), before: status() };
+		await turnInto.evaluate((trigger: HTMLElement) => {
+			trigger.click();
+			setTimeout(() => {
 				trigger.click();
-				w.__fade.afterFirst = status();
-				await new Promise((resolve) =>
-					setTimeout(() => {
-						w.__fade.timer = performance.now();
-						resolve(undefined);
-					}, 0),
-				);
-				w.__fade.resumed = performance.now();
-				trigger.click();
-				w.__fade.afterSecond = status();
-				w.__fade.end = performance.now();
-			});
-		} catch (error) {
-			const state = await page
-				.evaluate(() => ({
-					fade: (window as unknown as { __fade?: unknown }).__fade,
-					now: performance.now(),
-					menu: document.querySelector('[role="menu"]')?.getAttribute("data-status") ?? "none",
-					visibility: document.visibilityState,
-				}))
-				.catch((e: Error) => `state read failed: ${e.message}`);
-			console.log(`[fade-state] ${JSON.stringify(state)}`);
-			throw error;
-		}
+				(window as unknown as { __reopened: boolean }).__reopened = true;
+			}, 0);
+		});
+		await expect
+			.poll(() => page.evaluate(() => (window as unknown as { __reopened?: boolean }).__reopened))
+			.toBe(true);
 		await expect(menu).toBeVisible();
 		await expect(menu).toHaveAttribute("data-status", "open");
 	});

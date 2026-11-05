@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-check/e2e-shard-split]
   pull_request:
   merge_group:
 

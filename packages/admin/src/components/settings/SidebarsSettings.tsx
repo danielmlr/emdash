@@ -11,6 +11,7 @@ import { useAdminLayoutEditor } from "../../lib/api/admin-layout.js";
 import { fetchManifest } from "../../lib/api/client.js";
 import { useCurrentUser } from "../../lib/api/current-user.js";
 import { listEditorSections } from "../../lib/editor-sections.js";
+import { useCan } from "../../lib/permissions.js";
 import { usePluginAdmins } from "../../lib/plugin-context.js";
 import { buildNavGroups, declaredLabelTranslator } from "../Sidebar.js";
 import { LayoutList, type LayoutRowItem } from "./LayoutList.js";
@@ -32,11 +33,12 @@ export function SidebarsSettings({ tab }: SidebarsSettingsProps) {
 	const toastManager = useKumoToastManager();
 	const pluginAdmins = usePluginAdmins();
 	const role = useCurrentUser().data?.role ?? 0;
+	const { can } = useCan();
 	const { data: manifest } = useQuery({ queryKey: ["manifest"], queryFn: fetchManifest });
 
 	const navGroups = React.useMemo(
-		() => (manifest ? buildNavGroups({ manifest, pluginAdmins, role, i18n, translate }) : []),
-		[manifest, pluginAdmins, role, i18n, translate],
+		() => (manifest ? buildNavGroups({ manifest, pluginAdmins, can, i18n, translate }) : []),
+		[manifest, pluginAdmins, can, i18n, translate],
 	);
 	const editorSections = React.useMemo((): LayoutRowItem[] => {
 		if (!manifest) return [];

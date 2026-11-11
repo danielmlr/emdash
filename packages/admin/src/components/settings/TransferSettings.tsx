@@ -15,26 +15,26 @@ import {
 	fetchTransferCapabilities,
 	TRANSFER_CAPABILITIES_QUERY_KEY,
 } from "../../lib/api/transfer.js";
+import { useCan } from "../../lib/permissions.js";
 import { getMutationError } from "../DialogError.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
 import { ApprovalsSection } from "./transfer/ApprovalsSection.js";
 import { ExportSection } from "./transfer/ExportSection.js";
 import { ImportSection } from "./transfer/ImportSection.js";
 
-const ROLE_ADMIN = 50;
-
 export function TransferSettings({ focusImport = false }: { focusImport?: boolean }) {
 	const { t } = useLingui();
 	const importRef = React.useRef<HTMLDivElement>(null);
-	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-	const isAdmin = !!currentUser && currentUser.role >= ROLE_ADMIN;
+	const { isLoading: userLoading } = useCurrentUser();
+	const { can } = useCan();
+	const canTransfer = can("transfer:export") || can("transfer:import");
 	const capabilitiesQuery = useQuery({
 		queryKey: TRANSFER_CAPABILITIES_QUERY_KEY,
 		queryFn: fetchTransferCapabilities,
-		enabled: isAdmin,
+		enabled: canTransfer,
 	});
 
-	const ready = isAdmin && !!capabilitiesQuery.data;
+	const ready = canTransfer && !!capabilitiesQuery.data;
 	React.useEffect(() => {
 		if (!focusImport || !ready) return;
 		const target = importRef.current;
@@ -46,7 +46,7 @@ export function TransferSettings({ focusImport = false }: { focusImport?: boolea
 	const title = t`Transfer`;
 	const description = t`Move this site to another EmDash installation, or import a site package into this one.`;
 
-	if (userLoading || (isAdmin && capabilitiesQuery.isPending)) {
+	if (userLoading || (canTransfer && capabilitiesQuery.isPending)) {
 		return (
 			<SettingsFrame title={title} description={description}>
 				<div
@@ -60,7 +60,7 @@ export function TransferSettings({ focusImport = false }: { focusImport?: boolea
 		);
 	}
 
-	if (!isAdmin) {
+	if (!canTransfer) {
 		return (
 			<SettingsFrame title={title} description={description}>
 				<Banner

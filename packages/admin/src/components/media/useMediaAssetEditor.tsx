@@ -11,10 +11,9 @@ import {
 } from "../../lib/api.js";
 import { useCurrentUser } from "../../lib/api/current-user.js";
 import { localMediaFileUrl } from "../../lib/media-utils.js";
+import { canActOnOwn } from "../../lib/permissions.js";
 import { MediaDetailPanel } from "../MediaDetailPanel.js";
 
-const ROLE_AUTHOR = 30;
-const ROLE_EDITOR = 40;
 const EMPTY_ITEM: MediaItem = {
 	id: "",
 	filename: "",
@@ -66,9 +65,7 @@ export function useMediaAssetEditor(
 						url: localMediaFileUrl(fetchedMedia.storageKey),
 					};
 			const user = userResult.data;
-			const canEdit =
-				user &&
-				(user.role >= ROLE_EDITOR || (user.role >= ROLE_AUTHOR && media.authorId === user.id));
+			const canEdit = canActOnOwn(user, media.authorId, "media:edit_own", "media:edit_any");
 			if (!media.mimeType.startsWith("image/") || !canEdit) {
 				setError(t`You do not have permission to edit this asset.`);
 				return;

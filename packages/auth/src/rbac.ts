@@ -174,6 +174,15 @@ export function requirePermissionOnResource(
 	}
 }
 
+/**
+ * The permissions a role holds, in the order of `Permissions`.
+ */
+export function permissionsForRole(role: RoleLevel): Permission[] {
+	// eslint-disable-next-line typescript-eslint/no-unsafe-type-assertion -- Object.keys widens the keys to string
+	const names = Object.keys(Permissions) as Permission[];
+	return names.filter((permission) => hasPermission({ role }, permission));
+}
+
 export class PermissionError extends Error {
 	constructor(
 		public code: "unauthorized" | "forbidden",

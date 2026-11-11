@@ -7,10 +7,10 @@ import { Link } from "@tanstack/react-router";
 import * as React from "react";
 
 import type { AdminManifest } from "../lib/api";
-import { useCurrentUser } from "../lib/api/current-user.js";
 import type { CollectionStats, DashboardStats, RecentItem } from "../lib/api/dashboard";
 import { dismissScheduledPolicyRejection, fetchDashboardStats } from "../lib/api/dashboard";
 import { fetchTransferCapabilities, TRANSFER_CAPABILITIES_QUERY_KEY } from "../lib/api/transfer.js";
+import { useCan } from "../lib/permissions.js";
 import { usePluginWidget } from "../lib/plugin-context";
 import { cn, formatRelativeTime } from "../lib/utils.js";
 import { ArrowNext } from "./ArrowIcons";
@@ -40,10 +40,6 @@ const DASHBOARD_STATUS_STATES: Record<string, ContentStatusState> = {
 	archived: "archived",
 };
 
-const ROLE_ADMIN = 50;
-const ROLE_EDITOR = 40;
-const ROLE_CONTRIBUTOR = 20;
-
 const SITE_IMPORT_HINT_DISMISSED_KEY = "emdash:dashboard:site-import-hint-dismissed";
 
 export interface DashboardProps {
@@ -55,7 +51,7 @@ export interface DashboardProps {
  */
 export function Dashboard({ manifest }: DashboardProps) {
 	const { t } = useLingui();
-	const { data: user } = useCurrentUser();
+	const { can } = useCan();
 	const {
 		data: stats,
 		isLoading,
@@ -70,7 +66,7 @@ export function Dashboard({ manifest }: DashboardProps) {
 
 	return (
 		<div className="space-y-6">
-			{manifest.marketplace && (user?.role ?? 0) >= ROLE_ADMIN && <MarketplaceMigrationBanner />}
+			{manifest.marketplace && can("plugins:manage") && <MarketplaceMigrationBanner />}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<h1 className="text-2xl font-semibold leading-tight">{t`Dashboard`}</h1>
 				<QuickActions manifest={manifest} />
@@ -82,16 +78,15 @@ export function Dashboard({ manifest }: DashboardProps) {
 
 			{showDashboardData && (
 				<>
-					{stats && (user?.role ?? 0) >= ROLE_ADMIN && <SiteImportHint stats={stats} />}
+					{stats && can("import:execute") && <SiteImportHint stats={stats} />}
 					{stats && (
-						<SchedulerWarning stats={stats} canDismissPolicy={(user?.role ?? 0) >= ROLE_EDITOR} />
+						<SchedulerWarning stats={stats} canDismissPolicy={can("content:publish_any")} />
 					)}
 					<SummaryMetrics
 						stats={stats}
 						loading={isLoading}
 						linkCalendar={
-							(user?.role ?? 0) >= ROLE_CONTRIBUTOR &&
-							!manifest.admin?.hiddenNavItems?.includes("calendar")
+							can("content:read_drafts") && !manifest.admin?.hiddenNavItems?.includes("calendar")
 						}
 					/>
 

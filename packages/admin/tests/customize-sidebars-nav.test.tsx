@@ -10,6 +10,7 @@ import { page } from "vitest/browser";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 
 const manifest: AdminManifest = {
@@ -139,7 +140,14 @@ describe("navigation with a personal sidebar layout", () => {
 			if (url === "/_emdash/api/manifest") return json({ data: manifest });
 			if (url === "/_emdash/api/auth/me") {
 				const user = {
-					data: { id: "ada", email: "ada@example.com", name: "Ada", role: 50, adminLayout },
+					data: {
+						id: "ada",
+						email: "ada@example.com",
+						name: "Ada",
+						role: 50,
+						permissions: permissionsFor(50),
+						adminLayout,
+					},
 				};
 				return holdAuthMe ? holdAuthMe.then(() => json(user)) : json(user);
 			}

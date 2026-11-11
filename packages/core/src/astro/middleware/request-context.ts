@@ -15,6 +15,7 @@
  */
 
 import { loadVisualEditingToolbarLabels } from "@emdash-cms/admin/locales/server";
+import { hasPermission } from "@emdash-cms/auth";
 import type { APIContext } from "astro";
 import { defineMiddleware } from "astro:middleware";
 import type { Kysely } from "kysely";
@@ -222,9 +223,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return next();
 	}
 
-	// Check for authenticated editor (role >= 30)
 	const { user } = context.locals;
-	const isEditor = !!user && user.role >= 30;
+	const isEditor = hasPermission(user, "content:edit_own");
 
 	// Playground mode: the playground middleware (from @emdash-cms/cloudflare) stashes
 	// the per-session DO database on locals.__playgroundDb. We set it via ALS here

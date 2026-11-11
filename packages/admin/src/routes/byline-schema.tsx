@@ -10,9 +10,9 @@
  * API takes the full slug list in the desired order; a move swaps the row
  * with its neighbour and sends the whole list.
  *
- * Permission gate: `ROLE_ADMIN`. The route is also gated at the sidebar
- * level (`minRole: ROLE_ADMIN`), but a manually-typed URL still hits
- * this page — so the in-component check is the source of truth.
+ * Permission gate: `schema:manage`. The sidebar hides the entry without
+ * it, but a manually-typed URL still hits this page — so the in-component
+ * check is the source of truth.
  */
 
 import { Button, DropdownMenu, Loader, useKumoToastManager } from "@cloudflare/kumo";
@@ -46,12 +46,8 @@ import {
 	type UpdateBylineFieldInput,
 } from "../lib/api/byline-fields.js";
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { useCan } from "../lib/permissions.js";
 import { cn } from "../lib/utils.js";
-
-// Mirror of `packages/auth/src/rbac.ts:Role.ADMIN`. Inline here for the
-// same reason the existing routes inline `ROLE_EDITOR` / `ROLE_ADMIN`:
-// avoids a circular dep through `@emdash-cms/auth` for the admin SPA.
-const ROLE_ADMIN = 50;
 
 // Shared with `routes/bylines.tsx` so schema mutations invalidate the
 // byline form's field-defs cache in the same session. The "usage"
@@ -63,7 +59,8 @@ export function BylineSchemaPage() {
 	const { t } = useLingui();
 	const queryClient = useQueryClient();
 	const toastManager = useKumoToastManager();
-	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+	const { isLoading: userLoading } = useCurrentUser();
+	const canManageSchema = useCan().can("schema:manage");
 
 	const [editingField, setEditingField] = React.useState<BylineFieldDefinition | null>(null);
 	const [creating, setCreating] = React.useState(false);
@@ -74,7 +71,7 @@ export function BylineSchemaPage() {
 		queryFn: listBylineFields,
 		// Only fetch when the user actually has permission. Skipping the
 		// query for non-admins avoids a 403 in the console.
-		enabled: !!currentUser && currentUser.role >= ROLE_ADMIN,
+		enabled: canManageSchema,
 	});
 
 	// Usage is fetched on demand (edit dialog open) so the `translatable`
@@ -157,7 +154,7 @@ export function BylineSchemaPage() {
 	// Permission gate. Sidebar already hides the entry for non-admins, but
 	// direct URL navigation still lands here — render an access-denied
 	// surface rather than silently fetching and 403ing.
-	if (!currentUser || currentUser.role < ROLE_ADMIN) {
+	if (!canManageSchema) {
 		return (
 			<div className="flex items-center justify-center min-h-[50vh]">
 				<div className="text-center">

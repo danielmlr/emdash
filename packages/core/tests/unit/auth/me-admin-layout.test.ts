@@ -325,6 +325,7 @@ describeEachDialect("/_emdash/api/auth/me admin layout", (dialect) => {
 			email: "ada@example.com",
 			name: "Ada",
 			role: 50,
+			permissions: expect.any(Array),
 			avatarUrl: null,
 			isFirstLogin: false,
 			adminLayout: null,

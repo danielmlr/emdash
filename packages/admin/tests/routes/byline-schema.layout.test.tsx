@@ -5,10 +5,14 @@ import { page } from "vitest/browser";
 
 import "../../dist/styles.css";
 import type { BylineFieldDefinition } from "../../src/lib/api/byline-fields.js";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.js";
 
 vi.mock("../../src/lib/api/current-user", () => ({
-	useCurrentUser: () => ({ data: { id: "u1", email: "a@a", role: 50 }, isLoading: false }),
+	useCurrentUser: () => ({
+		data: { id: "u1", email: "a@a", role: 50, permissions: permissionsFor(50) },
+		isLoading: false,
+	}),
 }));
 
 function makeField(overrides: Partial<BylineFieldDefinition>): BylineFieldDefinition {

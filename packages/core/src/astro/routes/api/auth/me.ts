@@ -5,6 +5,7 @@
  * sidebar layout.
  */
 
+import { permissionsForRole } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
 export const prerender = false;
@@ -45,6 +46,7 @@ export const GET: APIRoute = async ({ locals }) => {
 		email: user.email,
 		name: user.name,
 		role: user.role,
+		permissions: permissionsForRole(user.role),
 		avatarUrl: user.avatarUrl,
 		isFirstLogin,
 		adminLayout: adminLayout.success ? adminLayout.data : null,

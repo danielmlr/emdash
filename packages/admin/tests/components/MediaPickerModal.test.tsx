@@ -3,6 +3,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MediaPickerModal } from "../../src/components/MediaPickerModal";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // ---------------------------------------------------------------------------
@@ -14,7 +15,7 @@ import { render } from "../utils/render.tsx";
 // playwright's strict-mode "resolved to N elements" guard.
 const UPLOAD_BUTTON_REGEX = /^Upload files$/;
 const pickerTestState = vi.hoisted(() => ({
-	currentUser: { id: "user-1", role: 40 },
+	currentUser: { id: "user-1", role: 40, permissions: [] as string[] },
 }));
 
 vi.mock("../../src/lib/api", async () => {
@@ -219,7 +220,7 @@ async function openUrlSource(screen: Awaited<ReturnType<typeof renderModal>>) {
 describe("MediaPickerModal", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		pickerTestState.currentUser = { id: "user-1", role: 40 };
+		pickerTestState.currentUser = { id: "user-1", role: 40, permissions: permissionsFor(40) };
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -412,7 +413,7 @@ describe("MediaPickerModal", () => {
 		});
 
 		it("does not offer asset editing to an author who does not own the image", async () => {
-			pickerTestState.currentUser = { id: "other-user", role: 30 };
+			pickerTestState.currentUser = { id: "other-user", role: 30, permissions: permissionsFor(30) };
 			const screen = await renderModal();
 			const item = screen.getByRole("button", { name: "photo.jpg" });
 			await expect.element(item).toBeVisible();

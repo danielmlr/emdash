@@ -39,8 +39,8 @@ import {
 	type BylineSummary,
 } from "../lib/api";
 import { fetchManifest } from "../lib/api/client.js";
-import { useCurrentUser } from "../lib/api/current-user.js";
 import { useDebouncedValue } from "../lib/hooks.js";
+import { useCan } from "../lib/permissions.js";
 
 const BYLINE_NAME_SEPARATOR = /\s+/;
 const BYLINE_INITIAL_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "grapheme" });
@@ -122,8 +122,7 @@ export function BylinesPage() {
 	const i18n = useI18nConfig(manifest);
 	const isMultiLocale = !!i18n && i18n.locales.length > 1;
 
-	const { data: currentUser } = useCurrentUser();
-	const canManageBylineSchema = (currentUser?.role ?? 0) >= BYLINE_SCHEMA_NAV_ITEM.minRole;
+	const canManageBylineSchema = useCan().can("schema:manage");
 	// `activeLocale` is the URL search param when present, else the default.
 	// Picker on a translated post can be expected to scope to the post's
 	// locale (Phase 4 wires that up); for the bylines manager itself the

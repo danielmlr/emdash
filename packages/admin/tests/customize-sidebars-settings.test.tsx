@@ -10,6 +10,7 @@ import { userEvent } from "vitest/browser";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 
 const manifest: AdminManifest = {
@@ -53,7 +54,13 @@ const manifest: AdminManifest = {
 	taxonomies: [],
 };
 
-const AUTHOR = { id: "ada", email: "ada@example.com", name: "Ada", role: 30 };
+const AUTHOR = {
+	id: "ada",
+	email: "ada@example.com",
+	name: "Ada",
+	role: 30,
+	permissions: permissionsFor(30),
+};
 
 const TestLink = React.forwardRef<HTMLAnchorElement, LinkComponentProps>(
 	({ href, to, children, ...props }, ref) => (

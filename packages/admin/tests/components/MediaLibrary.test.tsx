@@ -11,6 +11,7 @@ import {
 	MEDIA_USAGE_ACTIVATION_QUERY_KEY,
 	MEDIA_USAGE_PROGRESS_QUERY_KEY,
 } from "../../src/lib/api/media-usage-activation.js";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 const dndState = vi.hoisted(() => ({
@@ -96,7 +97,9 @@ vi.mock("../../src/lib/api/media-usage-activation.js", async () => {
 });
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
-	useCurrentUser: () => ({ data: { id: "user-1", role: setupMocks.role } }),
+	useCurrentUser: () => ({
+		data: { id: "user-1", role: setupMocks.role, permissions: permissionsFor(setupMocks.role) },
+	}),
 }));
 
 function setInputFiles(input: HTMLInputElement, files: File[]) {

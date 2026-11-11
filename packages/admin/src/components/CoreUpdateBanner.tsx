@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchCoreUpdateStatus } from "../lib/api/core-update.js";
-import { useCurrentUser } from "../lib/api/current-user.js";
-
-/** Matches Role.ADMIN in @emdash-cms/auth (same constant as Sidebar). */
-const ROLE_ADMIN = 50;
+import { useCan } from "../lib/permissions.js";
 
 // Scoped to the deployment base path so EmDash sites sharing an origin
 // (subpath deployments) keep independent dismissals. Computed lazily so
@@ -33,20 +30,20 @@ function readDismissedVersion(): string | null {
  */
 export function CoreUpdateBanner() {
 	const { t } = useLingui();
-	const { data: user } = useCurrentUser();
-	const isAdmin = (user?.role ?? 0) >= ROLE_ADMIN;
+	const { can } = useCan();
+	const canSeeUpdates = can("updates:read");
 
 	const { data: status } = useQuery({
 		queryKey: ["core-update"],
 		queryFn: fetchCoreUpdateStatus,
-		enabled: isAdmin,
+		enabled: canSeeUpdates,
 		staleTime: 60 * 60 * 1000,
 		retry: false,
 	});
 
 	const [dismissedVersion, setDismissedVersion] = useState(readDismissedVersion);
 
-	if (!isAdmin || !status?.updateAvailable || !status.latest) return null;
+	if (!canSeeUpdates || !status?.updateAvailable || !status.latest) return null;
 	if (dismissedVersion === status.latest) return null;
 
 	const latest = status.latest;

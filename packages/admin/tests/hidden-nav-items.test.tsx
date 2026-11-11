@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 
 function manifestHiding(hiddenNavItems?: string[]): AdminManifest {
@@ -106,7 +107,15 @@ describe("admin.hiddenNavItems", () => {
 			const url = requestUrl(input);
 			if (url === "/_emdash/api/manifest") return json({ data: manifest });
 			if (url === "/_emdash/api/auth/me") {
-				return json({ data: { id: "admin", email: "admin@example.com", name: "Admin", role: 50 } });
+				return json({
+					data: {
+						id: "admin",
+						email: "admin@example.com",
+						name: "Admin",
+						role: 50,
+						permissions: permissionsFor(50),
+					},
+				});
 			}
 			if (url === "/_emdash/api/admin/comments/counts") {
 				return json({ data: { pending: 0, approved: 0, spam: 0, trash: 0 } });

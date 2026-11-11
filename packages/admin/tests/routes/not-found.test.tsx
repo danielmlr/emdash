@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ThemeProvider } from "../../src/components/ThemeProvider";
 import type { AdminManifest } from "../../src/lib/api";
 import { createAdminRouter } from "../../src/router";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 import { createMockFetch, createTestQueryClient } from "../utils/test-helpers";
 
@@ -47,7 +48,9 @@ describe("unknown admin URLs", () => {
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 50 } });
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 50, permissions: permissionsFor(50) },
+			});
 	});
 
 	afterEach(() => {

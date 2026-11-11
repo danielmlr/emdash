@@ -4,6 +4,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
+import { permissionsFor } from "../../utils/permissions.js";
 import { render } from "../../utils/render.tsx";
 
 const activationMocks = vi.hoisted(() => ({
@@ -63,7 +64,10 @@ function status(state: ActivationState, options: { failed?: boolean } = {}) {
 
 function setCurrentUser(role: number | null, isLoading = false) {
 	currentUserMock.mockReturnValue({
-		data: role === null ? null : { id: "user-1", email: "admin@example.com", role },
+		data:
+			role === null
+				? null
+				: { id: "user-1", email: "admin@example.com", role, permissions: permissionsFor(role) },
 		isLoading,
 	});
 }

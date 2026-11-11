@@ -43,6 +43,7 @@ export {
 	canActOnOwn,
 	requirePermissionOnResource,
 	PermissionError,
+	permissionsForRole,
 	scopesForRole,
 	clampScopes,
 	type Permission,

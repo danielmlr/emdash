@@ -15,6 +15,8 @@ export interface CurrentUser {
 	email: string;
 	name?: string;
 	role: number;
+	/** Names of the permissions the user holds. Read them through `useCan()`. */
+	permissions?: string[];
 	avatarUrl?: string;
 	isFirstLogin?: boolean;
 	/**

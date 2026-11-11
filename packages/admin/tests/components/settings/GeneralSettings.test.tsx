@@ -14,6 +14,7 @@ import type {
 	SiteSettings,
 	SiteSettingsUpdate,
 } from "../../../src/lib/api";
+import { permissionsFor } from "../../utils/permissions.js";
 import { render } from "../../utils/render";
 
 const mockFetchSettings = vi.fn<() => Promise<Partial<SiteSettings>>>();
@@ -131,7 +132,7 @@ beforeEach(() => {
 	});
 	mockFetchManifest.mockResolvedValue(manifest);
 	mockUseCurrentUser.mockReturnValue({
-		data: { id: "admin", email: "admin@example.com", role: 50 },
+		data: { id: "admin", email: "admin@example.com", role: 50, permissions: permissionsFor(50) },
 	});
 	mockCreateSignInHandover.mockReturnValue(new Promise(() => undefined));
 	mockFetchEmailSettings.mockResolvedValue({ available: true });
@@ -701,7 +702,7 @@ describe("GeneralSettings", () => {
 
 	it("shows the site status to editors without the go-live button", async () => {
 		mockUseCurrentUser.mockReturnValue({
-			data: { id: "editor", email: "e@example.com", role: 40 },
+			data: { id: "editor", email: "e@example.com", role: 40, permissions: permissionsFor(40) },
 		});
 		mockFetchManifest.mockResolvedValue({ ...manifest, staging: true });
 		const screen = await renderGeneralSettings();

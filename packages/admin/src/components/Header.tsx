@@ -6,13 +6,12 @@ import * as React from "react";
 
 import { apiFetch } from "../lib/api/client";
 import { useCurrentUser } from "../lib/api/current-user";
+import { useCan } from "../lib/permissions";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserAvatar } from "./UserAvatar.js";
 
 export type { CurrentUser } from "../lib/api/current-user";
-
-const ROLE_ADMIN = 50;
 
 async function handleLogout() {
 	// Clear the public-site toolbar-bootstrap flag (see Shell.tsx).
@@ -42,6 +41,7 @@ export function Header({ staging = false }: { staging?: boolean }) {
 	const [userMenuOpen, setUserMenuOpen] = React.useState(false);
 
 	const { data: user } = useCurrentUser();
+	const { can } = useCan();
 
 	const displayName = user?.name || user?.email || t`User`;
 
@@ -55,7 +55,7 @@ export function Header({ staging = false }: { staging?: boolean }) {
 			{/* Right side actions */}
 			<div className="flex items-center gap-2">
 				{staging &&
-					((user?.role ?? 0) >= ROLE_ADMIN ? (
+					(can("settings:manage") ? (
 						<Link to="/settings/general" title={t`Hidden from search engines until you go live`}>
 							<Badge variant="warning">{t`Staging`}</Badge>
 						</Link>

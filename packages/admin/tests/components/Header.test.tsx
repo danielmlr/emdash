@@ -6,6 +6,7 @@ import { page } from "vitest/browser";
 
 import "../../dist/styles.css";
 import { ThemeProvider } from "../../src/components/ThemeProvider";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // Mock router
@@ -39,6 +40,7 @@ vi.mock("../../src/lib/api/client", async () => {
 								name: "Matt Kane",
 								email: "matt@test.com",
 								role: currentUser.role,
+								permissions: permissionsFor(currentUser.role),
 							},
 						}),
 						{ status: 200 },

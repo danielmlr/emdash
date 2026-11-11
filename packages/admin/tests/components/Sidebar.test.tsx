@@ -14,9 +14,9 @@
  *
  * Instead, the source `Sidebar.tsx` exports two pure artefacts:
  *
- *   - `BYLINE_SCHEMA_NAV_ITEM` — the route + minRole pairing used
+ *   - `BYLINE_SCHEMA_NAV_ITEM` — the route + permission pairing used
  *     verbatim inside the runtime `adminItems` array.
- *   - `filterNavItemsByRole` — the pure role filter applied to every
+ *   - `filterNavItemsByPermission` — the pure filter applied to every
  *     nav group.
  *
  * Together they cover the AC without DOM coupling: the constant pins
@@ -40,7 +40,7 @@ import {
 	buildNavGroups,
 	BYLINE_SCHEMA_NAV_ITEM,
 	declaredLabelTranslator,
-	filterNavItemsByRole,
+	filterNavItemsByPermission,
 	getSidebarTaxonomies,
 	isItemActive,
 	NavIcon,
@@ -54,6 +54,7 @@ import {
 	type NavBuildInput,
 	type NavGroup,
 } from "../../src/components/Sidebar";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // Mirror @emdash-cms/auth Role levels. Kept inline (matching Sidebar.tsx)
@@ -63,6 +64,11 @@ const ROLE_CONTRIBUTOR = 20;
 const ROLE_AUTHOR = 30;
 const ROLE_EDITOR = 40;
 const ROLE_ADMIN = 50;
+
+function canAs(role: number) {
+	const held = permissionsFor(role);
+	return (permission: string) => held.includes(permission);
+}
 
 describe("getSidebarTaxonomies", () => {
 	const taxonomies = [
@@ -144,52 +150,42 @@ describe("BYLINE_SCHEMA_NAV_ITEM invariants", () => {
 		expect(BYLINE_SCHEMA_NAV_ITEM.to).toBe("/byline-schema");
 		expect(BYLINE_SCHEMA_NAV_ITEM.icon).toBe(IdentificationCard);
 	});
-
-	it("gates on ROLE_ADMIN — editors and below must not see it", () => {
-		// If anyone drops this to ROLE_EDITOR (40), editors gain
-		// access to admin-only schema management via the sidebar.
-		// Keep this asserting the literal 50 (not the constant) so a
-		// rename like `ROLE_ADMIN = 40` would also fail the test.
-		expect(BYLINE_SCHEMA_NAV_ITEM.minRole).toBe(50);
-	});
 });
 
-describe("filterNavItemsByRole", () => {
+describe("filterNavItemsByPermission", () => {
 	const items = [
-		{ to: "/", minRole: undefined },
-		{ to: "/bylines", minRole: ROLE_EDITOR },
-		{ to: "/byline-schema", minRole: ROLE_ADMIN },
+		{ to: "/", permission: undefined },
+		{ to: "/bylines", permission: "bylines:manage" },
+		{ to: "/byline-schema", permission: "schema:manage" },
 	];
 
-	it("passes items without minRole at every role", () => {
+	it("passes items without a permission at every role", () => {
 		for (const role of [ROLE_SUBSCRIBER, ROLE_CONTRIBUTOR, ROLE_AUTHOR, ROLE_EDITOR, ROLE_ADMIN]) {
-			expect(filterNavItemsByRole(items, role).map((i) => i.to)).toContain("/");
+			expect(filterNavItemsByPermission(items, canAs(role)).map((i) => i.to)).toContain("/");
 		}
 	});
 
 	it("excludes /byline-schema for EDITOR", () => {
 		// Direct check of the AC: an Editor must not see the entry.
-		const visible = filterNavItemsByRole(items, ROLE_EDITOR).map((i) => i.to);
-		expect(visible).not.toContain("/byline-schema");
+		const visible = filterNavItemsByPermission(items, canAs(ROLE_EDITOR)).map((i) => i.to);
+		expect(visible).toEqual(["/", "/bylines"]);
 	});
 
 	it("excludes /byline-schema for AUTHOR, CONTRIBUTOR, SUBSCRIBER", () => {
 		for (const role of [ROLE_SUBSCRIBER, ROLE_CONTRIBUTOR, ROLE_AUTHOR]) {
-			const visible = filterNavItemsByRole(items, role).map((i) => i.to);
-			expect(visible).not.toContain("/byline-schema");
+			const visible = filterNavItemsByPermission(items, canAs(role)).map((i) => i.to);
+			expect(visible).toEqual(["/"]);
 		}
 	});
 
 	it("includes /byline-schema for ADMIN", () => {
-		const visible = filterNavItemsByRole(items, ROLE_ADMIN).map((i) => i.to);
+		const visible = filterNavItemsByPermission(items, canAs(ROLE_ADMIN)).map((i) => i.to);
 		expect(visible).toContain("/byline-schema");
 	});
 
-	it("treats role=0 (unauthenticated / pre-fetch) as below every gate", () => {
-		// SidebarNav falls back to `userRole ?? 0` during the brief
-		// load window before `useCurrentUser` resolves. The filter
-		// must strip every gated entry at role=0.
-		const visible = filterNavItemsByRole(items, 0).map((i) => i.to);
+	it("strips every gated entry while the user's permissions are unknown", () => {
+		// `useCan` answers false for everything until `useCurrentUser` resolves.
+		const visible = filterNavItemsByPermission(items, () => false).map((i) => i.to);
 		expect(visible).toEqual(["/"]);
 	});
 });
@@ -379,7 +375,7 @@ describe("buildNavGroups", () => {
 		return buildNavGroups({
 			manifest: { collections: {}, plugins: {}, taxonomies: [], ...manifest },
 			pluginAdmins: {},
-			role: ROLE_ADMIN,
+			can: canAs(ROLE_ADMIN),
 			i18n,
 			translate: i18n._.bind(i18n),
 			...input,
@@ -452,9 +448,42 @@ describe("buildNavGroups", () => {
 		]);
 	});
 
+	it("shows each built-in role the entries its level showed before", () => {
+		const manifest = { collections: posts, registry: {} } as Partial<Manifest>;
+		const visible = (role: number) =>
+			build({ manifest, can: canAs(role) }).flatMap((navGroup) => itemIds(navGroup) ?? []);
+
+		const subscriber = ["/", "/content/posts", "/media"];
+		const contributor = ["/", "/calendar", "/content/posts", "/media"];
+		const editor = [...contributor, "/comments", "/menus", "/widgets", "/sections", "/bylines"];
+		expect(visible(ROLE_SUBSCRIBER)).toEqual(subscriber);
+		expect(visible(ROLE_CONTRIBUTOR)).toEqual(contributor);
+		expect(visible(ROLE_AUTHOR)).toEqual(contributor);
+		expect(visible(ROLE_EDITOR)).toEqual(editor);
+		expect(visible(ROLE_ADMIN)).toEqual([
+			...contributor,
+			"/comments",
+			"/menus",
+			"/redirects",
+			"/widgets",
+			"/sections",
+			"/bylines",
+			"/content-types",
+			"/byline-schema",
+			"/users",
+			"/plugins-manager",
+			"/plugins/registry",
+			"/import/wordpress",
+			"/settings",
+		]);
+	});
+
 	it("puts Dashboard and Calendar in the top group, Calendar behind its role and hiddenNavItems", () => {
-		expect(itemIds(group(build({ role: ROLE_SUBSCRIBER }), "top"))).toEqual(["/"]);
-		expect(itemIds(group(build({ role: ROLE_CONTRIBUTOR }), "top"))).toEqual(["/", "/calendar"]);
+		expect(itemIds(group(build({ can: canAs(ROLE_SUBSCRIBER) }), "top"))).toEqual(["/"]);
+		expect(itemIds(group(build({ can: canAs(ROLE_CONTRIBUTOR) }), "top"))).toEqual([
+			"/",
+			"/calendar",
+		]);
 		expect(
 			itemIds(group(build({ manifest: { admin: { hiddenNavItems: ["calendar"] } } }), "top")),
 		).toEqual(["/"]);

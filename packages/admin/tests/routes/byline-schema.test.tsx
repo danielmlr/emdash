@@ -30,6 +30,7 @@ import { page, userEvent } from "vitest/browser";
 import { BylineFieldEditor } from "../../src/components/BylineFieldEditor";
 import type { BylineFieldDefinition } from "../../src/lib/api/byline-fields";
 import { ApiResponseError } from "../../src/lib/api/client";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // `useCurrentUser` is the gate for the page-permission tests below.
@@ -127,7 +128,7 @@ const ROLE_ADMIN = 50;
 describe("BylineSchemaPage — permission gate", () => {
 	it("renders Access denied for an EDITOR (below schema:manage)", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "e@e", role: ROLE_EDITOR },
+			data: { id: "u1", email: "e@e", role: ROLE_EDITOR, permissions: permissionsFor(ROLE_EDITOR) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape; the rest is unused
 		} as any);
@@ -150,7 +151,7 @@ describe("BylineSchemaPage — permission gate", () => {
 
 	it("renders the schema management UI for an ADMIN", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: { id: "u1", email: "a@a", role: ROLE_ADMIN, permissions: permissionsFor(ROLE_ADMIN) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);
@@ -178,7 +179,7 @@ describe("BylineSchemaPage — field rows", () => {
 
 	beforeEach(() => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: { id: "u1", email: "a@a", role: ROLE_ADMIN, permissions: permissionsFor(ROLE_ADMIN) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);
@@ -377,7 +378,7 @@ describe("BylineSchemaPage — field rows", () => {
 describe("BylineSchemaPage — saving a field", () => {
 	it("reports a slug another field uses inside the dialog, not in a toast", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: { id: "u1", email: "a@a", role: ROLE_ADMIN, permissions: permissionsFor(ROLE_ADMIN) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);
@@ -414,7 +415,7 @@ describe("BylineSchemaPage — saving a field", () => {
 describe("BylineSchemaPage — saving again after a refusal", () => {
 	it("leaves the slug alone when Create field is pressed again after its refusal went to the banner", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: { id: "u1", email: "a@a", role: ROLE_ADMIN, permissions: permissionsFor(ROLE_ADMIN) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);
@@ -470,7 +471,7 @@ describe("BylineSchemaPage — saving again after a refusal", () => {
 describe("BylineSchemaPage — deleting a field", () => {
 	it("reports a failed delete inside the confirmation, not in a toast", async () => {
 		vi.mocked(useCurrentUser).mockReturnValue({
-			data: { id: "u1", email: "a@a", role: ROLE_ADMIN },
+			data: { id: "u1", email: "a@a", role: ROLE_ADMIN, permissions: permissionsFor(ROLE_ADMIN) },
 			isLoading: false,
 			// eslint-disable-next-line typescript/no-explicit-any -- mock object satisfies the consumed shape
 		} as any);

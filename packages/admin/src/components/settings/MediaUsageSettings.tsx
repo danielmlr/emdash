@@ -17,18 +17,18 @@ import {
 	type MediaUsageProgress,
 	type MediaUsageProgressAdvanceResponse,
 } from "../../lib/api/media-usage-activation.js";
+import { useCan } from "../../lib/permissions.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
 import { SettingRow, SettingsFrame, SettingsSection } from "./SettingsLayout.js";
-
-const ROLE_ADMIN = 50;
 
 type Notice = "unconfirmed" | "version" | "validation" | "denied" | null;
 
 export function MediaUsageSettings() {
 	const { t } = useLingui();
 	const queryClient = useQueryClient();
-	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-	const isAdmin = !!currentUser && currentUser.role >= ROLE_ADMIN;
+	const { isLoading: userLoading } = useCurrentUser();
+	const { can } = useCan();
+	const canManageSchema = can("schema:manage");
 	const [dialogOpen, setDialogOpen] = React.useState(false);
 	const [notice, setNotice] = React.useState<Notice>(null);
 	const [pageVisible, setPageVisible] = React.useState(
@@ -58,7 +58,7 @@ export function MediaUsageSettings() {
 	const activationQuery = useQuery({
 		queryKey: MEDIA_USAGE_ACTIVATION_QUERY_KEY,
 		queryFn: fetchMediaUsageActivationStatus,
-		enabled: isAdmin,
+		enabled: canManageSchema,
 		retry: false,
 		refetchOnMount: "always",
 		refetchOnWindowFocus: false,
@@ -141,7 +141,7 @@ export function MediaUsageSettings() {
 
 	React.useEffect(() => {
 		if (
-			!isAdmin ||
+			!canManageSchema ||
 			!pageVisible ||
 			activationQuery.isFetching ||
 			activationQuery.isError ||
@@ -211,7 +211,7 @@ export function MediaUsageSettings() {
 		activationQuery.isError,
 		activationQuery.isFetching,
 		canDriveProgress,
-		isAdmin,
+		canManageSchema,
 		pageVisible,
 		queryClient,
 		readProgress,
@@ -221,7 +221,7 @@ export function MediaUsageSettings() {
 	]);
 
 	React.useEffect(() => {
-		if (!isAdmin) return;
+		if (!canManageSchema) return;
 		const visibilityChanged = () => {
 			const visible = document.visibilityState !== "hidden";
 			pageVisibleRef.current = visible;
@@ -245,7 +245,7 @@ export function MediaUsageSettings() {
 		return () => {
 			document.removeEventListener("visibilitychange", visibilityChanged);
 		};
-	}, [activationQuery, closeDialog, isAdmin]);
+	}, [activationQuery, closeDialog, canManageSchema]);
 
 	const advanceMutation = useMutation({
 		mutationFn: async () => {
@@ -299,7 +299,11 @@ export function MediaUsageSettings() {
 	const title = t`Media usage tracking`;
 	const description = t`Track where media is used across your content.`;
 	if (userLoading) return <LoadingPage title={title} description={description} />;
-	if (!isAdmin || isActivationError(activationQuery.error, "denied") || notice === "denied") {
+	if (
+		!canManageSchema ||
+		isActivationError(activationQuery.error, "denied") ||
+		notice === "denied"
+	) {
 		return (
 			<MessagePage
 				title={t`Access denied`}

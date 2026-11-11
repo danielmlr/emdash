@@ -10,6 +10,7 @@ import { userEvent } from "vitest/browser";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 
 const category = {
@@ -125,7 +126,13 @@ describe("taxonomy sidebar refresh", () => {
 			}
 			if (method === "GET" && url === "/_emdash/api/auth/me") {
 				return json({
-					data: { id: "admin", email: "admin@example.com", name: "Admin", role: 50 },
+					data: {
+						id: "admin",
+						email: "admin@example.com",
+						name: "Admin",
+						role: 50,
+						permissions: permissionsFor(50),
+					},
 				});
 			}
 			if (method === "GET" && url === "/_emdash/api/admin/comments/counts") {
@@ -186,7 +193,13 @@ describe("taxonomy sidebar after deletion", () => {
 			}
 			if (method === "GET" && url === "/_emdash/api/auth/me") {
 				return json({
-					data: { id: "admin", email: "admin@example.com", name: "Admin", role: 50 },
+					data: {
+						id: "admin",
+						email: "admin@example.com",
+						name: "Admin",
+						role: 50,
+						permissions: permissionsFor(50),
+					},
 				});
 			}
 			if (method === "GET" && url === "/_emdash/api/admin/comments/counts") {

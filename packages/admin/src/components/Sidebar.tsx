@@ -13,7 +13,7 @@ import { navPathId, resolveNav, type LayoutNavGroup } from "../lib/admin-layout.
 import { formatAdminVersion } from "../lib/admin-version.js";
 import { useAdminLayout } from "../lib/api/admin-layout.js";
 import { fetchCommentCounts } from "../lib/api/comments";
-import { useCurrentUser } from "../lib/api/current-user";
+import { useCan } from "../lib/permissions";
 import { resolvePluginPagePath, usePluginAdmins, type PluginAdmins } from "../lib/plugin-context";
 import {
 	groupNavItems,
@@ -42,41 +42,35 @@ import { RouterLinkButton } from "./RouterLinkButton.js";
 export { KumoSidebar as Sidebar, useSidebar };
 export { resolveNavIcon, toPhosphorIconName };
 
-// Role levels (matching @emdash-cms/auth)
-const ROLE_ADMIN = 50;
-const ROLE_EDITOR = 40;
-const ROLE_CONTRIBUTOR = 20;
-
 /**
  * Static invariants for nav entries that have AC-level visibility
  * requirements (Phase 5 of Discussion #1174: "Admin sees the 'Byline
  * Schema' entry; Editor does not").
  *
- * Exported as plain data so a unit test can assert the route + role
+ * Exported as plain data so a unit test can assert the route + permission
  * pairing without mounting Kumo's Sidebar primitive — which portals
  * its rendered content to `document.body` and applies collapse-state
  * CSS (`display:none` on labels at narrow viewports), making
- * full-DOM tests of role filtering brittle. The runtime `adminItems`
+ * full-DOM tests of permission filtering brittle. The runtime `adminItems`
  * array below references these constants directly so the test
  * effectively guards the production list.
  */
 export const BYLINE_SCHEMA_NAV_ITEM = {
 	to: "/byline-schema" as const,
-	minRole: ROLE_ADMIN,
+	permission: "schema:manage",
 	icon: ADMIN_NAV_ICONS.bylineSchema,
 } as const;
 
 /**
- * Filter a nav-items list by user role. Pure function — exported so
- * tests can verify the role gate without rendering the sidebar. An
- * item passes when it has no `minRole` (public) or the user is at
- * least the required level.
+ * Filter a nav-items list by permission. Pure function — exported so
+ * tests can verify the gate without rendering the sidebar. An item
+ * passes when it names no `permission` (public) or `can` grants it.
  */
-export function filterNavItemsByRole<T extends { minRole?: number }>(
+export function filterNavItemsByPermission<T extends { permission?: string }>(
 	items: T[],
-	userRole: number,
+	can: (permission: string) => boolean,
 ): T[] {
-	return items.filter((item) => !item.minRole || userRole >= item.minRole);
+	return items.filter((item) => !item.permission || can(item.permission));
 }
 
 function filterHiddenNavItems<T extends { navId?: string }>(
@@ -161,8 +155,8 @@ export interface NavItem extends GroupableNavItem {
 	icon: React.ElementType;
 	params?: Record<string, string>;
 	search?: Record<string, string>;
-	/** Minimum role level required to see this item */
-	minRole?: number;
+	/** Permission required to see this item */
+	permission?: string;
 	/** Optional badge count (e.g., pending comments) */
 	badge?: number;
 	/** Name under which `admin.hiddenNavItems` can hide this built-in entry */
@@ -440,7 +434,8 @@ export interface NavGroup extends LayoutNavGroup<NavLink> {
 export interface NavBuildInput {
 	manifest: SidebarNavProps["manifest"];
 	pluginAdmins: PluginAdmins;
-	role: number;
+	/** Whether the user holds a permission; decides which built-in entries show. */
+	can: (permission: string) => boolean;
 	/** Built-in labels go through `translate`; plugin labels only when `i18n` has a catalog entry. */
 	i18n: Pick<I18n, "messages">;
 	translate: I18n["_"];
@@ -462,14 +457,14 @@ const NAV_GROUP_LABELS: Record<NavGroupKey, MessageDescriptor | null> = {
 };
 
 /**
- * Every navigation entry the user can see, before their personal layout: role
+ * Every navigation entry the user can see, before their personal layout: permission
  * checks, `admin.hiddenNavItems`, hidden collections, and disabled plugins
  * applied, folders formed by `groupNavItems`. Groups come in display order and
  * empty ones are left out; Content exists only when a collection is visible.
  * Two entries with one ID link to the same page, so only the first is kept.
  */
 export function buildNavGroups(input: NavBuildInput): NavGroup[] {
-	const { manifest, pluginAdmins, role, translate, routeLocale } = input;
+	const { manifest, pluginAdmins, can, translate, routeLocale } = input;
 
 	const topItems: NavItem[] = [
 		{ to: "/", label: translate(msg`Dashboard`), icon: ADMIN_NAV_ICONS.dashboard },
@@ -477,7 +472,7 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/calendar",
 			label: translate(msg`Calendar`),
 			icon: ADMIN_NAV_ICONS.calendar,
-			minRole: ROLE_CONTRIBUTOR,
+			permission: "content:read_drafts",
 			navId: "calendar",
 		},
 	];
@@ -512,7 +507,7 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/comments",
 			label: translate(msg`Comments`),
 			icon: ADMIN_NAV_ICONS.comments,
-			minRole: ROLE_EDITOR,
+			permission: "comments:moderate",
 			badge: input.commentBadge,
 			navId: "comments",
 		},
@@ -520,35 +515,35 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/menus",
 			label: translate(msg`Menus`),
 			icon: ADMIN_NAV_ICONS.menus,
-			minRole: ROLE_EDITOR,
+			permission: "menus:manage",
 			navId: "menus",
 		},
 		{
 			to: "/redirects",
 			label: translate(msg`Redirects`),
 			icon: ADMIN_NAV_ICONS.redirects,
-			minRole: ROLE_ADMIN,
+			permission: "redirects:manage",
 			navId: "redirects",
 		},
 		{
 			to: "/widgets",
 			label: translate(msg`Widgets`),
 			icon: ADMIN_NAV_ICONS.widgets,
-			minRole: ROLE_EDITOR,
+			permission: "widgets:manage",
 			navId: "widgets",
 		},
 		{
 			to: "/sections",
 			label: translate(msg`Sections`),
 			icon: ADMIN_NAV_ICONS.sections,
-			minRole: ROLE_EDITOR,
+			permission: "sections:manage",
 			navId: "sections",
 		},
 		{
 			to: "/bylines",
 			label: translate(msg`Bylines`),
 			icon: ADMIN_NAV_ICONS.bylines,
-			minRole: ROLE_EDITOR,
+			permission: "bylines:manage",
 			navId: "bylines",
 		},
 	];
@@ -563,7 +558,7 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			icon: getTaxonomyNavIcon(tax.name),
 			params: { taxonomy: tax.name },
 			search: routeLocale ? { locale: routeLocale } : undefined,
-			minRole: ROLE_EDITOR,
+			permission: "taxonomies:manage",
 		};
 		const group = taxonomyGroup(tax.collections ?? [], collectionGroups);
 		if (group) {
@@ -578,15 +573,15 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/content-types",
 			label: translate(msg`Content Types`),
 			icon: ADMIN_NAV_ICONS.contentTypes,
-			minRole: ROLE_ADMIN,
+			permission: "schema:manage",
 		},
 		{ ...BYLINE_SCHEMA_NAV_ITEM, label: translate(msg`Byline Schema`) },
-		{ to: "/users", label: translate(msg`Users`), icon: Users, minRole: ROLE_ADMIN },
+		{ to: "/users", label: translate(msg`Users`), icon: Users, permission: "users:read" },
 		{
 			to: "/plugins-manager",
 			label: translate(msg`Plugins`),
 			icon: ADMIN_NAV_ICONS.plugins,
-			minRole: ROLE_ADMIN,
+			permission: "plugins:manage",
 		},
 	];
 
@@ -595,7 +590,7 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/plugins/registry",
 			label: translate(msg`Registry`),
 			icon: Storefront,
-			minRole: ROLE_ADMIN,
+			permission: "plugins:manage",
 		});
 	}
 
@@ -604,10 +599,10 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 			to: "/import/wordpress",
 			label: translate(msg`Import`),
 			icon: ADMIN_NAV_ICONS.import,
-			minRole: ROLE_ADMIN,
+			permission: "import:execute",
 			navId: "import",
 		},
-		{ to: "/settings", label: translate(msg`Settings`), icon: Gear, minRole: ROLE_ADMIN },
+		{ to: "/settings", label: translate(msg`Settings`), icon: Gear, permission: "settings:manage" },
 	);
 
 	const translatePluginLabel = declaredLabelTranslator(input.i18n, (id) => translate(id));
@@ -638,7 +633,7 @@ export function buildNavGroups(input: NavBuildInput): NavGroup[] {
 	function visibleLinks(items: NavItem[]): NavLink[] {
 		const links: NavLink[] = [];
 		const shown = filterHiddenNavItems(
-			filterNavItemsByRole(items, role),
+			filterNavItemsByPermission(items, can),
 			manifest.admin?.hiddenNavItems,
 		);
 		for (const item of shown) {
@@ -678,8 +673,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 	const pluginAdmins = usePluginAdmins();
 	const layout = useAdminLayout();
 
-	const { data: user } = useCurrentUser();
-	const role = user?.role ?? 0;
+	const { can } = useCan();
 
 	// Fetch pending comment count for badge
 	const { data: commentCounts } = useQuery({
@@ -687,7 +681,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 		queryFn: fetchCommentCounts,
 		staleTime: 60 * 1000,
 		retry: false,
-		enabled: role >= ROLE_EDITOR && !manifest.admin?.hiddenNavItems?.includes("comments"),
+		enabled: can("comments:moderate") && !manifest.admin?.hiddenNavItems?.includes("comments"),
 	});
 	const commentBadge = commentCounts?.pending;
 
@@ -697,7 +691,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				buildNavGroups({
 					manifest,
 					pluginAdmins,
-					role,
+					can,
 					i18n,
 					translate,
 					routeLocale,
@@ -705,7 +699,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				}),
 				layout.nav,
 			),
-		[manifest, pluginAdmins, role, i18n, translate, routeLocale, commentBadge, layout.nav],
+		[manifest, pluginAdmins, can, i18n, translate, routeLocale, commentBadge, layout.nav],
 	);
 
 	const folders = useFolderState();

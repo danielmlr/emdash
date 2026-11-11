@@ -18,7 +18,7 @@ import * as React from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { apiFetch, type AdminManifest } from "../lib/api/client.js";
-import { useCurrentUser } from "../lib/api/current-user";
+import { useCan } from "../lib/permissions";
 import {
 	ADMIN_NAV_ICONS,
 	getCollectionNavIcon,
@@ -40,11 +40,6 @@ type CommandPaletteManifest = {
 	plugins: AdminManifest["plugins"];
 	admin?: { hiddenNavItems?: string[] };
 };
-
-// Role levels (matching @emdash-cms/auth)
-const ROLE_ADMIN = 50;
-const ROLE_EDITOR = 40;
-const ROLE_CONTRIBUTOR = 20;
 
 // Regex for replacing route params like $collection with actual values
 const ROUTE_PARAM_REGEX = /\$(\w+)/g;
@@ -93,7 +88,8 @@ interface NavItem {
 	to: string;
 	params?: Record<string, string>;
 	icon: React.ElementType;
-	minRole?: number;
+	/** Permission required to see this item; with several names, any one is enough. */
+	permission?: string | string[];
 	keywords?: string[];
 }
 
@@ -131,7 +127,7 @@ async function searchContent(query: string): Promise<SearchResponse> {
 
 export function buildNavItems(
 	manifest: CommandPaletteManifest,
-	userRole: number,
+	can: (permission: string) => boolean,
 	translateLabel: (id: string) => string,
 ): NavItem[] {
 	const items: NavItem[] = [
@@ -147,7 +143,7 @@ export function buildNavItems(
 			title: msg`Calendar`,
 			to: "/calendar",
 			icon: ADMIN_NAV_ICONS.calendar,
-			minRole: ROLE_CONTRIBUTOR,
+			permission: "content:read_drafts",
 			keywords: ["schedule", "scheduled", "publishing", "agenda"],
 		},
 	];
@@ -178,7 +174,7 @@ export function buildNavItems(
 			title: msg`Menus`,
 			to: "/menus",
 			icon: ADMIN_NAV_ICONS.menus,
-			minRole: ROLE_EDITOR,
+			permission: "menus:manage",
 			keywords: ["navigation"],
 		},
 		{
@@ -186,7 +182,7 @@ export function buildNavItems(
 			title: msg`Widgets`,
 			to: "/widgets",
 			icon: ADMIN_NAV_ICONS.widgets,
-			minRole: ROLE_EDITOR,
+			permission: "widgets:manage",
 			keywords: ["sidebar", "footer"],
 		},
 		{
@@ -194,7 +190,7 @@ export function buildNavItems(
 			title: msg`Sections`,
 			to: "/sections",
 			icon: ADMIN_NAV_ICONS.sections,
-			minRole: ROLE_EDITOR,
+			permission: "sections:manage",
 			keywords: ["page builder", "blocks"],
 		},
 		{
@@ -202,7 +198,7 @@ export function buildNavItems(
 			title: msg`Content Types`,
 			to: "/content-types",
 			icon: ADMIN_NAV_ICONS.contentTypes,
-			minRole: ROLE_ADMIN,
+			permission: "schema:manage",
 			keywords: ["schema", "collections"],
 		},
 		{
@@ -211,7 +207,7 @@ export function buildNavItems(
 			to: "/taxonomies/$taxonomy",
 			params: { taxonomy: "category" },
 			icon: getTaxonomyNavIcon("category"),
-			minRole: ROLE_EDITOR,
+			permission: "taxonomies:manage",
 			keywords: ["taxonomy"],
 		},
 		{
@@ -220,7 +216,7 @@ export function buildNavItems(
 			to: "/taxonomies/$taxonomy",
 			params: { taxonomy: "tag" },
 			icon: getTaxonomyNavIcon("tag"),
-			minRole: ROLE_EDITOR,
+			permission: "taxonomies:manage",
 			keywords: ["taxonomy"],
 		},
 		{
@@ -228,7 +224,7 @@ export function buildNavItems(
 			title: msg`Users`,
 			to: "/users",
 			icon: Users,
-			minRole: ROLE_ADMIN,
+			permission: "users:read",
 			keywords: ["accounts", "team"],
 		},
 		{
@@ -236,7 +232,7 @@ export function buildNavItems(
 			title: msg`Plugins`,
 			to: "/plugins-manager",
 			icon: ADMIN_NAV_ICONS.plugins,
-			minRole: ROLE_ADMIN,
+			permission: "plugins:manage",
 			keywords: ["extensions", "add-ons"],
 		},
 		{
@@ -244,7 +240,7 @@ export function buildNavItems(
 			title: msg`Import`,
 			to: "/import/wordpress",
 			icon: ADMIN_NAV_ICONS.import,
-			minRole: ROLE_ADMIN,
+			permission: "import:execute",
 			keywords: ["wordpress", "migrate"],
 		},
 		{
@@ -252,7 +248,7 @@ export function buildNavItems(
 			title: msg`Settings`,
 			to: "/settings",
 			icon: Gear,
-			minRole: ROLE_ADMIN,
+			permission: "settings:manage",
 			keywords: ["configuration", "preferences"],
 		},
 		{
@@ -260,7 +256,7 @@ export function buildNavItems(
 			title: msg`Site Transfer`,
 			to: "/settings/transfer",
 			icon: ArrowsLeftRight,
-			minRole: ROLE_ADMIN,
+			permission: ["transfer:export", "transfer:import"],
 			keywords: ["export", "import", "migrate", "move", "package"],
 		},
 		{
@@ -268,7 +264,7 @@ export function buildNavItems(
 			title: msg`Security Settings`,
 			to: "/settings/security",
 			icon: Gear,
-			minRole: ROLE_ADMIN,
+			permission: "settings:manage",
 			keywords: ["passkeys", "authentication"],
 		},
 	);
@@ -296,7 +292,7 @@ export function buildNavItems(
 
 	const hidden = manifest.admin?.hiddenNavItems ?? [];
 	return items.filter(
-		(item) => (!item.minRole || userRole >= item.minRole) && !hidden.includes(item.id),
+		(item) => (!item.permission || [item.permission].flat().some(can)) && !hidden.includes(item.id),
 	);
 }
 
@@ -330,9 +326,7 @@ export function AdminCommandPalette({ manifest }: AdminCommandPaletteProps) {
 	// Debounce the search query to avoid flickering on every keystroke
 	const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
 
-	const { data: user } = useCurrentUser();
-
-	const userRole = user?.role ?? 0;
+	const { can } = useCan();
 
 	// Search content when debounced query is long enough
 	const { data: searchResults, isFetching: isSearching } = useQuery({
@@ -348,8 +342,8 @@ export function AdminCommandPalette({ manifest }: AdminCommandPaletteProps) {
 
 	// Build navigation items
 	const allNavItems = React.useMemo(
-		() => buildNavItems(manifest, userRole, declaredLabelTranslator(i18n, translateDynamic)),
-		[manifest, userRole, translateDynamic, i18n, i18n.locale],
+		() => buildNavItems(manifest, can, declaredLabelTranslator(i18n, translateDynamic)),
+		[manifest, can, translateDynamic, i18n, i18n.locale],
 	);
 
 	// Filter nav items based on query

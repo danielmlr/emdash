@@ -5,10 +5,10 @@
  * POST /_emdash/api/admin/api-tokens — Create a new token
  */
 
-import { Role } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, handleError, unwrapResult } from "#api/error.js";
 import { handleApiTokenCreate, handleApiTokenList } from "#api/handlers/api-tokens.js";
 import { isParseError, parseBody } from "#api/parse.js";
@@ -36,9 +36,8 @@ export const GET: APIRoute = async ({ locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_api_tokens");
+	if (denied) return denied;
 
 	const result = await handleApiTokenList(emdash.db, user.id);
 	return unwrapResult(result);
@@ -55,9 +54,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_api_tokens");
+	if (denied) return denied;
 
 	try {
 		const body = await parseBody(request, createTokenSchema);

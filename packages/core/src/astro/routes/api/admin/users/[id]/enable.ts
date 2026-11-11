@@ -4,10 +4,10 @@
  * POST /_emdash/api/admin/users/:id/enable - Re-enable a disabled user
  */
 
-import { Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 
 export const prerender = false;
@@ -19,9 +19,8 @@ export const POST: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "Database not configured", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

@@ -17,6 +17,7 @@ import { getInviteEmailStrings } from "@emdash-cms/admin/locales/emails";
 import { createInvite, InviteError, Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { requirePerm } from "#api/authorize.js";
 import { resolveEmailLocale } from "#api/email-locale.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { isParseError, parseBody } from "#api/parse.js";
@@ -32,9 +33,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:invite");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

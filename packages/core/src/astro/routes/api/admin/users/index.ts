@@ -4,10 +4,10 @@
  * GET /_emdash/api/admin/users - List users with search, filter, pagination
  */
 
-import { Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { isParseError, parseQuery } from "#api/parse.js";
 import { usersListQuery } from "#api/schemas.js";
@@ -21,9 +21,8 @@ export const GET: APIRoute = async ({ url, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:read");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

@@ -4,9 +4,9 @@
  * DELETE /_emdash/api/admin/api-tokens/:id — Revoke a token
  */
 
-import { Role } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, handleError, unwrapResult } from "#api/error.js";
 import { handleApiTokenRevoke } from "#api/handlers/api-tokens.js";
 
@@ -22,9 +22,8 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_api_tokens");
+	if (denied) return denied;
 
 	const tokenId = params.id;
 	if (!tokenId) {

@@ -5,10 +5,10 @@
  * POST /_emdash/api/admin/oauth-clients — Register a new OAuth client
  */
 
-import { Role } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, handleError, unwrapResult } from "#api/error.js";
 import { handleOAuthClientCreate, handleOAuthClientList } from "#api/handlers/oauth-clients.js";
 import { isParseError, parseBody } from "#api/parse.js";
@@ -37,9 +37,8 @@ export const GET: APIRoute = async ({ locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_oauth_clients");
+	if (denied) return denied;
 
 	const result = await handleOAuthClientList(emdash.db);
 	return unwrapResult(result);
@@ -55,9 +54,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_oauth_clients");
+	if (denied) return denied;
 
 	try {
 		const body = await parseBody(request, createClientSchema);

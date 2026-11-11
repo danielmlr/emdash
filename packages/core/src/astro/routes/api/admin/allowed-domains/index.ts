@@ -10,9 +10,10 @@ import type { APIRoute } from "astro";
 
 export const prerender = false;
 
-import { Role, roleFromLevel } from "@emdash-cms/auth";
+import { roleFromLevel } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { isParseError, parseBody } from "#api/parse.js";
 import { allowedDomainCreateBody } from "#api/schemas.js";
@@ -29,9 +30,8 @@ export const GET: APIRoute = async ({ locals }) => {
 		return apiError("NOT_CONFIGURED", "Database not configured", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:read");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -62,9 +62,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return apiError("NOT_CONFIGURED", "Database not configured", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

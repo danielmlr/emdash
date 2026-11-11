@@ -106,6 +106,8 @@ export const Permissions = {
 	// Auth
 	"auth:manage_own_credentials": Role.SUBSCRIBER,
 	"auth:manage_connections": Role.ADMIN,
+	"auth:manage_api_tokens": Role.ADMIN,
+	"auth:manage_oauth_clients": Role.ADMIN,
 } as const;
 
 export type Permission = keyof typeof Permissions;

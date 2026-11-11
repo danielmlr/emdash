@@ -9,6 +9,7 @@ import { Role } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 import type { APIRoute } from "astro";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, apiSuccess, handleError } from "#api/error.js";
 import { isParseError, parseBody } from "#api/parse.js";
 import { userUpdateBody } from "#api/schemas.js";
@@ -23,9 +24,8 @@ export const GET: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!currentUser || currentUser.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(currentUser, "users:read");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 
@@ -80,9 +80,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!currentUser || currentUser.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(currentUser, "users:manage");
+	if (denied) return denied;
 
 	const adapter = createKyselyAdapter(emdash.db);
 

@@ -6,10 +6,10 @@
  * DELETE /_emdash/api/admin/oauth-clients/:id — Delete a client
  */
 
-import { Role } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
+import { requirePerm } from "#api/authorize.js";
 import { apiError, handleError, unwrapResult } from "#api/error.js";
 import {
 	handleOAuthClientDelete,
@@ -39,9 +39,8 @@ export const GET: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_oauth_clients");
+	if (denied) return denied;
 
 	const clientId = params.id;
 	if (!clientId) {
@@ -62,9 +61,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_oauth_clients");
+	if (denied) return denied;
 
 	const clientId = params.id;
 	if (!clientId) {
@@ -92,9 +90,8 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 		return apiError("NOT_CONFIGURED", "EmDash is not initialized", 500);
 	}
 
-	if (!user || user.role < Role.ADMIN) {
-		return apiError("FORBIDDEN", "Admin privileges required", 403);
-	}
+	const denied = requirePerm(user, "auth:manage_oauth_clients");
+	if (denied) return denied;
 
 	const clientId = params.id;
 	if (!clientId) {

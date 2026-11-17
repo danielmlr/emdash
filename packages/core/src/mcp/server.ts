@@ -10,7 +10,7 @@
  */
 
 import type { Permission, RoleLevel } from "@emdash-cms/auth";
-import { canActOnOwn, hasPermission, Permissions, Role } from "@emdash-cms/auth";
+import { canActOnOwn, hasPermission, Permissions } from "@emdash-cms/auth";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { APIContext } from "astro";
 import { z } from "zod";
@@ -428,7 +428,7 @@ function respondError(
 }
 
 /**
- * Auth/permission errors thrown from `requireScope` / `requireRole` /
+ * Auth/permission errors thrown from `requireScope` / `requirePermission` /
  * `requireOwnership` / `requireDraftAccess`. Carries a stable string `code`
  * field so `respondHandlerError` can surface it through `_meta.code` and
  * the message prefix.
@@ -681,18 +681,27 @@ function requireScope(
 }
 
 /**
- * Defense-in-depth: enforce a minimum RBAC role on the current request.
+ * Enforce a permission on the current request, mirroring the REST API's
+ * requirePerm().
  *
  * This is checked in addition to scope requirements. Even if a token has
- * the right scopes (e.g. due to a bug in scope clamping), the user's
- * actual role must still meet the minimum.
+ * the right scopes (e.g. due to a bug in scope clamping), the user must
+ * still hold the permission.
  */
-function requireRole(
+function requirePermission(
 	extra: { authInfo?: { extra?: Record<string, unknown> } },
-	minRole: RoleLevel,
+	permission: Permission,
 ): void {
-	const payload = getExtra(extra);
-	if (payload.userRole < minRole) {
+	requireAnyPermission(extra, [permission]);
+}
+
+/** Enforce that the user holds at least one of `permissions`. */
+function requireAnyPermission(
+	extra: { authInfo?: { extra?: Record<string, unknown> } },
+	permissions: Permission[],
+): void {
+	const user = { role: getExtra(extra).userRole };
+	if (!permissions.some((permission) => hasPermission(user, permission))) {
 		throw new EmDashAuthError(
 			"Insufficient permissions for this operation",
 			"INSUFFICIENT_PERMISSIONS",
@@ -912,7 +921,7 @@ export function createMcpServer(
 	);
 
 	// Wrap every tool registration's callback so EmDashAuthError throws
-	// (from requireScope / requireRole / requireOwnership / requireDraftAccess)
+	// (from requireScope / requirePermission / requireOwnership / requireDraftAccess)
 	// surface as structured `_meta.code`-bearing tool error envelopes
 	// instead of the SDK's text-only fallback in createToolError().
 	//
@@ -1263,7 +1272,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.CONTRIBUTOR);
+			requirePermission(extra, "content:create");
 			const { emdash, userId, userRole } = getExtra(extra);
 			const actor = { id: userId, role: userRole };
 
@@ -1432,7 +1441,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.CONTRIBUTOR);
+			requireAnyPermission(extra, ["content:edit_own", "content:edit_own_drafts"]);
 			const { emdash, userId, userRole } = getExtra(extra);
 			const actor = { id: userId, role: userRole };
 
@@ -1608,7 +1617,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:delete_own");
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -1650,7 +1659,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:edit_own");
 			const ec = getEmDash(extra);
 
 			// Fetch trashed item to check ownership
@@ -1689,7 +1698,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "content:delete_permanent");
 			const ec = getEmDash(extra);
 			return unwrapAndInvalidate(
 				extra,
@@ -1725,7 +1734,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:publish_own");
 			const { emdash, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -1781,7 +1790,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:publish_own");
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -1831,7 +1840,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:publish_own");
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -1877,7 +1886,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:publish_own");
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			const existing = await ec.handleContentGet(args.collection, args.id);
@@ -1943,7 +1952,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:edit_own");
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -2014,7 +2023,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.CONTRIBUTOR);
+			requirePermission(extra, "content:create");
 			const { emdash, userId } = getExtra(extra);
 			const existing = await emdash.handleContentGet(args.collection, args.id);
 			if (!existing.success) return unwrap(existing);
@@ -2161,7 +2170,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "bylines:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleBylineCreate } = await import("../api/handlers/bylines.js");
@@ -2192,7 +2201,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "bylines:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleBylineUpdate } = await import("../api/handlers/bylines.js");
@@ -2224,7 +2233,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "bylines:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { BylineRepository } = await import("../database/repositories/byline.js");
@@ -2284,7 +2293,7 @@ export function createMcpServer(
 		},
 		async (_args, extra) => {
 			requireScope(extra, "schema:read");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "schema:read");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry } = await import("../schema/index.js");
@@ -2319,7 +2328,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:read");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "schema:read");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry, expandCollectionBlockFields } = await import("../schema/index.js");
@@ -2345,7 +2354,7 @@ export function createMcpServer(
 		},
 		async (_args, extra) => {
 			requireScope(extra, "schema:read");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "schema:read");
 			const ec = getEmDash(extra);
 			const { handleBlockTypeList } = await import("../api/handlers/block-types.js");
 			return unwrap(await handleBlockTypeList(ec.db));
@@ -2362,7 +2371,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:read");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "schema:read");
 			const ec = getEmDash(extra);
 			const { handleBlockTypeGet } = await import("../api/handlers/block-types.js");
 			return unwrap(await handleBlockTypeGet(ec.db, args.slug));
@@ -2378,7 +2387,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			const { handleBlockTypeCreate } = await import("../api/handlers/block-types.js");
 			return unwrap(await handleBlockTypeCreate(ec.db, args));
@@ -2395,7 +2404,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			const { slug, ...input } = args;
 			const { handleBlockTypeUpdate } = await import("../api/handlers/block-types.js");
@@ -2416,7 +2425,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			const { handleBlockTypeVersionActivate } = await import("../api/handlers/block-types.js");
 			return unwrap(
@@ -2467,7 +2476,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry } = await import("../schema/index.js");
@@ -2511,7 +2520,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry } = await import("../schema/index.js");
@@ -2538,7 +2547,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			const { slug, ...input } = args;
 			try {
@@ -2639,7 +2648,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry } = await import("../schema/index.js");
@@ -2679,7 +2688,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { SchemaRegistry } = await import("../schema/index.js");
@@ -2705,7 +2714,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "schema:write");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 			const { collection, fieldSlug, ...input } = args;
 			try {
@@ -2768,7 +2777,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "media:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "media:upload");
 			const { emdash, userId } = getExtra(extra);
 			return unwrap(
 				await emdash.handleMediaRegisterUpload({
@@ -2808,7 +2817,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "media:write");
-			requireRole(extra, Role.CONTRIBUTOR);
+			requirePermission(extra, "media:upload");
 			const { emdash, userId } = getExtra(extra);
 			if (!emdash.storage) {
 				return respondError("NO_STORAGE", "Storage not configured");
@@ -2867,7 +2876,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "media:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "media:edit_own");
 			const ec = getEmDash(extra);
 
 			// Fetch media item for ownership check
@@ -2907,7 +2916,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "media:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "media:delete_own");
 			const ec = getEmDash(extra);
 
 			// Fetch media item for ownership check
@@ -2936,7 +2945,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "admin");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "schema:manage");
 			const ec = getEmDash(extra);
 
 			let input: MediaUsageRepairRequest;
@@ -3104,7 +3113,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTaxonomyCreate } = await import("../api/handlers/taxonomies.js");
@@ -3154,7 +3163,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTaxonomyUpdate } = await import("../api/handlers/taxonomies.js");
@@ -3189,7 +3198,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTaxonomyDelete } = await import("../api/handlers/taxonomies.js");
@@ -3327,7 +3336,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTermCreate } = await import("../api/handlers/taxonomies.js");
@@ -3375,7 +3384,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTermUpdate } = await import("../api/handlers/taxonomies.js");
@@ -3420,7 +3429,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "taxonomies:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "taxonomies:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleTermDelete } = await import("../api/handlers/taxonomies.js");
@@ -3563,7 +3572,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "menus:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "menus:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleMenuCreate } = await import("../api/handlers/menus.js");
@@ -3598,7 +3607,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "menus:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "menus:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleMenuUpdate } = await import("../api/handlers/menus.js");
@@ -3628,7 +3637,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "menus:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "menus:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleMenuDelete } = await import("../api/handlers/menus.js");
@@ -3695,7 +3704,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "menus:manage");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "menus:manage");
 			const ec = getEmDash(extra);
 			try {
 				const { handleMenuSetItems } = await import("../api/handlers/menus.js");
@@ -3756,7 +3765,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requirePermission(extra, "content:edit_own");
 			const { emdash, userId, userRole } = getExtra(extra);
 
 			// Fetch the revision to discover the parent content entry
@@ -3814,7 +3823,7 @@ export function createMcpServer(
 		},
 		async (_args, extra) => {
 			requireScope(extra, "settings:read");
-			requireRole(extra, Role.EDITOR);
+			requirePermission(extra, "settings:read");
 			const ec = getEmDash(extra);
 			try {
 				const { handleSettingsGet } = await import("../api/handlers/settings.js");
@@ -3877,7 +3886,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "settings:manage");
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "settings:manage");
 			const ec = getEmDash(extra);
 			try {
 				const seo = args.seo;
@@ -3925,7 +3934,7 @@ export function createMcpServer(
 			annotations: { readOnlyHint: true },
 		},
 		async (_args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requireAnyPermission(extra, ["transfer:export", "transfer:import"]);
 			requireTransferScope(extra, "transfer:*");
 			return unwrap(await transferCapabilities(transferContext(extra)));
 		},
@@ -3947,7 +3956,7 @@ export function createMcpServer(
 			}),
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:export");
 			const scoped = transferScopeHeld(extra, "transfer:export");
 			const { userId, tokenId } = getExtra(extra);
 			return unwrap(
@@ -3975,7 +3984,7 @@ export function createMcpServer(
 			}),
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:export");
 			await requireTransferAccess(extra, "transfer:export", "export", args.operationId);
 			return unwrap(
 				await exportStatus(transferContext(extra), {
@@ -4011,7 +4020,7 @@ export function createMcpServer(
 			}),
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:import");
 			requireTransferScope(extra, "transfer:analyze");
 			return unwrap(await analyzeImport(transferContext(extra), args));
 		},
@@ -4043,7 +4052,7 @@ export function createMcpServer(
 			annotations: { destructiveHint: true },
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:import");
 			const scoped = transferScopeHeld(extra, "transfer:execute");
 			const { userId, tokenId } = getExtra(extra);
 			return unwrap(
@@ -4074,7 +4083,7 @@ export function createMcpServer(
 			annotations: { readOnlyHint: true },
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:import");
 			await requireTransferAccess(extra, "transfer:*", "import", args.operationId);
 			return unwrap(await importStatus(transferContext(extra), args.operationId));
 		},
@@ -4091,7 +4100,7 @@ export function createMcpServer(
 			inputSchema: z.object({ operationId: transferOperationIdSchema }),
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:import");
 			await requireTransferAccess(extra, "transfer:execute", "import", args.operationId);
 			const { userId, tokenId } = getExtra(extra);
 			return unwrap(
@@ -4113,7 +4122,7 @@ export function createMcpServer(
 			annotations: { readOnlyHint: true },
 		},
 		async (args, extra) => {
-			requireRole(extra, Role.ADMIN);
+			requirePermission(extra, "transfer:import");
 			await requireTransferAccess(extra, "transfer:*", "import", args.operationId);
 			return unwrap(await importReceipt(transferContext(extra), args.operationId));
 		},

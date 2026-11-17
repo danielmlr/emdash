@@ -32,6 +32,7 @@ import { createMemoryStorage, type MemoryStorage } from "../../utils/transfer/me
 const ADMIN_ID = "user_admin";
 const EDITOR_ID = "user_editor";
 const AUTHOR_ID = "user_author";
+const CONTRIBUTOR_ID = "user_contributor";
 const OTHER_AUTHOR_ID = "user_other_author";
 const SUBSCRIBER_ID = "user_subscriber";
 
@@ -620,6 +621,37 @@ describe("media_create (bug #14 / F1)", () => {
 		expect(create.isError).toBe(true);
 		expect(extractText(create)).toMatch(/UPLOAD_SIZE_MISMATCH|size/i);
 		expect((await repo.findById(pending.id))?.status).toBe("pending");
+	});
+
+	it("CONTRIBUTOR confirms their own signed upload", async () => {
+		const repo = new MediaRepository(db);
+		const pending = await repo.createPending({
+			filename: "photo.png",
+			mimeType: "image/png",
+			size: 3,
+			storageKey: "01JCONTRIBUTORKEY.png",
+			authorId: CONTRIBUTOR_ID,
+		});
+		await repo.createUploadAttempt(pending.id, pending.storageKey);
+		await storage.upload({
+			key: pending.storageKey,
+			body: new Uint8Array([1, 2, 3]),
+			contentType: pending.mimeType,
+		});
+		harness = await connectMcpHarness({
+			db,
+			userId: CONTRIBUTOR_ID,
+			userRole: Role.CONTRIBUTOR,
+			runtimeOptions: { storage },
+		});
+
+		const create = await harness.client.callTool({
+			name: "media_create",
+			arguments: { storageKey: pending.storageKey },
+		});
+
+		expect(create.isError, extractText(create)).toBeFalsy();
+		expect((await repo.findById(pending.id))?.status).toBe("ready");
 	});
 
 	it("AUTHOR confirms an uploaded object; subsequent media_get returns it; same author can update; different author cannot", async () => {

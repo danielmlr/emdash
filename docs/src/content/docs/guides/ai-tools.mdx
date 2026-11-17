@@ -97,7 +97,7 @@ Creating, updating, deleting, and translating bylines requires the Editor role. 
 
 `media_upload` accepts base64-encoded bytes, stores the file, registers the media item, and returns the ID and URL. It enforces the site's MIME-type and upload-size limits.
 
-`media_create` completes a pending upload created through `POST /_emdash/api/media/upload-url`. Upload the file with the returned signed URL, then pass its `storageKey` to `media_create` from the same user account. Confirmation checks that the stored file exists and matches the size supplied when the upload URL was requested. This workflow requires Author or a higher role; Contributors can use `media_upload`.
+`media_create` completes a pending upload created through `POST /_emdash/api/media/upload-url`. Upload the file with the returned signed URL, then pass its `storageKey` to `media_create` from the same user account. Confirmation checks that the stored file exists and matches the size supplied when the upload URL was requested. Both upload tools require Contributor or a higher role.
 
 ### Search
 

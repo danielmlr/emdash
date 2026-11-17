@@ -509,6 +509,7 @@ export class ContentRepository {
 			locale,
 			translationOf,
 			inheritFields = [],
+			translationSourceRevision,
 			publishedAt,
 			createdAt,
 		} = input;
@@ -604,12 +605,17 @@ export class ContentRepository {
 		});
 
 		if (translationOf) {
+			const atSourceRevision = translationSourceRevision
+				? sql`AND translation_source.version = ${translationSourceRevision.version}
+					AND translation_source.updated_at = ${translationSourceRevision.updatedAt}`
+				: sql``;
 			await sql`
 				INSERT INTO ${sql.ref(tableName)} (${sql.join(columnRefs, sql`, `)})
 				SELECT ${sql.join(valuePlaceholders, sql`, `)}
 				FROM ${sql.ref(tableName)} AS translation_source
 				WHERE translation_source.id = ${translationOf}
 					AND translation_source.deleted_at IS NULL
+					${atSourceRevision}
 			`.execute(this.db);
 		} else {
 			await sql`
@@ -624,6 +630,9 @@ export class ContentRepository {
 		const item = await this.findById(type, id);
 		if (!item) {
 			if (translationOf) {
+				if (translationSourceRevision && (await this.findById(type, translationOf))) {
+					throw new ContentMutationConflictError();
+				}
 				throw new EmDashValidationError("Translation source content not found");
 			}
 			throw new Error("Failed to create content");
@@ -696,12 +705,18 @@ export class ContentRepository {
 	 * Creates a new draft copy with "(Copy)" appended to the title.
 	 * A slug is auto-generated from the new title by the handler layer.
 	 */
-	async duplicate(type: string, id: string, authorId?: string): Promise<ContentItem> {
+	async duplicate(
+		type: string,
+		id: string,
+		authorId?: string,
+		expectedRevision?: ContentRevisionPrecondition,
+	): Promise<ContentItem> {
 		// Fetch the original item
 		const original = await this.findById(type, id);
 		if (!original) {
 			throw new EmDashValidationError("Content item not found");
 		}
+		assertRevisionPrecondition(original, expectedRevision);
 
 		// Prepare the new data
 		const newData = { ...original.data };

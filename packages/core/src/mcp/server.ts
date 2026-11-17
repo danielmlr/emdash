@@ -31,7 +31,7 @@ import {
 } from "#api/schemas.js";
 
 import { after } from "../after.js";
-import { entryEditAccess } from "../api/authorize.js";
+import { draftGrantRev, entryEditAccess } from "../api/authorize.js";
 import { claimEntryLockForWrite } from "../api/handlers/entry-lock.js";
 import type { MediaUsageRepairRequest } from "../api/schemas/media-usage.js";
 import type { EmDashHandlers } from "../astro/types.js";
@@ -802,6 +802,27 @@ function requireOwnership(
 }
 
 /**
+ * Enforce edit access to the entry in a content handler response, mirroring
+ * the REST API's requireEntryEditPerm(). Returns the `_rev` the write must be
+ * conditioned on when the access holds only while the entry is a draft.
+ */
+function requireEntryEditAccess(
+	extra: { authInfo?: { extra?: Record<string, unknown> } },
+	data: unknown,
+): string | undefined {
+	const payload = getExtra(extra);
+	const user = { id: payload.userId, role: payload.userRole };
+	const entry = { authorId: extractContentAuthorId(data), status: extractContentStatus(data) };
+	if (!entryEditAccess(user, entry)) {
+		throw new EmDashAuthError(
+			"Insufficient permissions for this operation",
+			"INSUFFICIENT_PERMISSIONS",
+		);
+	}
+	return draftGrantRev(user, entry, extractContentRev(data));
+}
+
+/**
  * Extract the author ID from a content handler response.
  *
  * Content handlers return `{ item: { id, authorId, ... }, _rev? }`.
@@ -1281,15 +1302,11 @@ export function createMcpServer(
 			}
 
 			// Creating a translation requires edit permission on the source item
+			let translationOfRev: string | undefined;
 			if (args.translationOf) {
 				const source = await emdash.handleContentGet(args.collection, args.translationOf);
 				if (!source.success) return unwrap(source);
-				requireOwnership(
-					extra,
-					extractContentAuthorId(source.data),
-					"content:edit_own",
-					"content:edit_any",
-				);
+				translationOfRev = requireEntryEditAccess(extra, source.data);
 			}
 
 			const data = await convertWriteData(emdash, args.collection, args.data);
@@ -1309,6 +1326,7 @@ export function createMcpServer(
 					authorId: userId,
 					locale: args.locale,
 					translationOf: args.translationOf,
+					translationOfRev,
 					bylines: args.bylines,
 					taxonomies: args.taxonomies,
 					migrateBlocks: args.migrateBlocks,
@@ -1341,6 +1359,7 @@ export function createMcpServer(
 					authorId: userId,
 					locale: args.locale,
 					translationOf: args.translationOf,
+					translationOfRev,
 					bylines: args.bylines,
 					taxonomies: args.taxonomies,
 					migrateBlocks: args.migrateBlocks,
@@ -1650,7 +1669,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requireRole(extra, Role.CONTRIBUTOR);
 			const ec = getEmDash(extra);
 
 			// Fetch trashed item to check ownership
@@ -1658,17 +1677,12 @@ export function createMcpServer(
 			if (!existing.success) {
 				return unwrap(existing);
 			}
-			requireOwnership(
-				extra,
-				extractContentAuthorId(existing.data),
-				"content:edit_own",
-				"content:edit_any",
-			);
+			const draftRev = requireEntryEditAccess(extra, existing.data);
 
 			const resolvedId = extractContentId(existing.data) ?? args.id;
 			return unwrapAndInvalidate(
 				extra,
-				await ec.handleContentRestore(args.collection, resolvedId),
+				await ec.handleContentRestore(args.collection, resolvedId, { _rev: draftRev }),
 				[args.collection, resolvedId],
 			);
 		},
@@ -1943,7 +1957,7 @@ export function createMcpServer(
 		},
 		async (args, extra) => {
 			requireScope(extra, "content:write");
-			requireRole(extra, Role.AUTHOR);
+			requireRole(extra, Role.CONTRIBUTOR);
 			const { emdash: ec, userId, userRole } = getExtra(extra);
 
 			// Fetch item to check ownership
@@ -1951,12 +1965,7 @@ export function createMcpServer(
 			if (!existing.success) {
 				return unwrap(existing);
 			}
-			requireOwnership(
-				extra,
-				extractContentAuthorId(existing.data),
-				"content:edit_own",
-				"content:edit_any",
-			);
+			requireEntryEditAccess(extra, existing.data);
 
 			const resolvedId = extractContentId(existing.data) ?? args.id;
 			const locked = await refuseLockedEntry(extra, args.collection, resolvedId, args.overrideLock);
@@ -2018,14 +2027,13 @@ export function createMcpServer(
 			const { emdash, userId } = getExtra(extra);
 			const existing = await emdash.handleContentGet(args.collection, args.id);
 			if (!existing.success) return unwrap(existing);
-			requireOwnership(
-				extra,
-				extractContentAuthorId(existing.data),
-				"content:edit_own",
-				"content:edit_any",
-			);
+			const draftRev = requireEntryEditAccess(extra, existing.data);
 			const resolvedId = extractContentId(existing.data) ?? args.id;
-			return unwrap(await emdash.handleContentDuplicate(args.collection, resolvedId, userId));
+			return unwrap(
+				await emdash.handleContentDuplicate(args.collection, resolvedId, userId, {
+					_rev: draftRev,
+				}),
+			);
 		},
 	);
 

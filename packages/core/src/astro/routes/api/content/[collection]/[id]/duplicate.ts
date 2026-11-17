@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requirePerm, requireOwnerPerm } from "#api/authorize.js";
+import { draftGrantRev, requireEntryEditPerm, requirePerm } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 
 export const prerender = false;
@@ -46,11 +46,14 @@ export const POST: APIRoute = async ({ params, locals }) => {
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
 	// Duplicating requires read access to the source — check ownership-based edit permissions
 	// since content:read is flat (no own/any split). This ensures authors can only duplicate their own.
-	const readDenied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any");
+	const entry = { authorId, status: existingItem?.status };
+	const readDenied = requireEntryEditPerm(user, entry);
 	if (readDenied) return readDenied;
 
 	const resolvedId = typeof existingItem?.id === "string" ? existingItem.id : id;
-	const result = await emdash.handleContentDuplicate(collection, resolvedId, user?.id);
+	const result = await emdash.handleContentDuplicate(collection, resolvedId, user?.id, {
+		_rev: draftGrantRev(user, entry, existingData?._rev),
+	});
 
 	return unwrapResult(result, 201);
 };

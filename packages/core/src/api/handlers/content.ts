@@ -1297,6 +1297,8 @@ export async function handleContentCreate(
 		bylines?: ContentBylineInput[];
 		locale?: string;
 		translationOf?: string;
+		/** Refuses the create unless `translationOf` is still at this `_rev`. */
+		translationOfRev?: string;
 		seo?: ContentSeoInput;
 		taxonomies?: Record<string, string[]>;
 		/** Reference fields: field slug → ordered selected entry ids. */
@@ -1410,6 +1412,7 @@ export async function handleContentCreate(
 				locale: effectiveLocale,
 				translationOf: body.translationOf,
 				inheritFields: inheritedFields,
+				translationSourceRevision: decodeRevisionPrecondition(body.translationOfRev),
 				createdAt: body.createdAt,
 				publishedAt: body.publishedAt,
 			});
@@ -1903,8 +1906,10 @@ export async function handleContentDuplicate(
 	collection: string,
 	id: string,
 	authorId?: string,
+	options: { _rev?: string } = {},
 ): Promise<ApiResult<{ item: ContentItem }>> {
 	try {
+		const expectedRevision = decodeRevisionPrecondition(options._rev);
 		const hasSeo = await collectionHasSeo(db, collection);
 
 		// Wrap duplicate + SEO copy in a transaction for atomicity
@@ -1913,7 +1918,7 @@ export async function handleContentDuplicate(
 			const bylineRepo = new BylineRepository(trx);
 			const resolvedId = (await resolveId(repo, collection, id)) ?? id;
 			const original = await repo.findById(collection, resolvedId);
-			const dup = await repo.duplicate(collection, resolvedId, authorId);
+			const dup = await repo.duplicate(collection, resolvedId, authorId, expectedRevision);
 
 			// Reference edges are storage-less (keyed by translation_group, not in
 			// `data`), so they don't ride along in the row copy — carry the original's
@@ -1978,6 +1983,9 @@ export async function handleContentDuplicate(
 			data: { item: duplicate },
 		};
 	} catch (err) {
+		if (err instanceof ContentMutationConflictError) {
+			return { success: false, error: { code: "CONFLICT", message: err.message } };
+		}
 		if (err instanceof EmDashValidationError) {
 			return {
 				success: false,

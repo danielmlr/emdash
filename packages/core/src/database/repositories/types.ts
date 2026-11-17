@@ -25,6 +25,8 @@ export interface CreateContentInput {
 	translationOf?: string;
 	/** Field columns selected atomically from `translationOf` during the insert. */
 	inheritFields?: string[];
+	/** Refuses the insert unless `translationOf` is still at this revision. */
+	translationSourceRevision?: Pick<ContentItem, "version" | "updatedAt">;
 	publishedAt?: string | null;
 	/** Override created_at (ISO 8601). Used by importers to preserve original dates. */
 	createdAt?: string | null;

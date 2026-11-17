@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 
-import { requireOwnerPerm } from "#api/authorize.js";
+import { draftGrantRev, requireEntryEditPerm } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { claimEntryLockForWrite } from "#api/handlers/entry-lock.js";
 import { isParseError, parseOptionalBody } from "#api/parse.js";
@@ -49,8 +49,10 @@ export const POST: APIRoute = async ({ params, request, locals, url, cache }) =>
 				(existingData.item as Record<string, unknown>)
 			: existingData;
 	const authorId = typeof existingItem?.authorId === "string" ? existingItem.authorId : "";
-	const denied = requireOwnerPerm(user, authorId, "content:edit_own", "content:edit_any");
+	const entry = { authorId, status: existingItem?.status };
+	const denied = requireEntryEditPerm(user, entry);
 	if (denied) return denied;
+	const draftRev = draftGrantRev(user, entry, existingData?._rev);
 
 	const resolvedId = typeof existingItem?.id === "string" ? existingItem.id : id;
 
@@ -64,7 +66,7 @@ export const POST: APIRoute = async ({ params, request, locals, url, cache }) =>
 	}
 
 	const result = await emdash.handleContentDiscardDraft(collection, resolvedId, {
-		_rev: body?._rev,
+		_rev: body?._rev ?? draftRev,
 		actor: { id: user!.id, role: user!.role },
 	});
 

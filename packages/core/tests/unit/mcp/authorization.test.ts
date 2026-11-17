@@ -644,6 +644,7 @@ describe("MCP Authorization", () => {
 				"post",
 				CONTENT_ID,
 				AUTHOR_USER_ID,
+				expect.anything(),
 			);
 		});
 
@@ -665,6 +666,7 @@ describe("MCP Authorization", () => {
 				"post",
 				CONTENT_ID,
 				OTHER_USER_ID,
+				expect.anything(),
 			);
 		});
 	});
@@ -1108,7 +1110,11 @@ describe("MCP Authorization", () => {
 			expect(result.isError).toBeFalsy();
 			// The mock returns item.id = CONTENT_ID. The tool should resolve
 			// the slug to CONTENT_ID via extractContentId and pass that to the handler.
-			expect(handlers.handleContentRestore).toHaveBeenCalledWith("post", CONTENT_ID);
+			expect(handlers.handleContentRestore).toHaveBeenCalledWith(
+				"post",
+				CONTENT_ID,
+				expect.anything(),
+			);
 		});
 
 		it("content_discard_draft passes resolvedId (not slug) to handler", async () => {

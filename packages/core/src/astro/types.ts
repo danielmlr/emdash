@@ -353,6 +353,7 @@ export interface EmDashHandlers {
 			bylines?: Array<{ bylineId: string; roleLabel?: string | null }>;
 			locale?: string;
 			translationOf?: string;
+			translationOfRev?: string;
 			seo?: ContentSeoInput;
 			taxonomies?: Record<string, string[]>;
 			references?: Record<string, string[]>;
@@ -410,7 +411,11 @@ export interface EmDashHandlers {
 		params?: { cursor?: string; page?: number; limit?: number; locale?: string },
 	) => Promise<HandlerResponse>;
 
-	handleContentRestore: (collection: string, id: string) => Promise<HandlerResponse>;
+	handleContentRestore: (
+		collection: string,
+		id: string,
+		options?: { _rev?: string },
+	) => Promise<HandlerResponse>;
 
 	handleContentPermanentDelete: (collection: string, id: string) => Promise<HandlerResponse>;
 
@@ -425,6 +430,7 @@ export interface EmDashHandlers {
 		collection: string,
 		id: string,
 		authorId?: string,
+		options?: { _rev?: string },
 	) => Promise<HandlerResponse>;
 
 	// Publishing & Scheduling handlers

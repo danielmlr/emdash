@@ -4026,6 +4026,7 @@ export class EmDashRuntime {
 			bylines?: Array<{ bylineId: string; roleLabel?: string | null }>;
 			locale?: string;
 			translationOf?: string;
+			translationOfRev?: string;
 			taxonomies?: Record<string, string[]>;
 			references?: Record<string, string[]>;
 			actor?: ActorInfo;
@@ -4838,8 +4839,13 @@ export class EmDashRuntime {
 		return handleContentCountTrashed(this.db, collection, params);
 	}
 
-	async handleContentDuplicate(collection: string, id: string, authorId?: string) {
-		const result = await handleContentDuplicate(this.db, collection, id, authorId);
+	async handleContentDuplicate(
+		collection: string,
+		id: string,
+		authorId?: string,
+		options: { _rev?: string } = {},
+	) {
+		const result = await handleContentDuplicate(this.db, collection, id, authorId, options);
 		if (result.success && result.data) {
 			await this.refreshContentUsageAfterSuccessfulWrite(collection, [result.data.item.id]);
 		}

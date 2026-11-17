@@ -8,7 +8,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import type { APIRoute } from "astro";
 
-import { requirePerm, requireOwnerPerm } from "#api/authorize.js";
+import { draftGrantRev, requireEntryEditPerm, requirePerm } from "#api/authorize.js";
 import { apiError, mapErrorStatus, unwrapResult } from "#api/error.js";
 import { parseBody, parseQuery, isParseError } from "#api/parse.js";
 import { contentListQuery, contentCreateBody } from "#api/schemas.js";
@@ -50,6 +50,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 	if (isParseError(body)) return body;
 
 	// Creating a translation requires edit permission on the source item
+	let translationOfRev: string | undefined;
 	if (body.translationOf) {
 		const source = await emdash.handleContentGet(collection, body.translationOf);
 		if (!source.success) {
@@ -59,14 +60,13 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 				mapErrorStatus(source.error?.code),
 			);
 		}
-		const sourceAuthor = source.data.item.authorId ?? "";
-		const translationDenied = requireOwnerPerm(
-			user,
-			sourceAuthor,
-			"content:edit_own",
-			"content:edit_any",
-		);
+		const sourceEntry = {
+			authorId: source.data.item.authorId ?? "",
+			status: source.data.item.status,
+		};
+		const translationDenied = requireEntryEditPerm(user, sourceEntry);
 		if (translationDenied) return translationDenied;
+		translationOfRev = draftGrantRev(user, sourceEntry, source.data._rev);
 	}
 
 	// Only EDITOR+ can write publishedAt / createdAt directly — incl. clearing to null.
@@ -87,6 +87,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 		authorId: user?.id,
 		locale: body.locale,
 		translationOf: body.translationOf,
+		translationOfRev,
 		actor,
 	});
 

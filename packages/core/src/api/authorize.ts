@@ -95,6 +95,20 @@ export function entryEditAccess(
 }
 
 /**
+ * The `_rev` a write must be conditioned on when {@link entryEditAccess} grants
+ * it only while the entry is a draft: the revision the check read. `undefined`
+ * for full access, which needs no condition.
+ */
+export function draftGrantRev(
+	user: UserLike | null | undefined,
+	entry: { authorId: string; status: unknown },
+	checkedRev: unknown,
+): string | undefined {
+	if (entryEditAccess(user, entry) !== "draft") return undefined;
+	return typeof checkedRev === "string" ? checkedRev : undefined;
+}
+
+/**
  * Check if user can edit an entry, including an owner editing their own draft
  * through `content:edit_own_drafts`. Returns a 401/403 Response if not, or null
  * if authorized. See {@link entryEditAccess} for what a draft-only grant requires

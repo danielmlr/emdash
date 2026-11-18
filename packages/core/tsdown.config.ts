@@ -117,6 +117,8 @@ export default defineConfig({
 		"src/schema/project-env-types.ts",
 		// CLI
 		"src/cli/index.ts",
+		// CLI credential store (read by @emdash-cms/fleet)
+		"src/cli/credentials.ts",
 		// Client (programmatic editing API)
 		"src/client/index.ts",
 		"src/client/cf-access.ts",

@@ -1,0 +1,55 @@
+{
+	"name": "@emdash-cms/fleet",
+	"version": "0.0.0",
+	"description": "Run many EmDash sites from one site list",
+	"type": "module",
+	"main": "dist/index.mjs",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"default": "./dist/index.mjs"
+		}
+	},
+	"bin": {
+		"emdash-fleet": "./dist/cli.mjs"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"prepublishOnly": "node --run build",
+		"typecheck": "tsgo --noEmit",
+		"test": "vitest run",
+		"check": "publint"
+	},
+	"dependencies": {
+		"citty": "^0.2.2",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"publint": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"engines": {
+		"node": ">=22.18.0"
+	},
+	"keywords": [
+		"emdash",
+		"cms",
+		"fleet",
+		"multisite",
+		"cli"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/emdash-cms/emdash.git",
+		"directory": "packages/fleet"
+	},
+	"homepage": "https://github.com/emdash-cms/emdash"
+}

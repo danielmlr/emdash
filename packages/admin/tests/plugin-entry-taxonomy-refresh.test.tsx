@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider.js";
 import type { AdminManifest } from "../src/lib/api.js";
 import { createAdminRouter } from "../src/router.js";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.js";
 import { createTestQueryClient } from "./utils/test-helpers.js";
 
@@ -77,7 +78,8 @@ it("refreshes plugin-added categories before a later sidebar edit replaces the a
 		const method = init?.method ?? "GET";
 		if (url === "/_emdash/api/manifest") return json(manifest);
 		if (url === "/_emdash/api/taxonomies") return json({ taxonomies: [taxonomy] });
-		if (url === "/_emdash/api/auth/me") return json({ id: "admin", role: 50 });
+		if (url === "/_emdash/api/auth/me")
+			return json({ id: "admin", role: 50, permissions: permissionsFor(50) });
 		if (url === "/_emdash/api/content/posts/post_1")
 			return json({
 				item: {

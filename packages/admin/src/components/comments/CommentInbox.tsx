@@ -64,7 +64,7 @@ export interface CommentInboxProps {
 	/** Rejects when the action fails, so the selection survives for a retry. */
 	onBulkAction: (ids: string[], action: BulkAction) => Promise<unknown>;
 	onLoadMore: () => void;
-	isAdmin: boolean;
+	canDelete: boolean;
 	isStatusPending: boolean;
 	deleteError: unknown;
 	onDeleteErrorReset: () => void;
@@ -103,7 +103,7 @@ export function CommentInbox({
 	onCommentDelete,
 	onBulkAction,
 	onLoadMore,
-	isAdmin,
+	canDelete,
 	isStatusPending,
 	deleteError,
 	onDeleteErrorReset,
@@ -322,7 +322,7 @@ export function CommentInbox({
 							{t`Trash`}
 						</Button>
 					)}
-					{isAdmin && (
+					{canDelete && (
 						<Button
 							size="sm"
 							variant="destructive"
@@ -384,7 +384,7 @@ export function CommentInbox({
 										setDeleteId(id);
 										onDeleteErrorReset();
 									}}
-									isAdmin={isAdmin}
+									canDelete={canDelete}
 									isStatusPending={isStatusPending}
 								/>
 							))
@@ -446,7 +446,7 @@ export function CommentInbox({
 						onDeleteErrorReset();
 						setDetailComment(null);
 					}}
-					isAdmin={isAdmin}
+					canDelete={canDelete}
 					isStatusPending={isStatusPending}
 				/>
 			)}
@@ -512,7 +512,7 @@ interface CommentRowProps {
 	onRowClick: () => void;
 	onStatusChange: (id: string, status: CommentStatus) => void;
 	onDelete: (id: string) => void;
-	isAdmin: boolean;
+	canDelete: boolean;
 	isStatusPending: boolean;
 }
 
@@ -523,7 +523,7 @@ function CommentRow({
 	onRowClick,
 	onStatusChange,
 	onDelete,
-	isAdmin,
+	canDelete,
 	isStatusPending,
 }: CommentRowProps) {
 	const { t, i18n } = useLingui();
@@ -600,7 +600,7 @@ function CommentRow({
 								{t`Trash`}
 							</DropdownMenu.Item>
 						)}
-						{isAdmin && (
+						{canDelete && (
 							<>
 								<DropdownMenu.Separator />
 								<DropdownMenu.Item

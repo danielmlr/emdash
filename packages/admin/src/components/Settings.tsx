@@ -19,7 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
 import { fetchManifest } from "../lib/api";
-import { useCurrentUser } from "../lib/api/current-user.js";
+import { useCan } from "../lib/permissions.js";
 import { SUPPORTED_LOCALES } from "../locales/index.js";
 import { useLocale } from "../locales/useLocale.js";
 import { SettingsNavRow, SettingsSection } from "./settings/SettingsLayout.js";
@@ -28,7 +28,7 @@ import { SettingsNavRow, SettingsSection } from "./settings/SettingsLayout.js";
  * Settings hub page — links to all settings sub-pages.
  */
 export function Settings() {
-	const { data: currentUser } = useCurrentUser();
+	const { can } = useCan();
 	const { data: manifest } = useQuery({
 		queryKey: ["manifest"],
 		queryFn: fetchManifest,
@@ -37,8 +37,9 @@ export function Settings() {
 	const { t } = useLingui();
 	const { locale, setLocale } = useLocale();
 	const showSecuritySettings = manifest?.authMode === "passkey";
-	const isAdmin = (currentUser?.role ?? 0) >= 50;
-	const showMediaUsageSettings = isAdmin;
+	const canManageSettings = can("settings:manage");
+	const canManageBackups = can("backups:manage");
+	const canTransfer = can("transfer:export") || can("transfer:import");
 	const selectedLocale = SUPPORTED_LOCALES.find((option) => option.code === locale) ?? null;
 
 	return (
@@ -48,7 +49,7 @@ export function Settings() {
 			</header>
 
 			<div className="mt-6 grid gap-8">
-				{isAdmin ? (
+				{canManageSettings ? (
 					<SettingsSection title={t`Site`}>
 						<SettingsNavRow
 							to="/settings/general"
@@ -71,7 +72,7 @@ export function Settings() {
 					</SettingsSection>
 				) : null}
 
-				{showMediaUsageSettings ? (
+				{can("schema:manage") ? (
 					<SettingsSection title={t`Media`}>
 						<SettingsNavRow
 							to="/settings/media-usage"
@@ -90,7 +91,7 @@ export function Settings() {
 							title={t`Security`}
 							description={t`Manage your passkeys and authentication`}
 						/>
-						{isAdmin ? (
+						{can("users:read") ? (
 							<SettingsNavRow
 								to="/settings/allowed-domains"
 								icon={<Globe className="h-5 w-5" />}
@@ -101,7 +102,7 @@ export function Settings() {
 					</SettingsSection>
 				)}
 
-				{isAdmin ? (
+				{can("auth:manage_api_tokens") ? (
 					<SettingsSection title={t`API Tokens`}>
 						<SettingsNavRow
 							to="/settings/api-tokens"
@@ -112,26 +113,32 @@ export function Settings() {
 					</SettingsSection>
 				) : null}
 
-				{isAdmin ? (
+				{canManageSettings || canManageBackups || canTransfer ? (
 					<SettingsSection title={t`Email Settings`}>
-						<SettingsNavRow
-							to="/settings/email"
-							icon={<Envelope className="h-5 w-5" />}
-							title={t`Email`}
-							description={t`View email provider status and send test emails`}
-						/>
-						<SettingsNavRow
-							to="/settings/backups"
-							icon={<DownloadSimple className="h-5 w-5" />}
-							title={t`Backups`}
-							description={t`Download backups and schedule automatic backups to storage`}
-						/>
-						<SettingsNavRow
-							to="/settings/transfer"
-							icon={<ArrowsLeftRight className="h-5 w-5" />}
-							title={t`Transfer`}
-							description={t`Move this site to another EmDash installation, or import a site package`}
-						/>
+						{canManageSettings ? (
+							<SettingsNavRow
+								to="/settings/email"
+								icon={<Envelope className="h-5 w-5" />}
+								title={t`Email`}
+								description={t`View email provider status and send test emails`}
+							/>
+						) : null}
+						{canManageBackups ? (
+							<SettingsNavRow
+								to="/settings/backups"
+								icon={<DownloadSimple className="h-5 w-5" />}
+								title={t`Backups`}
+								description={t`Download backups and schedule automatic backups to storage`}
+							/>
+						) : null}
+						{canTransfer ? (
+							<SettingsNavRow
+								to="/settings/transfer"
+								icon={<ArrowsLeftRight className="h-5 w-5" />}
+								title={t`Transfer`}
+								description={t`Move this site to another EmDash installation, or import a site package`}
+							/>
+						) : null}
 					</SettingsSection>
 				) : null}
 

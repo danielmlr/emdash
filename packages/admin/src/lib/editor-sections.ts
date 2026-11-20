@@ -25,8 +25,6 @@ import {
 	type ResolvedSandboxedEditorPanel,
 } from "./sandboxed-editor-extensions.js";
 
-const ROLE_EDITOR = 40;
-
 export const EDITOR_SECTION_LABELS: Record<BuiltInEditorSectionId, MessageDescriptor> = {
 	publish: msg`Publish`,
 	"url-language": msg`URL & language`,
@@ -42,15 +40,21 @@ export const EDITOR_SECTION_LABELS: Record<BuiltInEditorSectionId, MessageDescri
 type EditorManifest = Pick<AdminManifest, "collections" | "plugins" | "taxonomies" | "i18n">;
 type ManifestCollection = AdminManifest["collections"][string];
 
+/** Who the sections are listed for. Plugin panels compare `minRole` with `role`. */
+export interface SectionViewer {
+	readonly role: number;
+	readonly can: (permission: string) => boolean;
+}
+
 interface SiteContext {
 	readonly manifest: EditorManifest;
-	readonly role: number;
+	readonly can: SectionViewer["can"];
 }
 
 /**
  * A section is offered site-wide or by collection. Only the manifest and the
- * role count: entry-level conditions (a saved entry, a non-empty user list)
- * stay with the editor.
+ * user's permissions count: entry-level conditions (a saved entry, a non-empty
+ * user list) stay with the editor.
  */
 type Availability =
 	| { readonly site: (site: SiteContext) => boolean }
@@ -65,8 +69,8 @@ type Availability =
 const AVAILABILITY: Record<BuiltInEditorSectionId, Availability> = {
 	publish: { site: () => true },
 	"url-language": { site: () => true },
-	ownership: { site: ({ role }) => role >= ROLE_EDITOR },
-	bylines: { site: ({ role }) => role >= ROLE_EDITOR },
+	ownership: { site: ({ can }) => can("content:edit_any") },
+	bylines: { site: ({ can }) => can("bylines:manage") },
 	translations: { site: ({ manifest }) => manifest.i18n != null },
 	taxonomies: {
 		collection: ({ manifest }, slug) =>
@@ -156,9 +160,9 @@ export type EditorSectionEntry =
 export function listEditorSections(
 	manifest: EditorManifest,
 	pluginAdmins: PluginAdmins,
-	role: number,
+	viewer: SectionViewer,
 ): EditorSectionEntry[] {
-	const site: SiteContext = { manifest, role };
+	const site: SiteContext = { manifest, can: viewer.can };
 	const collections = Object.entries(manifest.collections);
 
 	const builtIns = BUILT_IN_EDITOR_SECTION_IDS.filter((id) => {
@@ -174,7 +178,7 @@ export function listEditorSections(
 			pluginAdmins,
 			manifest.plugins,
 			slug,
-			role,
+			viewer.role,
 		)) {
 			if (!extensions.has(section.id)) extensions.set(section.id, section);
 		}

@@ -552,6 +552,7 @@ function buildReferencesPayload(
 export interface CurrentUserInfo {
 	id: string;
 	role: number;
+	permissions?: string[];
 }
 
 export interface ContentEditorProps {

@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import type { AdminManifest } from "../../src/lib/api";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // Mock router
@@ -38,7 +39,12 @@ vi.mock("../../src/locales/useLocale.js", () => ({
 
 vi.mock("../../src/lib/api/current-user.js", () => ({
 	useCurrentUser: () => ({
-		data: { id: "user-1", email: "admin@example.com", role: currentUser.role },
+		data: {
+			id: "user-1",
+			email: "admin@example.com",
+			role: currentUser.role,
+			permissions: permissionsFor(currentUser.role),
+		},
 		isLoading: false,
 	}),
 }));

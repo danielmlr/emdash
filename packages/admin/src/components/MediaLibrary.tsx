@@ -73,6 +73,7 @@ import {
 	fallbackToOriginalThumbnail,
 	metaNumber,
 } from "../lib/media-utils";
+import { can, canActOnOwn } from "../lib/permissions.js";
 import { cn } from "../lib/utils";
 import {
 	DataTable,
@@ -212,24 +213,25 @@ export function MediaLibrary({
 }: MediaLibraryProps) {
 	const { t } = useLingui();
 	const currentUser = useCurrentUser().data;
-	const isAdmin = (currentUser?.role ?? 0) >= 50;
+	const canManageSchema = can(currentUser, "schema:manage");
 	const [activeProvider, setActiveProvider] = React.useState<string>("local");
 	const activationQuery = useQuery({
 		queryKey: MEDIA_USAGE_ACTIVATION_QUERY_KEY,
 		queryFn: fetchMediaUsageActivationStatus,
-		enabled: isAdmin && activeProvider === "local",
+		enabled: canManageSchema && activeProvider === "local",
 		retry: false,
 		staleTime: 60_000,
 		refetchOnMount: "always",
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 	});
-	const setupStatus = isAdmin && !activationQuery.isError ? activationQuery.data : undefined;
+	const setupStatus =
+		canManageSchema && !activationQuery.isError ? activationQuery.data : undefined;
 	const progressQuery = useQuery({
 		queryKey: MEDIA_USAGE_PROGRESS_QUERY_KEY,
 		queryFn: fetchMediaUsageProgress,
 		enabled:
-			isAdmin &&
+			canManageSchema &&
 			activeProvider === "local" &&
 			!activationQuery.isError &&
 			setupStatus?.state === "active",
@@ -1301,13 +1303,11 @@ export function MediaLibrary({
 					providerName={detailItem.provider ? activeProviderInfo?.name : undefined}
 					canDelete={detailItem.provider ? activeProviderInfo?.capabilities.delete : undefined}
 					canMoveLocation={isLocalMediaItem(detailItem) ? canMoveMedia?.(detailItem) : undefined}
-					canReplaceOriginal={Boolean(
+					canReplaceOriginal={
 						isLocalMediaItem(detailItem) &&
-						currentUser &&
-						(currentUser.role >= 40 ||
-							(currentUser.role >= 30 && detailItem.authorId === currentUser.id)),
-					)}
-					canDuplicateCrop={Boolean(isLocalMediaItem(detailItem) && (currentUser?.role ?? 0) >= 20)}
+						canActOnOwn(currentUser, detailItem.authorId, "media:edit_own", "media:edit_any")
+					}
+					canDuplicateCrop={isLocalMediaItem(detailItem) && can(currentUser, "media:upload")}
 					restoreFocusTargetRef={mediaHeadingRef}
 					onClose={closeDetail}
 					onClosed={handleDetailClosed}

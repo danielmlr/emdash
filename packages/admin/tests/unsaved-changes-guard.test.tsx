@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider.js";
 import type { AdminManifest } from "../src/lib/api/index.js";
 import { createAdminRouter } from "../src/router.js";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.js";
 import { createMockFetch, createTestQueryClient } from "./utils/test-helpers.js";
 
@@ -169,7 +170,9 @@ describe("leaving the content editor", () => {
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 50 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 50, permissions: permissionsFor(50) },
+			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [], nextCursor: null } })
 			.on("GET", "/_emdash/api/content/posts?", { data: { items: [], nextCursor: null } })
 			.on("POST", "/_emdash/api/content/posts", { data: { item: CREATED, _rev: "rev-1" } })

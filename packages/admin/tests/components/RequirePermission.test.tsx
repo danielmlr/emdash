@@ -1,6 +1,7 @@
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // Role levels from @emdash-cms/auth.
@@ -17,18 +18,23 @@ const currentUser = vi.hoisted(() => ({
 vi.mock("../../src/lib/api/current-user.js", () => ({
 	useCurrentUser: () => ({
 		data: currentUser.signedIn
-			? { id: "user-1", email: "user@example.com", role: currentUser.role }
+			? {
+					id: "user-1",
+					email: "user@example.com",
+					role: currentUser.role,
+					permissions: permissionsFor(currentUser.role),
+				}
 			: undefined,
 		isLoading: currentUser.isLoading,
 	}),
 }));
 
 // Import after mocks
-const { RequireAdmin } = await import("../../src/components/RequireAdmin.js");
+const { RequirePermission } = await import("../../src/components/RequirePermission.js");
 
 const CHILD_TEXT = "Protected settings content";
 
-describe("RequireAdmin", () => {
+describe("RequirePermission", () => {
 	beforeEach(() => {
 		currentUser.role = ROLE_ADMIN;
 		currentUser.isLoading = false;
@@ -37,9 +43,9 @@ describe("RequireAdmin", () => {
 
 	it("renders its children for an admin", async () => {
 		const screen = await render(
-			<RequireAdmin>
+			<RequirePermission permission="settings:manage">
 				<p>{CHILD_TEXT}</p>
-			</RequireAdmin>,
+			</RequirePermission>,
 		);
 		await expect.element(screen.getByText(CHILD_TEXT)).toBeInTheDocument();
 		await expect.element(screen.getByText("Access denied")).not.toBeInTheDocument();
@@ -51,20 +57,31 @@ describe("RequireAdmin", () => {
 	])("shows Access denied instead of its children for an %s", async (_label, role) => {
 		currentUser.role = role;
 		const screen = await render(
-			<RequireAdmin>
+			<RequirePermission permission="settings:manage">
 				<p>{CHILD_TEXT}</p>
-			</RequireAdmin>,
+			</RequirePermission>,
 		);
 		await expect.element(screen.getByText("Access denied")).toBeInTheDocument();
 		await expect.element(screen.getByText(CHILD_TEXT)).not.toBeInTheDocument();
 	});
 
+	it("renders its children for an editor when editors hold the permission", async () => {
+		currentUser.role = ROLE_EDITOR;
+		const screen = await render(
+			<RequirePermission permission="comments:moderate">
+				<p>{CHILD_TEXT}</p>
+			</RequirePermission>,
+		);
+		await expect.element(screen.getByText(CHILD_TEXT)).toBeInTheDocument();
+		await expect.element(screen.getByText("Access denied")).not.toBeInTheDocument();
+	});
+
 	it("treats a missing user as denied", async () => {
 		currentUser.signedIn = false;
 		const screen = await render(
-			<RequireAdmin>
+			<RequirePermission permission="settings:manage">
 				<p>{CHILD_TEXT}</p>
-			</RequireAdmin>,
+			</RequirePermission>,
 		);
 		await expect.element(screen.getByText("Access denied")).toBeInTheDocument();
 		await expect.element(screen.getByText(CHILD_TEXT)).not.toBeInTheDocument();
@@ -74,9 +91,9 @@ describe("RequireAdmin", () => {
 		currentUser.isLoading = true;
 		currentUser.signedIn = false;
 		const screen = await render(
-			<RequireAdmin>
+			<RequirePermission permission="settings:manage">
 				<p>{CHILD_TEXT}</p>
-			</RequireAdmin>,
+			</RequirePermission>,
 		);
 		await expect.element(screen.getByText(CHILD_TEXT)).not.toBeInTheDocument();
 		await expect.element(screen.getByText("Access denied")).not.toBeInTheDocument();

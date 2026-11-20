@@ -40,6 +40,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient, createMockFetch, waitFor } from "./utils/test-helpers";
 
@@ -132,7 +133,9 @@ describe("ContentEditPage – publish button stays in sync after publishing (#15
 
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 30 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 30, permissions: permissionsFor(30) },
+			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			.on("GET", "/_emdash/api/users", { data: { items: [] } })
 			// Initial state: published WITH pending draft changes -> "Publish changes" shows.
@@ -242,7 +245,9 @@ describe("ContentEditPage – publish button appears after saving an edit (#1557
 
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 30 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 30, permissions: permissionsFor(30) },
+			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			.on("GET", "/_emdash/api/users", { data: { items: [] } })
 			// Initial state: published, no pending changes -> "Unpublish Post" shows, no
@@ -327,7 +332,9 @@ describe("ContentEditPage – publish button appears after an autosave", () => {
 
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 30 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 30, permissions: permissionsFor(30) },
+			})
 			.on("GET", "/_emdash/api/bylines", { data: { items: [] } })
 			.on("GET", "/_emdash/api/users", { data: { items: [] } })
 			// The GET keeps reporting the clean state for the whole test, so the only

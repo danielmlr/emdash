@@ -27,6 +27,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import type { AdminManifest, ContentItem } from "../src/lib/api";
 import { ConfigurationLoadingScreen, createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient, createMockFetch, waitFor } from "./utils/test-helpers";
 
@@ -390,7 +391,7 @@ describe("MediaPage – upload completion", () => {
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
 			.on("GET", "/_emdash/api/auth/me", {
-				data: { id: "user_01", role: 60 },
+				data: { id: "user_01", role: 50, permissions: permissionsFor(50) },
 			})
 			.on("GET", "/_emdash/api/media/folders/folder-one", {
 				data: { item: { id: "folder-one", name: "Folder One" } },
@@ -861,7 +862,7 @@ describe("MediaPage – upload completion", () => {
 
 	it("allows authors to move their own media but not another user's media", async () => {
 		mockFetch.on("GET", "/_emdash/api/auth/me", {
-			data: { id: "user_01", role: 30 },
+			data: { id: "user_01", role: 30, permissions: permissionsFor(30) },
 		});
 		const { router, TestApp } = buildRouter();
 		await router.navigate({ to: "/media" });

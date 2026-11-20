@@ -39,8 +39,8 @@ import {
 	type CalendarItem,
 	type CalendarState,
 } from "../../lib/calendar.js";
-import { canPublishEntry } from "../../lib/content-permissions.js";
 import { invalidateContentViews } from "../../lib/invalidate-content-views.js";
+import { canPublishEntry } from "../../lib/permissions.js";
 import { openPreviewWindow } from "../../lib/preview-window.js";
 import { contentUrl } from "../../lib/url.js";
 import { cn } from "../../lib/utils.js";

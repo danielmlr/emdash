@@ -2,6 +2,7 @@ import * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Shell } from "../../src/components/Shell";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -15,7 +16,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 	};
 });
 
-const mocks = vi.hoisted(() => ({ user: null as null | { role: number } }));
+const mocks = vi.hoisted(() => ({
+	user: null as null | { role: number; permissions: string[] },
+}));
 
 vi.mock("../../src/lib/api/current-user", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../../src/lib/api/current-user")>()),
@@ -76,7 +79,7 @@ describe("Shell", () => {
 	});
 
 	it("stores localized labels for the cache-safe client toolbar bootstrap", async () => {
-		mocks.user = { role: 30 };
+		mocks.user = { role: 30, permissions: permissionsFor(30) };
 		await render(
 			<Shell manifest={manifest}>
 				<div>Page content</div>

@@ -16,6 +16,7 @@ import { ThemeProvider } from "../../src/components/ThemeProvider";
 import type { AdminManifest, ContentItem, EntryRef } from "../../src/lib/api";
 import { RoomSaveError, type CoEditing, type RoomEvent } from "../../src/lib/co-editing/types";
 import { createAdminRouter } from "../../src/router";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 import { createRoom, SAVED, type FakeRoom } from "./fake-room";
 
@@ -201,7 +202,7 @@ function createServer(initial: ContentItem) {
 		if (method === "GET" && path === "/_emdash/api/manifest")
 			return json({ data: server.manifest });
 		if (method === "GET" && path === "/_emdash/api/auth/me") {
-			return json({ data: { id: "user_1", role: 40 } });
+			return json({ data: { id: "user_1", role: 40, permissions: permissionsFor(40) } });
 		}
 		if (
 			method === "GET" &&

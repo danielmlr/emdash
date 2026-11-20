@@ -3,10 +3,15 @@ import { useLingui } from "@lingui/react/macro";
 import * as React from "react";
 
 import { useCurrentUser } from "../lib/api/current-user.js";
+import { can } from "../lib/permissions.js";
 
-const ROLE_ADMIN = 50;
-
-export function RequireAdmin({ children }: { children: React.ReactNode }) {
+export function RequirePermission({
+	permission,
+	children,
+}: {
+	permission: string;
+	children: React.ReactNode;
+}) {
 	const { t } = useLingui();
 	const { data: currentUser, isLoading: userLoading } = useCurrentUser();
 
@@ -18,7 +23,7 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
 		);
 	}
 
-	if (!currentUser || currentUser.role < ROLE_ADMIN) {
+	if (!can(currentUser, permission)) {
 		return (
 			<div className="flex items-center justify-center min-h-[50vh]">
 				<div className="text-center">

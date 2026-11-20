@@ -60,7 +60,7 @@ import { Redirects } from "./components/Redirects";
 import { RegistryBrowse } from "./components/RegistryBrowse";
 import { RegistryPluginDetail } from "./components/RegistryPluginDetail";
 import { RelationList } from "./components/RelationList";
-import { RequireAdmin } from "./components/RequireAdmin.js";
+import { RequirePermission } from "./components/RequirePermission.js";
 import { SandboxedPluginPage } from "./components/SandboxedPluginPage";
 import { SectionEditor } from "./components/SectionEditor";
 import { Sections } from "./components/Sections";
@@ -84,8 +84,6 @@ import { Widgets } from "./components/Widgets";
 import { WordPressImport } from "./components/WordPressImport";
 import { useAdminBranding } from "./lib/admin-branding-context.js";
 import {
-	apiFetch,
-	parseApiResponse,
 	fetchManifest,
 	fetchContentList,
 	fetchContentAuthors,
@@ -177,9 +175,15 @@ import {
 	type RoomEditing,
 	type RoomEvent,
 } from "./lib/co-editing/types.js";
-import { canDuplicateEntry, canPublishEntry, entryEditAccess } from "./lib/content-permissions";
 import { describeContentValidationError } from "./lib/content-validation-errors";
 import { invalidateContentViews } from "./lib/invalidate-content-views.js";
+import {
+	can,
+	canActOnOwn,
+	canDuplicateEntry,
+	canPublishEntry,
+	entryEditAccess,
+} from "./lib/permissions.js";
 import { usePluginPage } from "./lib/plugin-context";
 import { getPluginBlocks } from "./lib/pluginBlocks";
 import {
@@ -913,7 +917,7 @@ function ContentListPage() {
 			onBulkUnpublish={(ids) => bulkUnpublishMutation.mutateAsync(ids).then((r) => r.failedIds)}
 			onBulkDelete={(ids) => bulkDeleteMutation.mutateAsync(ids).then((r) => r.failedIds)}
 			bulkTagTaxonomies={
-				(currentUser?.role ?? 0) >= ROLE_EDITOR
+				can(currentUser, "content:edit_any")
 					? manifest.taxonomies.filter((taxonomy) => taxonomy.collections.includes(collection))
 					: []
 			}
@@ -1098,11 +1102,6 @@ const contentEditRoute = createRoute({
 		...(typeof search.locale === "string" && { locale: search.locale }),
 	}),
 });
-
-// Role levels from @emdash-cms/auth
-const ROLE_CONTRIBUTOR = 20;
-const ROLE_AUTHOR = 30;
-const ROLE_EDITOR = 40;
 
 const EMPTY_FIELDS: AdminManifest["collections"][string]["fields"] = {};
 /**
@@ -1627,11 +1626,11 @@ function ContentEditPage() {
 		};
 	}, [rawItem, draftRevision]);
 
-	// Fetch users list for author selector (only if user is editor+)
+	// Fetch users list for author selector
 	const { data: usersData } = useQuery({
 		queryKey: ["users"],
 		queryFn: () => fetchUsers({ limit: 100 }),
-		enabled: !!currentUser && currentUser.role >= ROLE_EDITOR,
+		enabled: can(currentUser, "content:edit_any"),
 		staleTime: 5 * 60 * 1000,
 	});
 
@@ -2518,7 +2517,7 @@ function ContentEditPage() {
 		if (itemError instanceof ApiResponseError && itemError.status === 404) {
 			// Users without content:read_drafts get 404 for anything not published.
 			const message =
-				currentUser && currentUser.role < ROLE_CONTRIBUTOR
+				currentUser && !can(currentUser, "content:read_drafts")
 					? t`This entry doesn't exist or isn't published. Your role can only view published content.`
 					: t`This entry doesn't exist or was deleted.`;
 			return <NotFoundPage message={message} />;
@@ -2908,11 +2907,7 @@ function MediaPage() {
 	);
 	const canMoveMedia = React.useCallback(
 		(item: { authorId: string | null }) =>
-			Boolean(
-				currentUser &&
-				(currentUser.role >= ROLE_EDITOR ||
-					(currentUser.role >= ROLE_AUTHOR && item.authorId === currentUser.id)),
-			),
+			canActOnOwn(currentUser, item.authorId, "media:edit_own", "media:edit_any"),
 		[currentUser],
 	);
 
@@ -2951,7 +2946,7 @@ function MediaPage() {
 			folderId={folder}
 			currentFolder={currentFolderQuery.data ?? null}
 			currentFolderLoading={currentFolderQuery.isLoading}
-			canManageFolders={(currentUser?.role ?? 0) >= ROLE_EDITOR}
+			canManageFolders={can(currentUser, "media:edit_any")}
 			onOpenFolder={handleOpenFolder}
 			onBackToMain={handleBackToMain}
 			onRetryFolders={() => void folderListQuery.refetch()}
@@ -2972,9 +2967,6 @@ const commentsRoute = createRoute({
 	staticData: { pageTitle: msg`Comments` },
 });
 
-// Admin role level from @emdash-cms/auth
-const ROLE_ADMIN = 50;
-
 function CommentsPage() {
 	const { t } = useLingui();
 	const queryClient = useQueryClient();
@@ -2985,15 +2977,7 @@ function CommentsPage() {
 		queryFn: fetchManifest,
 	});
 
-	// Current user for ADMIN check (hard delete)
-	const { data: currentUser } = useQuery({
-		queryKey: ["currentUser"],
-		queryFn: async (): Promise<{ id: string; role: number }> => {
-			const response = await apiFetch("/_emdash/api/auth/me");
-			return parseApiResponse<{ id: string; role: number }>(response, t`Failed to fetch user`);
-		},
-		staleTime: 5 * 60 * 1000,
-	});
+	const { data: currentUser } = useCurrentUser();
 
 	// Filter state
 	const [activeStatus, setActiveStatus] = React.useState<CommentStatus>("pending");
@@ -3089,8 +3073,7 @@ function CommentsPage() {
 	const allComments = commentsData?.pages.flatMap((p) => p.items) ?? [];
 	const lastPage = commentsData?.pages[commentsData.pages.length - 1];
 
-	// Require EDITOR role for comment moderation
-	if (currentUser && currentUser.role < ROLE_EDITOR) {
+	if (currentUser && !can(currentUser, "comments:moderate")) {
 		return (
 			<div className="flex items-center justify-center min-h-[50vh]">
 				<div className="text-center">
@@ -3122,7 +3105,7 @@ function CommentsPage() {
 			onLoadMore={() => {
 				if (hasNextPage) void fetchNextPage();
 			}}
-			isAdmin={(currentUser?.role ?? 0) >= ROLE_ADMIN}
+			canDelete={can(currentUser, "comments:delete")}
 			isStatusPending={
 				statusMutation.isPending || deleteMutation.isPending || bulkMutation.isPending
 			}
@@ -3171,9 +3154,9 @@ const allowedDomainsSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/allowed-domains",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="users:read">
 			<AllowedDomainsSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Allowed Domains` },
 });
@@ -3183,9 +3166,9 @@ const apiTokenSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/api-tokens",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="auth:manage_api_tokens">
 			<ApiTokenSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`API Tokens` },
 });
@@ -3195,9 +3178,9 @@ const emailSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/email",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="settings:manage">
 			<EmailSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Email Settings` },
 });
@@ -3207,9 +3190,9 @@ const backupSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/backups",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="backups:manage">
 			<BackupSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Backups` },
 });
@@ -3246,9 +3229,9 @@ const generalSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/general",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="settings:manage">
 			<GeneralSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`General Settings` },
 });
@@ -3258,9 +3241,9 @@ const socialSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/social",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="settings:manage">
 			<SocialSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Social Settings` },
 });
@@ -3270,9 +3253,9 @@ const seoSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/settings/seo",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="settings:manage">
 			<SeoSettings />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`SEO Settings` },
 });
@@ -3411,9 +3394,9 @@ const wordpressImportRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/import/wordpress",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="import:execute">
 			<WordPressImport />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Import from WordPress` },
 });
@@ -3487,9 +3470,9 @@ const usersRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/users",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="users:read">
 			<UsersPage />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Users` },
 });
@@ -3518,8 +3501,8 @@ const bylinesRoute = createRoute({
 });
 
 // Byline schema management route (Discussion #1174, Phase 5).
-// `minRole: ROLE_ADMIN` is enforced both in the sidebar (entry hidden
-// for non-admins) and inside `BylineSchemaPage` (URL-direct navigation).
+// `schema:manage` is enforced both in the sidebar (entry hidden without
+// it) and inside `BylineSchemaPage` (URL-direct navigation).
 const bylineSchemaRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/byline-schema",
@@ -3906,9 +3889,9 @@ const pluginSettingsRoute = createRoute({
 	getParentRoute: () => adminLayoutRoute,
 	path: "/plugins-manager/$pluginId/settings",
 	component: () => (
-		<RequireAdmin>
+		<RequirePermission permission="plugins:manage">
 			<PluginSettingsPage />
-		</RequireAdmin>
+		</RequirePermission>
 	),
 	staticData: { pageTitle: msg`Plugin Settings` },
 });

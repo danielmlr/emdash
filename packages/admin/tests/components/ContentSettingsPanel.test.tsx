@@ -30,6 +30,7 @@ import {
 	resolvePublishingLocalDateTime,
 } from "../../src/lib/publishing-datetime.js";
 import { messages as enMessages } from "../../src/locales/en/messages.mjs";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 // Mock child components with their own data fetching so the panel tests
@@ -145,8 +146,16 @@ function makeByline(): BylineSummary {
 	};
 }
 
-const EDITOR_ROLE: NonNullable<ContentEditorProps["currentUser"]> = { id: "u1", role: 40 };
-const AUTHOR_ROLE: NonNullable<ContentEditorProps["currentUser"]> = { id: "u2", role: 20 };
+const EDITOR_ROLE: NonNullable<ContentEditorProps["currentUser"]> = {
+	id: "u1",
+	role: 40,
+	permissions: permissionsFor(40),
+};
+const AUTHOR_ROLE: NonNullable<ContentEditorProps["currentUser"]> = {
+	id: "u2",
+	role: 20,
+	permissions: permissionsFor(20),
+};
 const USERS = [
 	{ id: "u1", name: "Editor One", email: "editor@example.com", role: 40 },
 ] as ContentSettingsPanelProps["users"];

@@ -8,6 +8,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 
 import type { AdminManifest } from "../src/lib/api/index.js";
 import { createAdminRouter } from "../src/router.js";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient, createMockFetch } from "./utils/test-helpers.js";
 
@@ -140,7 +141,9 @@ describe("admin-only routes show Access denied to non-admins", () => {
 			mockFetch = createMockFetch();
 			mockFetch
 				.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-				.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 40 } });
+				.on("GET", "/_emdash/api/auth/me", {
+					data: { id: "user_01", role: 40, permissions: permissionsFor(40) },
+				});
 
 			const { router, TestApp } = buildRouter();
 			await router.navigate({ to });
@@ -155,7 +158,9 @@ describe("admin-only routes show Access denied to non-admins", () => {
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 50 } });
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 50, permissions: permissionsFor(50) },
+			});
 
 		const { router, TestApp } = buildRouter();
 		await router.navigate({ to });
@@ -177,7 +182,9 @@ describe("routes that stay reachable for non-admins", () => {
 		mockFetch = createMockFetch();
 		mockFetch
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 40 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 40, permissions: permissionsFor(40) },
+			})
 			// `/content-types` shows an ErrorScreen instead of the marker if any schema query fails.
 			.on("GET", "/_emdash/api/schema/collections", { data: { items: [] } })
 			.on("GET", "/_emdash/api/schema/orphans", { data: { items: [] } })

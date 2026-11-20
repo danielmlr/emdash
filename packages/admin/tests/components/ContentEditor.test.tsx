@@ -29,6 +29,7 @@ import type {
 import { PluginAdminProvider, type PluginAdmins } from "../../src/lib/plugin-context";
 import { diffVersion } from "../../src/lib/revision-diff/index.js";
 import { withAutosavedDraft } from "../../src/lib/revision-list-cache";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 function makeByline(overrides: Partial<BylineSummary> = {}): BylineSummary {
@@ -289,7 +290,7 @@ function renderBylineContent(
 	return renderEditor({
 		isNew: false,
 		item: makeItem({ data: { title: "Hello", body: "" }, bylines }),
-		currentUser: { id: "u-1", role: 50 },
+		currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 		availableBylines: [],
 		availableBylinesLoaded: true,
 		...props,
@@ -2083,7 +2084,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 				i18n: { defaultLocale: "en", locales: ["en", "fr-fr"] },
 				entryLocale: "fr-fr",
 				availableBylines: [],
@@ -2100,7 +2101,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 				i18n: { defaultLocale: "en", locales: ["en", "fr-fr"] },
 				entryLocale: "fr-fr",
 				availableBylines: [],
@@ -2528,7 +2529,7 @@ describe("ContentEditor", () => {
 							fields={defaultFields}
 							isNew={false}
 							item={makeItem()}
-							currentUser={{ id: "u-1", role: 50 }}
+							currentUser={{ id: "u-1", role: 50, permissions: permissionsFor(50) }}
 							onSave={onSave}
 						/>
 					</PluginAdminProvider>,
@@ -3566,7 +3567,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 				// Empty initial list: the only way to reach "Zoe Far" is via search.
 				availableBylines: [],
 				availableBylinesLoaded: true,
@@ -3601,7 +3602,7 @@ describe("ContentEditor", () => {
 			const screen = await renderEditor({
 				isNew: false,
 				item,
-				currentUser: { id: "u-1", role: 50 },
+				currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 				// Initial list does NOT include the credited byline (it would be
 				// past the old 100-row cap). It must still render from the entry.
 				availableBylines: [],

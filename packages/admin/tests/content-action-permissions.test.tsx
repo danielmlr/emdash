@@ -9,6 +9,7 @@ import { userEvent } from "vitest/browser";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient } from "./utils/test-helpers";
 
@@ -77,7 +78,9 @@ function serve(user: { id: string; role: number }, entries: Entry[]) {
 		requests.push(`${method} ${url.pathname}`);
 		const path = url.pathname;
 		if (path === "/_emdash/api/manifest") return Response.json({ data: MANIFEST });
-		if (path === "/_emdash/api/auth/me") return Response.json({ data: user });
+		if (path === "/_emdash/api/auth/me") {
+			return Response.json({ data: { ...user, permissions: permissionsFor(user.role) } });
+		}
 		if (path === "/_emdash/api/content/posts") {
 			return Response.json({ data: { items: entries.map(contentItem), total: entries.length } });
 		}

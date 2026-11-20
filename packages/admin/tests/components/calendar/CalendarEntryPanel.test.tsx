@@ -15,6 +15,7 @@ import type { CurrentUser } from "../../../src/lib/api/current-user";
 import { createCalendarDisplay, toCalendarItems } from "../../../src/lib/calendar";
 
 import "../../../dist/styles.css";
+import { permissionsFor } from "../../utils/permissions.js";
 import { render } from "../../utils/render.tsx";
 import { swipeDown } from "../../utils/touch.ts";
 
@@ -121,7 +122,12 @@ function renderPanel(
 	return { screen, onClose };
 }
 
-const editor: CurrentUser = { id: "editor", email: "editor@example.com", role: 40 };
+const editor: CurrentUser = {
+	id: "editor",
+	email: "editor@example.com",
+	role: 40,
+	permissions: permissionsFor(40),
+};
 
 describe("CalendarEntryPanel", () => {
 	afterEach(async () => {
@@ -149,7 +155,12 @@ describe("CalendarEntryPanel", () => {
 	});
 
 	it("publishes an overdue schedule now with the revision it loaded", async () => {
-		const author: CurrentUser = { id: "author", email: "author@example.com", role: 30 };
+		const author: CurrentUser = {
+			id: "author",
+			email: "author@example.com",
+			role: 30,
+			permissions: permissionsFor(30),
+		};
 		vi.mocked(fetchContent).mockResolvedValue(details("author"));
 		const { screen } = renderPanel(scheduledItem("2026-10-15T11:00:00.000Z"), author);
 		const panel = (await screen).getByRole("dialog", { name: "Launch" });
@@ -178,7 +189,12 @@ describe("CalendarEntryPanel", () => {
 	});
 
 	it("keeps publishing actions from roles that can't publish the entry", async () => {
-		const contributor: CurrentUser = { id: "contributor", email: "c@example.com", role: 20 };
+		const contributor: CurrentUser = {
+			id: "contributor",
+			email: "c@example.com",
+			role: 20,
+			permissions: permissionsFor(20),
+		};
 		const { screen } = renderPanel(scheduledItem("2026-10-15T11:00:00.000Z"), contributor);
 		const panel = (await screen).getByRole("dialog", { name: "Launch" });
 

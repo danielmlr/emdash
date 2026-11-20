@@ -47,7 +47,7 @@ const noopProps = {
 	onCommentDelete: vi.fn().mockResolvedValue(undefined),
 	onBulkAction: vi.fn().mockResolvedValue(undefined),
 	onLoadMore: vi.fn(),
-	isAdmin: true,
+	canDelete: true,
 	isStatusPending: false,
 	deleteError: null,
 	onDeleteErrorReset: vi.fn(),
@@ -186,7 +186,7 @@ describe("CommentInbox", () => {
 	});
 
 	it("offers Delete permanently in the row's menu only to admins", async () => {
-		const screen = await render(<CommentInbox {...noopProps} isAdmin={false} />);
+		const screen = await render(<CommentInbox {...noopProps} canDelete={false} />);
 		const menuButton = screen.getByRole("button", { name: "Actions for comment by Author Dash" });
 
 		await menuButton.click();
@@ -194,7 +194,7 @@ describe("CommentInbox", () => {
 		expect(screen.getByRole("menuitem", { name: "Delete permanently" }).query()).toBeNull();
 		await userEvent.keyboard("{Escape}");
 
-		await screen.rerender(<CommentInbox {...noopProps} isAdmin={true} />);
+		await screen.rerender(<CommentInbox {...noopProps} canDelete={true} />);
 		await menuButton.click();
 		await screen.getByRole("menuitem", { name: "Delete permanently" }).click();
 

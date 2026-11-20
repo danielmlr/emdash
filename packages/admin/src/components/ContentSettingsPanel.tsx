@@ -54,6 +54,7 @@ import {
 import { useConfirmedRequest } from "../lib/dialog-form.js";
 import { resolveEditorExtensionSections } from "../lib/editor-sections.js";
 import { getSeoFallbackTitle } from "../lib/entryTitle.js";
+import { can } from "../lib/permissions.js";
 import { usePluginAdmins } from "../lib/plugin-context";
 import {
 	formatPublishingInstant,
@@ -92,7 +93,6 @@ import { TaxonomySidebar, useHasApplicableTaxonomies } from "./TaxonomySidebar";
 import { TranslationsPanel } from "./TranslationsPanel.js";
 
 // Editor role level (40) from @emdash-cms/auth
-const ROLE_EDITOR = 40;
 
 function PublishingVersionRow({
 	iconState,
@@ -955,7 +955,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 		i18n?.defaultLocale,
 	);
 	const canUpdatePublishedDate =
-		item?.publishedAt != null && (currentUser?.role ?? 0) >= ROLE_EDITOR && !!onPublishedAtChange;
+		item?.publishedAt != null && can(currentUser, "content:publish_any") && !!onPublishedAtChange;
 	const contentLocale = item?.locale ?? entryLocale ?? manifest?.contentLocale?.defaultLocale;
 	const usesImplicitEnglish = manifest?.contentLocale?.implicit === true && contentLocale === "en";
 	const publicationEntryKey = `${item?.id ?? "new"}:${activeEntryLocale ?? ""}`;
@@ -1166,7 +1166,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 					</div>
 				</ContentSettingsSection>
 
-				{currentUser && currentUser.role >= ROLE_EDITOR && users && users.length > 0 && (
+				{can(currentUser, "content:edit_any") && users && users.length > 0 && (
 					<ContentSettingsSection id="ownership">
 						<div className="p-4">
 							<Text as="h3" DANGEROUS_className="mb-4 font-semibold">
@@ -1183,7 +1183,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 					</ContentSettingsSection>
 				)}
 
-				{currentUser && currentUser.role >= ROLE_EDITOR && (
+				{can(currentUser, "bylines:manage") && (
 					<ContentSettingsSection id="bylines">
 						<div className="p-4" data-emdash-outside="bylines">
 							<div className="mb-4 flex items-center gap-1.5 pe-10">
@@ -1246,7 +1246,7 @@ export const ContentSettingsPanel = React.memo(function ContentSettingsPanel({
 								entryId={item.id}
 								entryLocale={activeEntryLocale}
 								defaultLocale={i18n?.defaultLocale}
-								canManageTaxonomies={(currentUser?.role ?? 0) >= ROLE_EDITOR}
+								canManageTaxonomies={can(currentUser, "taxonomies:manage")}
 							/>
 						</div>
 					</ContentSettingsSection>

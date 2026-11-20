@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminManifest } from "../../src/lib/api";
 import { createAdminRouter } from "../../src/router";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 import { createMockFetch, createTestQueryClient } from "../utils/test-helpers";
 
@@ -85,7 +86,9 @@ describe("confirmations report their own failures", () => {
 	beforeEach(() => {
 		mockFetch = createMockFetch()
 			.on("GET", "/_emdash/api/manifest", { data: MANIFEST })
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 50 } });
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 50, permissions: permissionsFor(50) },
+			});
 	});
 
 	afterEach(() => {

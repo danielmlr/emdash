@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AdminManifest } from "../../src/lib/api";
 import { listEditorSections } from "../../src/lib/editor-sections";
 import type { PluginAdmins } from "../../src/lib/plugin-context";
+import { permissionsFor } from "../utils/permissions.js";
 
 type Collection = AdminManifest["collections"][string];
 
@@ -32,9 +33,17 @@ function manifest(overrides: Partial<AdminManifest> = {}): AdminManifest {
 
 const ids = (entries: ReturnType<typeof listEditorSections>) => entries.map((entry) => entry.id);
 
+function viewer(role: number) {
+	const permissions = permissionsFor(role);
+	return { role, can: (permission: string) => permissions.includes(permission) };
+}
+
 describe("listEditorSections", () => {
 	it("lists only the site-wide sections when there are no collections", () => {
-		expect(ids(listEditorSections(manifest(), {}, 30))).toEqual(["publish", "url-language"]);
+		expect(ids(listEditorSections(manifest(), {}, viewer(30)))).toEqual([
+			"publish",
+			"url-language",
+		]);
 	});
 
 	it("places plugin sections between SEO and Outline", () => {
@@ -53,7 +62,7 @@ describe("listEditorSections", () => {
 				plugins: { insights: { name: "Insights plugin", enabled: true } },
 			}),
 			pluginAdmins,
-			30,
+			viewer(30),
 		);
 
 		expect(ids(entries)).toEqual([
@@ -79,7 +88,7 @@ describe("listEditorSections", () => {
 				},
 			}),
 			{},
-			30,
+			viewer(30),
 		);
 
 		expect(ids(entries)).toContain("revisions");
@@ -88,12 +97,23 @@ describe("listEditorSections", () => {
 	it("lists Ownership and Bylines only from the editor role up", () => {
 		const site = manifest({ collections: { posts: collection() } });
 
-		expect(ids(listEditorSections(site, {}, 30))).not.toContain("ownership");
-		expect(ids(listEditorSections(site, {}, 30))).not.toContain("bylines");
-		expect(ids(listEditorSections(site, {}, 40))).toEqual([
+		expect(ids(listEditorSections(site, {}, viewer(30)))).not.toContain("ownership");
+		expect(ids(listEditorSections(site, {}, viewer(30)))).not.toContain("bylines");
+		expect(ids(listEditorSections(site, {}, viewer(40)))).toEqual([
 			"publish",
 			"url-language",
 			"ownership",
+			"bylines",
+		]);
+	});
+
+	it("lists a section by its permission, whatever the level", () => {
+		const site = manifest({ collections: { posts: collection() } });
+		const bylineEditor = { role: 10, can: (permission: string) => permission === "bylines:manage" };
+
+		expect(ids(listEditorSections(site, {}, bylineEditor))).toEqual([
+			"publish",
+			"url-language",
 			"bylines",
 		]);
 	});
@@ -109,7 +129,7 @@ describe("listEditorSections", () => {
 				},
 			}),
 			{},
-			30,
+			viewer(30),
 		);
 
 		expect(ids(entries)).toEqual(["publish", "url-language", "translations", "taxonomies"]);
@@ -138,16 +158,16 @@ describe("listEditorSections", () => {
 			plugins: { insights: { enabled: true } },
 		});
 
-		expect(ids(listEditorSections(withPosts, pluginAdmins, 40))).not.toContain(
+		expect(ids(listEditorSections(withPosts, pluginAdmins, viewer(40)))).not.toContain(
 			"plugin:insights:pages-only",
 		);
-		expect(ids(listEditorSections(withPages, pluginAdmins, 40))).toContain(
+		expect(ids(listEditorSections(withPages, pluginAdmins, viewer(40)))).toContain(
 			"plugin:insights:pages-only",
 		);
-		expect(ids(listEditorSections(withPosts, pluginAdmins, 40))).not.toContain(
+		expect(ids(listEditorSections(withPosts, pluginAdmins, viewer(40)))).not.toContain(
 			"plugin:insights:admins",
 		);
-		expect(ids(listEditorSections(withPosts, pluginAdmins, 50))).toContain(
+		expect(ids(listEditorSections(withPosts, pluginAdmins, viewer(50)))).toContain(
 			"plugin:insights:admins",
 		);
 	});
@@ -173,7 +193,7 @@ describe("listEditorSections", () => {
 				},
 			}),
 			{},
-			30,
+			viewer(30),
 		);
 
 		expect(ids(entries).filter((id) => id.includes("plugin:"))).toEqual([

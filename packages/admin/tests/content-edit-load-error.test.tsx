@@ -9,6 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ThemeProvider } from "../src/components/ThemeProvider";
 import type { AdminManifest } from "../src/lib/api";
 import { createAdminRouter } from "../src/router";
+import { permissionsFor } from "./utils/permissions.js";
 import { render } from "./utils/render.tsx";
 import { createTestQueryClient, createMockFetch } from "./utils/test-helpers";
 
@@ -103,7 +104,9 @@ describe("ContentEditPage when the entry fails to load", () => {
 
 	it("tells a subscriber that unpublished entries are hidden for their role", async () => {
 		mockFetch
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 10 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 10, permissions: permissionsFor(10) },
+			})
 			.on(
 				"GET",
 				ITEM_URL,
@@ -121,7 +124,9 @@ describe("ContentEditPage when the entry fails to load", () => {
 
 	it("shows a not-found page without the role hint to a contributor", async () => {
 		mockFetch
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 20 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 20, permissions: permissionsFor(20) },
+			})
 			.on(
 				"GET",
 				ITEM_URL,
@@ -139,7 +144,9 @@ describe("ContentEditPage when the entry fails to load", () => {
 
 	it("shows the server error for other failures", async () => {
 		mockFetch
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 40 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 40, permissions: permissionsFor(40) },
+			})
 			.on(
 				"GET",
 				ITEM_URL,
@@ -155,7 +162,9 @@ describe("ContentEditPage when the entry fails to load", () => {
 
 	it("keeps the open editor when a background refetch fails", async () => {
 		mockFetch
-			.on("GET", "/_emdash/api/auth/me", { data: { id: "user_01", role: 40 } })
+			.on("GET", "/_emdash/api/auth/me", {
+				data: { id: "user_01", role: 40, permissions: permissionsFor(40) },
+			})
 			.on("GET", "/_emdash/api/revisions", { data: { item: null } })
 			.on("GET", ITEM_URL, { data: { item: publishedPost() } });
 

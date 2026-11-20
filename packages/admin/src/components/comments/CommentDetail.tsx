@@ -19,7 +19,7 @@ export interface CommentDetailProps {
 	onClose: () => void;
 	onStatusChange: (id: string, status: CommentStatus) => void;
 	onDelete: (id: string) => void;
-	isAdmin: boolean;
+	canDelete: boolean;
 	isStatusPending: boolean;
 }
 
@@ -28,7 +28,7 @@ export function CommentDetail({
 	onClose,
 	onStatusChange,
 	onDelete,
-	isAdmin,
+	canDelete,
 	isStatusPending,
 }: CommentDetailProps) {
 	const { t, i18n } = useLingui();
@@ -174,7 +174,7 @@ export function CommentDetail({
 							</Button>
 						)}
 					</div>
-					{isAdmin && (
+					{canDelete && (
 						<Button
 							variant="destructive"
 							icon={<Trash />}

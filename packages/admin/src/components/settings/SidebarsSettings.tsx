@@ -43,12 +43,12 @@ export function SidebarsSettings({ tab }: SidebarsSettingsProps) {
 	const editorSections = React.useMemo((): LayoutRowItem[] => {
 		if (!manifest) return [];
 		const translateDeclared = declaredLabelTranslator(i18n, (id) => translate(id));
-		return listEditorSections(manifest, pluginAdmins, role).map((section) =>
+		return listEditorSections(manifest, pluginAdmins, { role, can }).map((section) =>
 			section.kind === "built-in"
 				? { id: section.id, label: translate(section.label) }
 				: { id: section.id, label: translateDeclared(section.label), meta: section.meta },
 		);
-	}, [manifest, pluginAdmins, role, i18n, translate]);
+	}, [manifest, pluginAdmins, role, can, i18n, translate]);
 
 	const sidebars = useAdminLayoutEditor({ navGroups, editorSections });
 	const scope = SCOPE[tab];

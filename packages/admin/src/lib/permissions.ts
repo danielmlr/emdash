@@ -28,6 +28,40 @@ export function canActOnOwn(
 	return can(user, anyPermission);
 }
 
+export interface OwnedEntry {
+	authorId: string | null;
+	status: string;
+}
+
+type EntryActor = (PermissionHolder & { id?: string }) | null | undefined;
+
+/**
+ * `"full"` when the user can save the entry in any state, `"draft"` when they
+ * can save it only while it is a draft, `null` when they can't save it.
+ */
+export function entryEditAccess(user: EntryActor, entry: OwnedEntry): "full" | "draft" | null {
+	if (canActOnOwn(user, entry.authorId, "content:edit_own", "content:edit_any")) return "full";
+	if (
+		entry.status === "draft" &&
+		canActOnOwn(user, entry.authorId, "content:edit_own_drafts", "content:edit_any")
+	) {
+		return "draft";
+	}
+	return null;
+}
+
+/** Covers publish, unpublish, schedule and unschedule. */
+export function canPublishEntry(user: EntryActor, entry: Pick<OwnedEntry, "authorId">): boolean {
+	return canActOnOwn(user, entry.authorId, "content:publish_own", "content:publish_any");
+}
+
+export function canDuplicateEntry(user: EntryActor, entry: Pick<OwnedEntry, "authorId">): boolean {
+	return (
+		can(user, "content:create") &&
+		canActOnOwn(user, entry.authorId, "content:edit_own", "content:edit_any")
+	);
+}
+
 export interface PermissionChecks {
 	can: (permission: string) => boolean;
 	canActOnOwn: (

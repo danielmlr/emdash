@@ -76,7 +76,7 @@ function renderInbox({ dir = "ltr", width = 272 }: { dir?: "ltr" | "rtl"; width?
 				onCommentDelete={vi.fn().mockResolvedValue(undefined)}
 				onBulkAction={vi.fn().mockResolvedValue(undefined)}
 				onLoadMore={vi.fn()}
-				isAdmin={true}
+				canDelete={true}
 				isStatusPending={false}
 				deleteError={null}
 				onDeleteErrorReset={vi.fn()}

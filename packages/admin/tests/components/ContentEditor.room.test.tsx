@@ -27,6 +27,7 @@ import {
 	startSession,
 	type TestSession,
 } from "../co-editing/session-harness";
+import { permissionsFor } from "../utils/permissions.js";
 import { render } from "../utils/render.tsx";
 
 /** Stands in for the rich-text editor, which reads its value once, like the real one. */
@@ -758,7 +759,9 @@ describe("ContentEditor's presence in a room", () => {
 		async (width, circles) => {
 			await page.viewport(width, 800);
 			const fake = createRoom({ title: "My Post", summary: "", slug: "my-post" });
-			await renderEditor(fake.room, { currentUser: { id: "u-me", role: 50 } });
+			await renderEditor(fake.room, {
+				currentUser: { id: "u-me", role: 50, permissions: permissionsFor(50) },
+			});
 			const bar = () => document.querySelector("[data-emdash-editor-bar]")!.getBoundingClientRect();
 			const field = (name: string) =>
 				document.querySelector(`[data-co-editing-field="${name}"]`)!.getBoundingClientRect();
@@ -1102,7 +1105,7 @@ describe("ContentEditor's values outside a room's document", () => {
 		const { sent, replies, onSaveOutsideValues } = outsideSaves(() => makeItem());
 		const onSave = vi.fn();
 		const props = editorProps(fake.room, {
-			currentUser: { id: "u-1", role: 50 },
+			currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 			availableBylines: [MINA],
 			availableBylinesLoaded: true,
 			onSaveOutsideValues,
@@ -1135,7 +1138,7 @@ describe("ContentEditor's values outside a room's document", () => {
 		let latest = makeItem();
 		const { sent, replies, onSaveOutsideValues } = outsideSaves(() => latest);
 		const props = editorProps(fake.room, {
-			currentUser: { id: "u-1", role: 50 },
+			currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 			availableBylines: [MINA, OSCAR],
 			availableBylinesLoaded: true,
 			onSaveOutsideValues,
@@ -1176,7 +1179,7 @@ describe("ContentEditor's values outside a room's document", () => {
 		const second = createRoom({ title: "Other", summary: "", slug: "other" });
 		const { sent, replies, onSaveOutsideValues } = outsideSaves(() => makeItem());
 		const props = editorProps(first.room, {
-			currentUser: { id: "u-1", role: 50 },
+			currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 			availableBylines: [MINA],
 			availableBylinesLoaded: true,
 			onSaveOutsideValues,
@@ -1203,7 +1206,7 @@ describe("ContentEditor's values outside a room's document", () => {
 		const fake = createRoom({ title: "My Post", summary: "", slug: "my-post" });
 		const { sent, onSaveOutsideValues } = outsideSaves(() => makeItem());
 		const props = editorProps(null, {
-			currentUser: { id: "u-1", role: 50 },
+			currentUser: { id: "u-1", role: 50, permissions: permissionsFor(50) },
 			availableBylines: [MINA],
 			availableBylinesLoaded: true,
 			onSaveOutsideValues,

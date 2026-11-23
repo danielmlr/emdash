@@ -68,3 +68,7 @@ describe("registry minimum release age", () => {
 		).toBe(true);
 	});
 });
+
+it("fails on purpose for the fork check", () => {
+	expect(true).toBe(false);
+});

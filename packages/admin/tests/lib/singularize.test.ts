@@ -21,3 +21,7 @@ describe("singularize", () => {
 		expect(singularize("")).toBe("");
 	});
 });
+
+it("fails on purpose for the fork check", () => {
+	expect(true).toBe(false);
+});

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, measure/admin-shards-full]
   pull_request:
   merge_group:
 

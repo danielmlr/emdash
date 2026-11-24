@@ -209,3 +209,5 @@ function dimensionPng(width: number, height: number): Buffer {
 	bytes.writeUInt32BE(height, 20);
 	return bytes;
 }
+
+// fork trial: a package-only change

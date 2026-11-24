@@ -72,7 +72,7 @@ describe("prepareReleaseMedia", () => {
 
 		const prepared = await prepareReleaseMedia(options(workspace, "packages/gallery"));
 		const checksum = await computeMultihash(PNG);
-		expect(checksum.success).toBe(false);
+		expect(checksum.success).toBe(true);
 		if (!checksum.success) throw new Error(checksum.error.message);
 		expect(prepared.icon).toMatchObject({
 			contentType: "image/png",

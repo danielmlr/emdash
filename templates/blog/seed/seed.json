@@ -22,7 +22,7 @@
 				{
 					"slug": "title",
 					"label": "Title",
-					"type": "not-a-field-type",
+					"type": "string",
 					"required": true,
 					"searchable": true
 				},

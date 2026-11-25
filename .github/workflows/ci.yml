@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-repro/admin-halves]
   pull_request:
   merge_group:
 
